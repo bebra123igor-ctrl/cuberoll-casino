@@ -69,6 +69,62 @@
   border-color: var(--accent);
 }
 
+.premium-empty {
+  text-align: center;
+  padding: 40px 20px;
+  position: relative;
+  background: var(--card);
+  border-radius: var(--r);
+  border: 1px solid var(--border2);
+  grid-column: 1 / -1;
+  overflow: hidden;
+}
+
+.empty-glow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, var(--accent-dim) 0%, transparent 60%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.empty-icon-wrap {
+  width: 64px;
+  height: 64px;
+  background: var(--bg2);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  border: 1px solid var(--border3);
+  position: relative;
+}
+
+.empty-icon-wrap svg {
+  width: 32px;
+  height: 32px;
+  stroke: var(--t4);
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.premium-empty h3 {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--t1);
+  margin-bottom: 8px;
+}
+
+.premium-empty p {
+  font-size: 13px;
+  color: var(--t3);
+  line-height: 1.5;
+}
+
 .gift-preview {
   height: 120px;
   background: var(--bg2);

@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>CubeRoll</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -407,14 +408,19 @@
     <div class="tab-content" id="content-shop">
       <h3 class="section-title">Магазин подарков</h3>
       <div id="shop-list" class="shop-list">
-        <!-- подарки из админки -->
-        <div class="empty-state">
-          <div class="empty-icon"><svg viewBox="0 0 24 24">
-              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <path d="M16 10a4 4 0 0 1-8 0" />
-            </svg></div>
-          <p>Подарков пока нет</p>
+        <div class="premium-empty">
+          <div class="empty-glow"></div>
+          <div class="empty-icon-wrap">
+            <svg viewBox="0 0 24 24">
+              <path d="M20 12v10H4V12" />
+              <path d="M2 7h20v5H2z" />
+              <path d="M12 22V7" />
+              <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+              <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+            </svg>
+          </div>
+          <h3>Витрина пуста</h3>
+          <p>Администратор еще не добавил товары.<br>Загляни позже!</p>
         </div>
       </div>
     </div>

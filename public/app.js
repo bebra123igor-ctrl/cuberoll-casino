@@ -9,6 +9,7 @@ let rangeMin = 2, rangeMax = 6;
 let rolling = false;
 let streak = 0;
 let dailyClaimed = false;
+let tonConnectUI = null;
 
 // тг
 function initTg() {
@@ -36,6 +37,25 @@ async function api(url, method = 'GET', body = null) {
 async function init() {
     initTg();
     buildExactPicker();
+
+    // TonConnect
+    tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+        manifestUrl: 'https://cuberoll-casino-production.up.railway.app/tonconnect-manifest.json',
+        buttonRootId: null // мы используем свою кнопку
+    });
+
+    tonConnectUI.onStatusChange(wallet => {
+        if (wallet) {
+            const addr = wallet.account.address;
+            const short = addr.slice(0, 6) + '...' + addr.slice(-4);
+            document.getElementById('wallet-address').textContent = short;
+            document.getElementById('ton-connect').classList.add('connected');
+            toast('Кошелёк подключен', 'success');
+        } else {
+            document.getElementById('wallet-address').textContent = 'Не привязан';
+            document.getElementById('ton-connect').classList.remove('connected');
+        }
+    });
 
     try {
         const d = await api('/api/auth', 'POST');
@@ -547,12 +567,15 @@ window.openGift = async function (id) {
     } catch (e) { toast(e.message, 'error'); }
 };
 
-window.connectWallet = function () {
-    // тут должен быть TonConnect, пока симуляция
-    const addr = 'EQB...z4z';
-    document.getElementById('wallet-address').textContent = addr.slice(0, 6) + '...' + addr.slice(-4);
-    toast('Кошелёк привязан', 'success');
-    hOk();
+window.connectWallet = async function () {
+    try {
+        if (tonConnectUI.connected) {
+            await tonConnectUI.disconnect();
+        } else {
+            await tonConnectUI.openModal();
+        }
+        hOk();
+    } catch (e) { toast('Ошибка привязки', 'error'); }
 };
 
 window.deposit = async function (amount) {
