@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CubeRoll Admin</title>
+    <title>CubeRoll — Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
@@ -12,30 +12,31 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg: #0a0e17;
-            --bg2: #111827;
-            --card: #1a1f2e;
-            --card-h: #222840;
-            --elev: #252b3d;
-            --accent: #6366f1;
-            --accent-h: #818cf8;
-            --accent-g: rgba(99, 102, 241, .3);
-            --purple: #a855f7;
-            --green: #10b981;
-            --red: #ef4444;
-            --yellow: #f59e0b;
-            --t1: #f1f5f9;
-            --t2: #94a3b8;
-            --t3: #64748b;
-            --border: rgba(255, 255, 255, .06);
-            --border-a: rgba(99, 102, 241, .3);
-            --r: 16px;
-            --r-sm: 10px;
-            --r-xs: 6px;
+            --bg: #121212;
+            --bg2: #1a1a1a;
+            --card: #1e1e1e;
+            --card2: #242424;
+            --card-h: #2a2a2a;
+            --surface: #2f2f2f;
+            --gold: #c9a96e;
+            --gold2: #dfc08a;
+            --gold-g: rgba(201, 169, 110, .2);
+            --green: #5cb85c;
+            --red: #d9534f;
+            --t1: #f5f5f5;
+            --t2: #a0a0a0;
+            --t3: #666;
+            --t4: #444;
+            --border: rgba(255, 255, 255, .05);
+            --border2: rgba(255, 255, 255, .08);
+            --r: 12px;
+            --r-sm: 8px;
             --font: 'Inter', sans-serif;
         }
 
-        * {
+        *,
+        *::before,
+        *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -46,39 +47,37 @@
             background: var(--bg);
             color: var(--t1);
             min-height: 100vh;
-            background: radial-gradient(ellipse at 20% 0%, rgba(99, 102, 241, .08) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 100%, rgba(168, 85, 247, .06) 0%, transparent 50%), var(--bg);
         }
 
         .wrap {
-            max-width: 800px;
+            max-width: 760px;
             margin: 0 auto;
             padding: 16px;
         }
 
         .hdr {
             text-align: center;
-            padding: 24px 0;
+            padding: 20px 0 16px;
         }
 
         .hdr h1 {
-            font-size: 28px;
-            font-weight: 900;
-            background: linear-gradient(135deg, var(--accent), var(--purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--t1);
+            letter-spacing: -.5px;
         }
 
         .hdr p {
-            color: var(--t3);
-            font-size: 14px;
-            margin-top: 4px;
+            color: var(--t4);
+            font-size: 12px;
+            margin-top: 2px;
+            letter-spacing: .5px;
+            text-transform: uppercase;
         }
 
         .auth-box {
-            max-width: 400px;
-            margin: 40px auto;
+            max-width: 380px;
+            margin: 32px auto;
             text-align: center;
         }
 
@@ -86,100 +85,89 @@
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: var(--r-sm);
-            padding: 20px;
-            color: var(--t2);
-            font-size: 14px;
+            padding: 18px;
+            color: var(--t3);
+            font-size: 13px;
             line-height: 1.6;
         }
 
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-            margin-bottom: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 8px;
+            margin-bottom: 18px;
         }
 
         .st {
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: var(--r-sm);
-            padding: 16px;
-            transition: all .3s;
+            padding: 14px;
+            transition: all .2s;
         }
 
         .st:hover {
-            border-color: var(--border-a);
-            box-shadow: 0 0 20px var(--accent-g);
+            border-color: var(--border2);
         }
 
         .st-l {
-            font-size: 12px;
-            color: var(--t3);
+            font-size: 10px;
+            color: var(--t4);
             text-transform: uppercase;
-            letter-spacing: .5px;
+            letter-spacing: 1px;
+            font-weight: 500;
         }
 
         .st-v {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 800;
             margin-top: 4px;
-            background: linear-gradient(135deg, var(--accent), var(--purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--t1);
+            letter-spacing: -.5px;
         }
 
         .st-v.g {
-            background: linear-gradient(135deg, var(--green), #34d399);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--green);
         }
 
         .st-v.y {
-            background: linear-gradient(135deg, var(--yellow), #fbbf24);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--gold);
         }
 
         .st-v.r {
-            background: linear-gradient(135deg, var(--red), #f87171);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--red);
         }
 
         .tabs {
             display: flex;
-            gap: 4px;
-            margin-bottom: 16px;
+            gap: 2px;
+            margin-bottom: 14px;
             background: var(--bg2);
-            border-radius: var(--r-xs);
-            padding: 4px;
+            border-radius: 6px;
+            padding: 3px;
         }
 
         .tab {
             flex: 1;
-            padding: 10px;
+            padding: 9px;
             border: none;
             background: transparent;
-            color: var(--t3);
+            color: var(--t4);
             font-family: var(--font);
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
-            border-radius: var(--r-xs);
-            transition: all .2s;
+            border-radius: 5px;
+            transition: all .15s;
         }
 
         .tab.active {
-            background: var(--accent);
-            color: #fff;
+            background: var(--card2);
+            color: var(--t1);
         }
 
         .tab:hover:not(.active) {
-            color: var(--t1);
+            color: var(--t2);
         }
 
         .pnl {
@@ -188,13 +176,13 @@
 
         .pnl.active {
             display: block;
-            animation: fi .3s ease;
+            animation: fi .25s ease;
         }
 
         @keyframes fi {
             from {
                 opacity: 0;
-                transform: translateY(10px)
+                transform: translateY(4px)
             }
 
             to {
@@ -206,7 +194,7 @@
         .sgrp {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
         }
 
         .si {
@@ -215,84 +203,81 @@
             justify-content: space-between;
             background: var(--card);
             border: 1px solid var(--border);
-            border-radius: var(--r-xs);
-            padding: 12px 16px;
+            border-radius: 6px;
+            padding: 10px 14px;
         }
 
         .si-l {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
+            color: var(--t2);
         }
 
         .si-i {
-            width: 120px;
-            padding: 8px 12px;
+            width: 110px;
+            padding: 7px 10px;
             background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: var(--r-xs);
+            border-radius: 6px;
             color: var(--t1);
             font-family: var(--font);
-            font-size: 14px;
+            font-size: 13px;
             text-align: right;
             outline: none;
         }
 
         .si-i:focus {
-            border-color: var(--accent);
+            border-color: var(--border2);
         }
 
         .btn {
             padding: 8px 16px;
             border: none;
-            border-radius: var(--r-xs);
+            border-radius: 6px;
             font-family: var(--font);
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
-            transition: all .2s;
+            transition: all .15s;
         }
 
         .btn-p {
-            background: linear-gradient(135deg, var(--accent), var(--purple));
-            color: #fff;
+            background: var(--t1);
+            color: var(--bg);
         }
 
         .btn-p:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px var(--accent-g);
+            background: #fff;
         }
 
         .btn-d {
-            background: var(--red);
-            color: #fff;
+            background: rgba(217, 83, 79, .15);
+            color: var(--red);
+            border: 1px solid rgba(217, 83, 79, .2);
         }
 
         .btn-s {
-            background: var(--green);
-            color: #fff;
+            background: rgba(92, 184, 92, .15);
+            color: var(--green);
+            border: 1px solid rgba(92, 184, 92, .2);
         }
 
         .btn-sm {
-            padding: 6px 12px;
-            font-size: 12px;
-        }
-
-        .tbl {
-            width: 100%;
-            overflow-x: auto;
+            padding: 5px 10px;
+            font-size: 11px;
         }
 
         .row {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 10px 14px;
+            padding: 9px 12px;
             background: var(--card);
             border: 1px solid var(--border);
-            border-radius: var(--r-xs);
-            margin-bottom: 6px;
-            font-size: 13px;
-            transition: all .2s;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            font-size: 12px;
+            transition: background .15s;
         }
 
         .row:hover {
@@ -300,10 +285,10 @@
         }
 
         .row .cid {
-            width: 100px;
-            color: var(--t3);
+            width: 90px;
+            color: var(--t4);
             font-family: monospace;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         .row .cname {
@@ -312,15 +297,16 @@
         }
 
         .row .cbal {
-            width: 100px;
+            width: 90px;
             text-align: right;
             font-weight: 700;
-            color: var(--yellow);
+            color: var(--gold);
         }
 
         .row .cgames {
-            width: 70px;
+            width: 60px;
             text-align: center;
+            color: var(--t3);
         }
 
         .row .cact {
@@ -329,61 +315,63 @@
         }
 
         .cst {
-            width: 60px;
+            width: 50px;
             text-align: center;
         }
 
         .badge {
             display: inline-block;
-            padding: 2px 8px;
-            border-radius: 20px;
-            font-size: 11px;
+            padding: 2px 7px;
+            border-radius: 12px;
+            font-size: 10px;
             font-weight: 600;
         }
 
         .badge-ok {
-            background: rgba(16, 185, 129, .15);
+            background: rgba(92, 184, 92, .1);
             color: var(--green);
         }
 
         .badge-ban {
-            background: rgba(239, 68, 68, .15);
+            background: rgba(217, 83, 79, .1);
             color: var(--red);
         }
 
         .grow {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 14px;
+            gap: 6px;
+            padding: 7px 12px;
             background: var(--card);
             border: 1px solid var(--border);
-            border-radius: var(--r-xs);
-            margin-bottom: 4px;
-            font-size: 12px;
+            border-radius: 6px;
+            margin-bottom: 3px;
+            font-size: 11px;
         }
 
         .grow .gu {
-            width: 100px;
+            width: 90px;
             font-weight: 600;
         }
 
         .grow .gt {
-            width: 80px;
+            width: 70px;
+            color: var(--t3);
         }
 
         .grow .gd {
-            width: 60px;
+            width: 55px;
             text-align: center;
         }
 
         .grow .gb {
-            width: 80px;
+            width: 70px;
             text-align: right;
+            color: var(--t3);
         }
 
         .grow .gr {
-            width: 80px;
+            width: 70px;
             text-align: right;
             font-weight: 700;
         }
@@ -399,15 +387,15 @@
         .grow .gtime {
             flex: 1;
             text-align: right;
-            color: var(--t3);
-            font-size: 11px;
+            color: var(--t4);
+            font-size: 10px;
         }
 
         .modal-bg {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, .6);
-            backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, .7);
+            backdrop-filter: blur(12px);
             display: none;
             align-items: center;
             justify-content: center;
@@ -420,34 +408,35 @@
 
         .modal {
             background: var(--card);
-            border: 1px solid var(--border);
+            border: 1px solid var(--border2);
             border-radius: var(--r);
-            padding: 24px;
-            width: 90%;
-            max-width: 360px;
+            padding: 22px;
+            width: 88%;
+            max-width: 340px;
         }
 
         .modal h3 {
-            margin-bottom: 16px;
-            font-size: 18px;
+            margin-bottom: 14px;
+            font-size: 16px;
+            font-weight: 700;
         }
 
         .modal-in {
             width: 100%;
-            padding: 10px 14px;
+            padding: 9px 12px;
             background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: var(--r-xs);
+            border-radius: 6px;
             color: var(--t1);
             font-family: var(--font);
-            font-size: 16px;
+            font-size: 15px;
             outline: none;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
 
         .modal-btns {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             justify-content: flex-end;
         }
 
@@ -456,14 +445,14 @@
         }
 
         .maint {
-            background: rgba(239, 68, 68, .1);
-            border: 1px solid var(--red);
-            border-radius: var(--r-xs);
-            padding: 10px 16px;
-            font-size: 14px;
+            background: rgba(217, 83, 79, .08);
+            border: 1px solid rgba(217, 83, 79, .2);
+            border-radius: 6px;
+            padding: 9px 14px;
+            font-size: 12px;
             color: var(--red);
             text-align: center;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             display: none;
         }
 
@@ -474,24 +463,24 @@
         .topbar {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .rbtn {
             background: var(--card);
             border: 1px solid var(--border);
-            border-radius: var(--r-xs);
-            color: var(--t1);
-            padding: 8px 14px;
-            font-size: 13px;
+            border-radius: 6px;
+            color: var(--t2);
+            padding: 7px 12px;
+            font-size: 12px;
             font-family: var(--font);
             cursor: pointer;
-            transition: all .2s;
+            transition: all .15s;
         }
 
         .rbtn:hover {
             background: var(--card-h);
-            border-color: var(--border-a);
+            color: var(--t1);
         }
     </style>
 </head>
@@ -504,21 +493,21 @@
         </div>
 
         <div id="auth-box" class="auth-box">
-            <div class="auth-msg">🔐 Откройте через Telegram или войдите как админ.<br><br>В дев режиме авторизация не
-                нужна.</div>
+            <div class="auth-msg">🔐 Откройте через Telegram бота или войдите как админ.<br><br>В дев режиме авторизация
+                не нужна.</div>
         </div>
 
         <div id="content" class="hidden">
-            <div id="maint-bar" class="maint">🔧 Обслуживание ВКЛ — игры приостановлены</div>
+            <div id="maint-bar" class="maint">🔧 Обслуживание ВКЛ</div>
             <div class="topbar"><button class="rbtn" onclick="loadAll()">🔄 Обновить</button></div>
 
-            <div class="stats" id="stats">
+            <div class="stats">
                 <div class="st">
                     <div class="st-l">Юзеры</div>
                     <div class="st-v" id="s-users">0</div>
                 </div>
                 <div class="st">
-                    <div class="st-l">Игр</div>
+                    <div class="st-l">Всего игр</div>
                     <div class="st-v" id="s-games">0</div>
                 </div>
                 <div class="st">
@@ -546,13 +535,14 @@
             </div>
 
             <div class="pnl active" id="p-users">
-                <div class="tbl" id="tbl-users"></div>
+                <div id="tbl-users"></div>
             </div>
             <div class="pnl" id="p-games">
-                <div class="tbl" id="tbl-games"></div>
+                <div id="tbl-games"></div>
             </div>
             <div class="pnl" id="p-settings">
-                <div class="sgrp" id="sgrp"></div><br>
+                <div class="sgrp" id="sgrp"></div>
+                <br>
                 <button class="btn btn-p" onclick="saveSets()">💾 Сохранить</button>
             </div>
         </div>
@@ -560,11 +550,11 @@
 
     <div class="modal-bg" id="bal-modal">
         <div class="modal">
-            <h3>💰 Баланс</h3>
-            <p style="font-size:13px;color:var(--t3);margin-bottom:12px">Юзер: <strong id="m-name">-</strong></p>
+            <h3>💰 Установить баланс</h3>
+            <p style="font-size:12px;color:var(--t3);margin-bottom:10px">Юзер: <strong id="m-name">—</strong></p>
             <input type="number" class="modal-in" id="m-bal" placeholder="Новый баланс">
             <div class="modal-btns">
-                <button class="btn" style="background:var(--elev);color:var(--t1)"
+                <button class="btn" style="background:var(--surface);color:var(--t2)"
                     onclick="closeModal()">Отмена</button>
                 <button class="btn btn-p" id="m-save">Установить</button>
             </div>
@@ -574,9 +564,8 @@
     <script>
         let tg = null, initData = '';
         if (window.Telegram && window.Telegram.WebApp) {
-            tg = window.Telegram.WebApp;
-            tg.expand(); tg.ready();
-            try { tg.setHeaderColor('#0a0e17'); tg.setBackgroundColor('#0a0e17'); } catch (e) { }
+            tg = window.Telegram.WebApp; tg.expand(); tg.ready();
+            try { tg.setHeaderColor('#121212'); tg.setBackgroundColor('#121212'); } catch (e) { }
             initData = tg.initData;
         }
 
@@ -587,11 +576,10 @@
             const o = { method, headers: h };
             if (body) o.body = JSON.stringify(body);
             const r = await fetch(url, o);
-            if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'err ' + r.status); }
+            if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'err'); }
             return r.json();
         }
 
-        // табы
         document.querySelectorAll('.tab').forEach(t => {
             t.addEventListener('click', () => {
                 document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
@@ -608,13 +596,8 @@
                 document.getElementById('content').classList.remove('hidden');
                 await Promise.all([loadStats(), loadUsers(), loadGames(), loadSets()]);
             } catch (e) {
-                if (e.message === 'Access denied') {
-                    document.querySelector('.auth-msg').innerHTML = '🚫 <b>Нет доступа.</b>';
-                } else {
-                    document.getElementById('auth-box').classList.add('hidden');
-                    document.getElementById('content').classList.remove('hidden');
-                    await Promise.all([loadStats(), loadUsers(), loadGames(), loadSets()]).catch(console.error);
-                }
+                if (e.message === 'Access denied') { document.querySelector('.auth-msg').innerHTML = '🚫 <b>Нет доступа.</b>'; }
+                else { document.getElementById('auth-box').classList.add('hidden'); document.getElementById('content').classList.remove('hidden'); await Promise.all([loadStats(), loadUsers(), loadGames(), loadSets()]).catch(console.error); }
             }
         }
 
@@ -636,20 +619,18 @@
             try {
                 const d = await api('/api/admin/users');
                 const t = document.getElementById('tbl-users');
-                if (!d.users?.length) { t.innerHTML = '<p style="text-align:center;color:var(--t3);padding:20px">Нет юзеров</p>'; return; }
-                t.innerHTML = d.users.map(u => `
-          <div class="row">
-            <div class="cid">${u.telegram_id}</div>
-            <div class="cname">${u.username ? '@' + u.username : (u.first_name || '—')}</div>
-            <div class="cbal">💰 ${u.balance.toFixed(0)}</div>
-            <div class="cgames">${u.games_played} 🎮</div>
-            <div class="cst"><span class="badge ${u.is_banned ? 'badge-ban' : 'badge-ok'}">${u.is_banned ? 'BAN' : 'OK'}</span></div>
-            <div class="cact">
-              <button class="btn btn-sm btn-p" onclick="openModal(${u.telegram_id},'${(u.username || u.first_name || '—').replace(/'/g, "\\'")}',${u.balance})">💰</button>
-              <button class="btn btn-sm ${u.is_banned ? 'btn-s' : 'btn-d'}" onclick="${u.is_banned ? `unban(${u.telegram_id})` : `ban(${u.telegram_id})`}">${u.is_banned ? '✅' : '🚫'}</button>
-            </div>
+                if (!d.users?.length) { t.innerHTML = '<p style="text-align:center;color:var(--t4);padding:20px">Нет юзеров</p>'; return; }
+                t.innerHTML = d.users.map(u => `<div class="row">
+          <div class="cid">${u.telegram_id}</div>
+          <div class="cname">${u.username ? '@' + u.username : (u.first_name || '—')}</div>
+          <div class="cbal">${u.balance.toFixed(0)}</div>
+          <div class="cgames">${u.games_played}</div>
+          <div class="cst"><span class="badge ${u.is_banned ? 'badge-ban' : 'badge-ok'}">${u.is_banned ? 'BAN' : 'OK'}</span></div>
+          <div class="cact">
+            <button class="btn btn-sm btn-p" onclick="openModal(${u.telegram_id},'${(u.username || u.first_name || '—').replace(/'/g, "\\'")}',${u.balance})">💰</button>
+            <button class="btn btn-sm ${u.is_banned ? 'btn-s' : 'btn-d'}" onclick="${u.is_banned ? `unban(${u.telegram_id})` : `ban(${u.telegram_id})`}">${u.is_banned ? '✅' : '🚫'}</button>
           </div>
-        `).join('');
+        </div>`).join('');
             } catch (e) { console.error(e); }
         }
 
@@ -657,14 +638,13 @@
             try {
                 const d = await api('/api/admin/games');
                 const t = document.getElementById('tbl-games');
-                if (!d.games?.length) { t.innerHTML = '<p style="text-align:center;color:var(--t3);padding:20px">Нет игр</p>'; return; }
+                if (!d.games?.length) { t.innerHTML = '<p style="text-align:center;color:var(--t4);padding:20px">Нет игр</p>'; return; }
                 t.innerHTML = d.games.map(g => {
                     const w = g.won === 1;
                     const tm = new Date(g.created_at).toLocaleString('ru-RU', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
                     return `<div class="grow">
             <div class="gu">${g.username ? '@' + g.username : (g.first_name || g.telegram_id)}</div>
-            <div class="gt">${g.player_choice}</div>
-            <div class="gd">${g.dice_result} (${g.dice_total})</div>
+            <div class="gt">${g.player_choice}</div><div class="gd">${g.dice_result} (${g.dice_total})</div>
             <div class="gb">${g.bet_amount.toFixed(0)}</div>
             <div class="gr ${w ? 'w' : 'l'}">${w ? '+' + g.payout.toFixed(0) : '-' + g.bet_amount.toFixed(0)}</div>
             <div class="gtime">${tm}</div>
@@ -676,43 +656,23 @@
         async function loadSets() {
             try {
                 const d = await api('/api/admin/stats');
-                const g = document.getElementById('sgrp');
-                const s = d.settings || {};
-                const names = { min_bet: 'Мин. ставка', max_bet: 'Макс. ставка', starting_balance: 'Старт баланс', house_edge: 'Хаус эдж (%)', maintenance_mode: 'Обслуживание (0/1)' };
-                g.innerHTML = Object.entries(s).map(([k, v]) => `
-          <div class="si"><span class="si-l">${names[k] || k}</span><input type="text" class="si-i" data-k="${k}" value="${v}"></div>
-        `).join('');
+                const g = document.getElementById('sgrp'); const s = d.settings || {};
+                const n = { min_bet: 'Мин. ставка', max_bet: 'Макс. ставка', starting_balance: 'Старт баланс', house_edge: 'Хаус эдж (%)', maintenance_mode: 'Обслуживание (0/1)' };
+                g.innerHTML = Object.entries(s).map(([k, v]) => `<div class="si"><span class="si-l">${n[k] || k}</span><input type="text" class="si-i" data-k="${k}" value="${v}"></div>`).join('');
             } catch (e) { console.error(e); }
         }
 
         async function saveSets() {
-            for (const inp of document.querySelectorAll('.si-i[data-k]')) {
-                try { await api('/api/admin/settings', 'POST', { key: inp.dataset.k, value: inp.value }); } catch (e) { console.error(e); }
-            }
-            alert('Сохранено ✅');
-            loadAll();
+            for (const i of document.querySelectorAll('.si-i[data-k]')) { try { await api('/api/admin/settings', 'POST', { key: i.dataset.k, value: i.value }); } catch (e) { } }
+            alert('Сохранено ✅'); loadAll();
         }
 
         let mUid = null;
-        function openModal(id, name, bal) {
-            mUid = id;
-            document.getElementById('m-name').textContent = name;
-            document.getElementById('m-bal').value = bal;
-            document.getElementById('bal-modal').classList.add('show');
-        }
+        function openModal(id, name, bal) { mUid = id; document.getElementById('m-name').textContent = name; document.getElementById('m-bal').value = bal; document.getElementById('bal-modal').classList.add('show'); }
         function closeModal() { document.getElementById('bal-modal').classList.remove('show'); mUid = null; }
-
-        document.getElementById('m-save').addEventListener('click', async () => {
-            if (!mUid) return;
-            const b = parseFloat(document.getElementById('m-bal').value);
-            if (isNaN(b)) return;
-            try { await api(`/api/admin/user/${mUid}/balance`, 'POST', { balance: b }); closeModal(); loadUsers(); loadStats(); }
-            catch (e) { alert(e.message); }
-        });
-
+        document.getElementById('m-save').addEventListener('click', async () => { if (!mUid) return; const b = parseFloat(document.getElementById('m-bal').value); if (isNaN(b)) return; try { await api(`/api/admin/user/${mUid}/balance`, 'POST', { balance: b }); closeModal(); loadUsers(); loadStats(); } catch (e) { alert(e.message); } });
         async function ban(id) { if (!confirm('Забанить?')) return; try { await api(`/api/admin/user/${id}/ban`, 'POST'); loadUsers(); } catch (e) { alert(e.message); } }
         async function unban(id) { try { await api(`/api/admin/user/${id}/unban`, 'POST'); loadUsers(); } catch (e) { alert(e.message); } }
-
         document.getElementById('bal-modal').addEventListener('click', e => { if (e.target.id === 'bal-modal') closeModal(); });
         loadAll();
     </script>
