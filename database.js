@@ -11,7 +11,7 @@ db.exec(`
     username TEXT,
     first_name TEXT,
     last_name TEXT,
-    balance REAL DEFAULT 1000,
+    balance REAL DEFAULT 0,
     total_wagered REAL DEFAULT 0,
     total_won REAL DEFAULT 0,
     total_lost REAL DEFAULT 0,
@@ -59,13 +59,24 @@ db.exec(`
     value TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS gifts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    price REAL,
+    link TEXT,
+    model TEXT,
+    background TEXT,
+    symbol TEXT,
+    is_active INTEGER DEFAULT 1
+  );
+
   CREATE INDEX IF NOT EXISTS idx_games_tgid ON games(telegram_id);
   CREATE INDEX IF NOT EXISTS idx_games_date ON games(created_at);
   CREATE INDEX IF NOT EXISTS idx_tx_tgid ON transactions(telegram_id);
 `);
 
 // дефолтные настройки (вставляем только если нет)
-const defaults = { min_bet: '10', max_bet: '10000', starting_balance: '1000', house_edge: '5', maintenance_mode: '0' };
+const defaults = { min_bet: '10', max_bet: '10000', starting_balance: '0', house_edge: '5', maintenance_mode: '0' };
 const ins = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
 for (const [k, v] of Object.entries(defaults)) ins.run(k, v);
 
@@ -208,4 +219,20 @@ const settingsOps = {
   }
 };
 
-module.exports = { db, userOps, gameOps, settingsOps };
+const giftOps = {
+  getAll() {
+    return db.prepare('SELECT * FROM gifts WHERE is_active = 1').all();
+  },
+  get(id) {
+    return db.prepare('SELECT * FROM gifts WHERE id = ?').get(id);
+  },
+  create(data) {
+    return db.prepare('INSERT INTO gifts (title, price, link, model, background, symbol) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(data.title, data.price, data.link, data.model, data.background, data.symbol);
+  },
+  delete(id) {
+    db.prepare('UPDATE gifts SET is_active = 0 WHERE id = ?').run(id);
+  }
+};
+
+module.exports = { db, userOps, gameOps, settingsOps, giftOps };

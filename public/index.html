@@ -62,10 +62,17 @@
           </span>
           <span id="streak-count">0</span>
         </div>
-        <div class="balance-display" id="balance-display">
+        <div class="balance-display" id="balance-display" onclick="switchTab('wallet')">
           <div class="balance-coin">C</div>
           <span class="balance-amount" id="balance-amount">0.00</span>
         </div>
+        <button class="wallet-btn" id="ton-connect" onclick="connectWallet()">
+          <span class="icon icon-sm"><svg viewBox="0 0 24 24">
+              <path d="M20 7h-9c-1.1 0-2 .9-2 2v5c0 1.1.9 2 2 2h9c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2z" />
+              <path
+                d="M16 12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2v-3c0-1.1-.9-2-2-2z" />
+            </svg></span>
+        </button>
       </div>
     </header>
 
@@ -95,6 +102,14 @@
             <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
           </svg></span>
         <span class="nav-label">Топ</span>
+      </button>
+      <button class="nav-tab" data-tab="shop">
+        <span class="icon"><svg viewBox="0 0 24 24">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
+          </svg></span>
+        <span class="nav-label">Магазин</span>
       </button>
       <button class="nav-tab" data-tab="fairness">
         <span class="icon"><svg viewBox="0 0 24 24">
@@ -385,6 +400,47 @@
             <p>Сумма: <strong id="verify-total">—</strong></p>
             <p>Hash: <code id="verify-hash">—</code></p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="content-shop">
+      <h3 class="section-title">Магазин подарков</h3>
+      <div id="shop-list" class="shop-list">
+        <!-- подарки из админки -->
+        <div class="empty-state">
+          <div class="empty-icon"><svg viewBox="0 0 24 24">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg></div>
+          <p>Подарков пока нет</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="content-wallet">
+      <h3 class="section-title">Кошелёк TON</h3>
+      <div class="wallet-card">
+        <div class="wallet-info">
+          <div class="ton-logo"><svg viewBox="0 0 24 24">
+              <path fill="currentColor"
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.25 12h-2.5l-1.5 3h-1.5l3.5-7.5l3.5 7.5h-1.5l-1.5-3z" />
+            </svg></div>
+          <div class="wallet-details">
+            <span class="wallet-label">Пополнить баланс</span>
+            <span class="wallet-address" id="wallet-address">Не привязан</span>
+          </div>
+        </div>
+        <button class="ton-connect-btn" onclick="connectWallet()">Привязать TON</button>
+      </div>
+
+      <div class="deposit-section">
+        <h4 class="section-title">Быстрое пополнение</h4>
+        <div class="deposit-grid">
+          <button class="deposit-opt" onclick="deposit(5)">5 TON</button>
+          <button class="deposit-opt" onclick="deposit(10)">10 TON</button>
+          <button class="deposit-opt" onclick="deposit(50)">50 TON</button>
         </div>
       </div>
     </div>

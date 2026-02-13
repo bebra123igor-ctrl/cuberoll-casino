@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
-const { userOps, gameOps, settingsOps } = require('./database');
+const { userOps, gameOps, settingsOps, giftOps } = require('./database');
 const ProvablyFair = require('./provably-fair');
 
 const app = express();
@@ -213,6 +213,29 @@ app.get('/api/leaderboard', auth, (req, res) => {
     });
 });
 
+// подарки
+app.get('/api/gifts', auth, (req, res) => {
+    res.json({ gifts: giftOps.getAll() });
+});
+
+app.get('/api/gifts/:id', auth, (req, res) => {
+    const g = giftOps.get(parseInt(req.params.id));
+    if (!g) return res.status(404).json({ error: 'Not found' });
+    res.json(g);
+});
+
+app.post('/api/gifts/buy', auth, (req, res) => {
+    const { giftId } = req.body;
+    const user = userOps.get(req.tgUser.id);
+    const gift = giftOps.get(giftId);
+    if (!gift) return res.status(404).json({ error: 'Gift not found' });
+    if (user.balance < gift.price) return res.status(400).json({ error: 'Insufficient balance' });
+
+    userOps.updateBalance(req.tgUser.id, -gift.price, 'gift_buy', `Bought ${gift.title}`);
+    const updated = userOps.get(req.tgUser.id);
+    res.json({ success: true, newBalance: updated.balance });
+});
+
 
 // --- админка ---
 
@@ -250,6 +273,16 @@ app.post('/api/admin/user/:id/unban', auth, adminOnly, (req, res) => {
 app.post('/api/admin/settings', auth, adminOnly, (req, res) => {
     if (!req.body.key) return res.status(400).json({ error: 'Missing key' });
     settingsOps.set(req.body.key, req.body.value);
+    res.json({ success: true });
+});
+
+app.post('/api/admin/gifts', auth, adminOnly, (req, res) => {
+    giftOps.create(req.body);
+    res.json({ success: true });
+});
+
+app.delete('/api/admin/gifts/:id', auth, adminOnly, (req, res) => {
+    giftOps.delete(parseInt(req.params.id));
     res.json({ success: true });
 });
 

@@ -12,32 +12,23 @@ const bot = new TelegramBot(TOKEN, { polling: true });
 
 function isAdmin(id) { return ADMINS.includes(id); }
 
+const WELCOME_IMG = 'https://i.imgur.com/8YvYyZp.png'; // Твоя картинка (можно заменить на /welcome.png если есть на хостинге)
+
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const u = msg.from;
     userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '');
 
-    const startBal = settingsOps.get('starting_balance') || 1000;
-
-    await bot.sendMessage(chatId,
-        `🎲 *CubeRoll Casino*\n\n` +
-        `Привет, ${u.first_name}!\n\n` +
-        `Как играть:\n` +
-        `• Выбираешь тип ставки\n` +
-        `• Ставишь сумму\n` +
-        `• Бросаешь кости\n\n` +
-        `🔒 Provably Fair — каждая игра проверяема\n` +
-        `💰 Стартовый баланс: ${startBal}`,
-        {
-            parse_mode: 'Markdown',
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: '🎲 Играть', web_app: { url: WEBAPP } }],
-                    [{ text: '📊 Профиль', callback_data: 'profile' }, { text: '🏆 Топ', callback_data: 'top' }]
-                ]
-            }
+    await bot.sendPhoto(chatId, WELCOME_IMG, {
+        caption: `👑 *CubeRoll Casino*\n\nПривет, ${u.first_name}!\n\nИграй в кости и выигрывай бонусы. Самый честный софт на TON.\n\nЖми кнопку ниже, чтобы начать!`,
+        parse_mode: 'Markdown',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '🚀 ЗАПУСТИТЬ ИГРУ', web_app: { url: 'https://cuberoll-casino-production.up.railway.app/' } }],
+                [{ text: '📊 Профиль', callback_data: 'profile' }, { text: '🏆 Топ', callback_data: 'top' }]
+            ]
         }
-    );
+    });
 });
 
 bot.on('callback_query', async (q) => {

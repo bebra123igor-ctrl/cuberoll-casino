@@ -18,11 +18,12 @@
             --card2: #242424;
             --card-h: #2a2a2a;
             --surface: #2f2f2f;
-            --gold: #c9a96e;
-            --gold2: #dfc08a;
-            --gold-g: rgba(201, 169, 110, .2);
+            --gold: #0088cc;
+            --gold2: #00aaff;
+            --gold-g: rgba(0, 136, 204, .2);
             --green: #5cb85c;
             --red: #d9534f;
+            --accent: #0088cc;
             --t1: #f5f5f5;
             --t2: #a0a0a0;
             --t3: #666;
@@ -531,6 +532,7 @@
             <div class="tabs">
                 <button class="tab active" data-p="users">👥 Игроки</button>
                 <button class="tab" data-p="games">🎮 Игры</button>
+                <button class="tab" data-p="gifts">🎁 Подарки</button>
                 <button class="tab" data-p="settings">⚙️ Настройки</button>
             </div>
 
@@ -539,6 +541,30 @@
             </div>
             <div class="pnl" id="p-games">
                 <div id="tbl-games"></div>
+            </div>
+            <div class="pnl" id="p-gifts">
+                <div class="si" style="margin-bottom:12px;display:block">
+                    <h3 style="font-size:14px;margin-bottom:10px">Добавить подарок</h3>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                        <input type="text" id="gift-link" class="si-i" style="width:100%;text-align:left"
+                            placeholder="Ссылка на подарок">
+                        <button class="btn btn-p" onclick="parseLink()">Спарсить инфо</button>
+                        <div id="gift-preview-box"
+                            style="display:none;padding:10px;background:var(--bg2);border-radius:6px;gap:10px;align-items:center;margin-top:8px">
+                            <div id="gift-parsed-icon" style="width:50px;height:50px;background:#333;border-radius:6px">
+                            </div>
+                            <div style="flex:1">
+                                <input type="text" id="gift-title" class="si-i"
+                                    style="width:100%;text-align:left;margin-bottom:4px" placeholder="Название">
+                                <input type="number" id="gift-price" class="si-i" style="width:100%;text-align:left"
+                                    placeholder="Цена (монеты)">
+                            </div>
+                        </div>
+                        <button id="btn-save-gift" class="btn btn-s" style="display:none;margin-top:8px"
+                            onclick="saveGift()">Сохранить</button>
+                    </div>
+                </div>
+                <div id="tbl-gifts"></div>
             </div>
             <div class="pnl" id="p-settings">
                 <div class="sgrp" id="sgrp"></div>
@@ -594,7 +620,7 @@
                 await api('/api/auth', 'POST');
                 document.getElementById('auth-box').classList.add('hidden');
                 document.getElementById('content').classList.remove('hidden');
-                await Promise.all([loadStats(), loadUsers(), loadGames(), loadSets()]);
+                await Promise.all([loadStats(), loadUsers(), loadGames(), loadGifts(), loadSets()]);
             } catch (e) {
                 if (e.message === 'Access denied') { document.querySelector('.auth-msg').innerHTML = '🚫 <b>Нет доступа.</b>'; }
                 else { document.getElementById('auth-box').classList.add('hidden'); document.getElementById('content').classList.remove('hidden'); await Promise.all([loadStats(), loadUsers(), loadGames(), loadSets()]).catch(console.error); }
@@ -651,6 +677,60 @@
           </div>`;
                 }).join('');
             } catch (e) { console.error(e); }
+        }
+
+        async function loadGifts() {
+            try {
+                const d = await api('/api/gifts');
+                const t = document.getElementById('tbl-gifts');
+                if (!d.gifts?.length) { t.innerHTML = '<p style="text-align:center;color:var(--t4);padding:20px">Нет подарков</p>'; return; }
+                t.innerHTML = d.gifts.map(g => `<div class="row">
+          <div class="cid" style="width:40px">${g.id}</div>
+          <div class="cname">${g.title} — <span style="color:var(--gold)">${g.price} C</span></div>
+          <div class="cact">
+            <button class="btn btn-sm btn-d" onclick="deleteGift(${g.id})">🗑️</button>
+          </div>
+        </div>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        let parsedData = null;
+        async function parseLink() {
+            const url = document.getElementById('gift-link').value;
+            if (!url) return alert('Введите ссылку');
+            // эмуляция парсинга
+            parsedData = {
+                model: 'https://cdn-icons-png.flaticon.com/512/2619/2619280.png',
+                background: 'radial-gradient(circle, #222, #000)',
+                symbol: '💎'
+            };
+            document.getElementById('gift-preview-box').style.display = 'flex';
+            document.getElementById('gift-parsed-icon').style.background = parsedData.background;
+            document.getElementById('gift-parsed-icon').innerHTML = `<img src="${parsedData.model}" style="width:100%"><div style="position:absolute;bottom:0;right:0;font-size:10px">${parsedData.symbol}</div>`;
+            document.getElementById('btn-save-gift').style.display = 'block';
+        }
+
+        async function saveGift() {
+            const title = document.getElementById('gift-title').value;
+            const price = document.getElementById('gift-price').value;
+            const link = document.getElementById('gift-link').value;
+            if (!title || !price || !parsedData) return alert('Заполните всё');
+            try {
+                await api('/api/admin/gifts', 'POST', {
+                    title, price: parseFloat(price), link,
+                    ...parsedData
+                });
+                alert('Сохранено');
+                loadGifts();
+            } catch (e) { alert(e.message); }
+        }
+
+        async function deleteGift(id) {
+            if (!confirm('Удалить?')) return;
+            try {
+                await api('/api/admin/gifts/' + id, 'DELETE');
+                loadGifts();
+            } catch (e) { alert(e.message); }
         }
 
         async function loadSets() {

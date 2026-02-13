@@ -191,17 +191,22 @@ function updateRange() {
 }
 
 // навигация
-document.querySelectorAll('.nav-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        const name = tab.dataset.tab;
-        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById('content-' + name).classList.add('active');
-        if (name === 'history') loadHistory();
-        if (name === 'leaderboard') loadTop();
-        hLight();
+window.switchTab = function (name) {
+    document.querySelectorAll('.nav-tab').forEach(t => {
+        t.classList.remove('active');
+        if (t.dataset.tab === name) t.classList.add('active');
     });
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('content-' + name).classList.add('active');
+
+    if (name === 'history') loadHistory();
+    if (name === 'leaderboard') loadTop();
+    if (name === 'shop') loadGifts();
+    hLight();
+};
+
+document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
 });
 
 // выбор ставки
@@ -502,5 +507,74 @@ function toast(msg, type) {
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// подарки
+async function loadGifts() {
+    const list = document.getElementById('shop-list');
+    try {
+        const d = await api('/api/gifts');
+        if (!d.gifts?.length) {
+            list.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/></svg></div><p>Подарков пока нет</p></div>';
+            return;
+        }
+        list.innerHTML = d.gifts.map(g => `
+      <div class="shop-item" onclick="openGift(${g.id})">
+        <div class="gift-preview" style="background:${g.background || 'var(--bg2)'}">
+          <img src="${g.model}" class="gift-model">
+          <div class="gift-symbol">${g.symbol || ''}</div>
+        </div>
+        <div class="shop-item-info">
+          <div class="shop-item-name">${g.title}</div>
+          <div class="shop-item-price">${g.price} C</div>
+        </div>
+      </div>
+    `).join('');
+    } catch (e) { console.error(e); }
+}
+
+window.openGift = async function (id) {
+    // красивое окно выбора подарка (результат оверлей переиспользуем или новый модал)
+    toast('Загрузка подарка...', 'info');
+    try {
+        const g = await api('/api/gifts/' + id);
+        if (confirm(`Купить "${g.title}" за ${g.price} монет?`)) {
+            const res = await api('/api/gifts/buy', 'POST', { giftId: id });
+            user.balance = res.newBalance;
+            setBalance(user.balance, true);
+            toast('Подарок куплен!', 'success');
+            hOk();
+        }
+    } catch (e) { toast(e.message, 'error'); }
+};
+
+window.connectWallet = function () {
+    // тут должен быть TonConnect, пока симуляция
+    const addr = 'EQB...z4z';
+    document.getElementById('wallet-address').textContent = addr.slice(0, 6) + '...' + addr.slice(-4);
+    toast('Кошелёк привязан', 'success');
+    hOk();
+};
+
+window.deposit = async function (amount) {
+    toast(`Переходим к оплате ${amount} TON...`, 'info');
+    // симуляция пополнения через бота/инвойс
+    setTimeout(async () => {
+        const bonus = amount * 1000; // курс 1 TON = 1000 монет
+        user.balance += bonus;
+        setBalance(user.balance, true);
+        toast(`Баланс пополнен на ${bonus} монет`, 'success');
+        hOk();
+    }, 2000);
+};
+
+// парсинг ссылки (для админки)
+async function parseGiftLink(url) {
+    // эмуляция парсинга
+    return {
+        model: 'https://i.imgur.com/8YvYyZp.png',
+        background: 'radial-gradient(circle, #333, #000)',
+        symbol: '💎'
+    };
+}
 
 document.addEventListener('DOMContentLoaded', init);
