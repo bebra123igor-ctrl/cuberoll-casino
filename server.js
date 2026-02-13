@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const path = require('path');
 const { userOps, gameOps, settingsOps, giftOps } = require('./database');
 const ProvablyFair = require('./provably-fair');
+require('./bot');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -99,7 +100,9 @@ app.post('/api/auth', auth, (req, res) => {
         seeds: { serverSeedHash: s.hash, clientSeed: s.clientSeed, nonce: s.nonce },
         settings: {
             minBet: parseFloat(settingsOps.get('min_bet') || '10'),
-            maxBet: parseFloat(settingsOps.get('max_bet') || '10000')
+            maxBet: parseFloat(settingsOps.get('max_bet') || '10000'),
+            tonWallet: settingsOps.get('ton_wallet'),
+            minDeposit: parseFloat(settingsOps.get('min_deposit') || '0.1')
         },
         isAdmin: ADMIN_IDS.includes(u.id)
     });
@@ -234,6 +237,17 @@ app.post('/api/gifts/buy', auth, (req, res) => {
     userOps.updateBalance(req.tgUser.id, -gift.price, 'gift_buy', `Bought ${gift.title}`);
     const updated = userOps.get(req.tgUser.id);
     res.json({ success: true, newBalance: updated.balance });
+});
+
+app.post('/api/deposit', auth, (req, res) => {
+    const { amount, hash } = req.body;
+    if (!amount || !hash) return res.status(400).json({ error: 'Missing data' });
+
+    const amt = parseFloat(amount);
+    userOps.updateBalance(req.tgUser.id, amt, 'deposit', `TON Deposit ${amount} (hash: ${hash})`);
+
+    const updated = userOps.get(req.tgUser.id);
+    res.json({ success: true, balance: updated.balance });
 });
 
 

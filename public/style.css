@@ -167,6 +167,63 @@
   cursor: pointer;
 }
 
+.deposit-input-card {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dep-input-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-sm);
+  padding: 0 12px;
+}
+
+.dep-input-group input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: white;
+  padding: 12px 0;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 16px;
+  outline: none;
+  width: 50px;
+}
+
+.dep-input-group span {
+  color: var(--t4);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.dep-go-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 12px 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dep-hint {
+  font-size: 11px;
+  color: var(--t3);
+  margin-bottom: 16px;
+  padding-left: 4px;
+}
+
 .deposit-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1022,24 +1079,25 @@ body {
 }
 
 .bet-adjust {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--border);
   background: var(--card);
+  border-radius: 12px;
   color: var(--t2);
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
   font-family: var(--font);
+  font-weight: 800;
+  font-size: 13px;
   cursor: pointer;
-  transition: all .12s;
+  transition: all .2s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .bet-adjust:hover {
-  background: var(--card-h);
+  background: var(--bg2);
+  border-color: var(--accent);
   color: var(--t1);
 }
 
@@ -1053,24 +1111,26 @@ body {
   align-items: center;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0 12px;
-  height: 38px;
-  transition: border-color .2s;
+  border-radius: 12px;
+  padding: 0 16px;
+  height: 44px;
+  transition: all .3s;
 }
 
 .bet-input-wrapper:focus-within {
-  border-color: var(--border3);
+  border-color: var(--accent);
+  box-shadow: 0 0 15px var(--accent-g);
 }
 
-.bet-currency {
-  margin-right: 6px;
-}
-
-.bet-currency .balance-coin {
-  width: 14px;
-  height: 14px;
-  font-size: 8px;
+.bet-input-unit {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent);
+  margin-left: 8px;
+  padding: 4px 8px;
+  background: var(--accent-dim);
+  border-radius: 6px;
+  text-transform: uppercase;
 }
 
 .bet-input {
@@ -1078,12 +1138,12 @@ body {
   border: none;
   background: transparent;
   color: var(--t1);
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
   font-family: var(--font);
   outline: none;
   width: 100%;
-  letter-spacing: -.3px;
+  letter-spacing: -0.5px;
 }
 
 .bet-input::-webkit-inner-spin-button,

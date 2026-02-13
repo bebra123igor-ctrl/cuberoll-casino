@@ -20,7 +20,7 @@ bot.onText(/\/start/, async (msg) => {
     userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '');
 
     await bot.sendPhoto(chatId, WELCOME_IMG, {
-        caption: `👑 *CubeRoll Casino*\n\nПривет, ${u.first_name}!\n\nИграй в кости и выигрывай бонусы. Самый честный софт на TON.\n\nЖми кнопку ниже, чтобы начать!`,
+        caption: `👑 *CubeRoll Casino*\n\nПривет, ${u.first_name}!\n\nИграй в кости и выигрывай TON. Самый честный софт на блокчейне.\n\nЖми кнопку ниже, чтобы начать!`,
         parse_mode: 'Markdown',
         reply_markup: {
             inline_keyboard: [

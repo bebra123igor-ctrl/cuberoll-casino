@@ -64,7 +64,7 @@
           <span id="streak-count">0</span>
         </div>
         <div class="balance-display" id="balance-display" onclick="switchTab('wallet')">
-          <div class="balance-coin">C</div>
+          <div class="balance-coin">TON</div>
           <span class="balance-amount" id="balance-amount">0.00</span>
         </div>
         <button class="wallet-btn" id="ton-connect" onclick="connectWallet()">
@@ -280,21 +280,18 @@
       <div class="bet-amount-section">
         <h3 class="section-title">Сумма</h3>
         <div class="bet-input-container">
-          <button class="bet-adjust" id="btn-half">½</button>
+          <button class="bet-adjust" id="btn-half">/2</button>
           <div class="bet-input-wrapper">
-            <span class="bet-currency">
-              <div class="balance-coin" style="width:14px;height:14px;font-size:8px">C</div>
-            </span>
-            <input type="number" id="bet-amount" class="bet-input" value="100" min="10" max="10000" step="10">
+            <input type="number" id="bet-amount" class="bet-input" value="1.0" min="0.1" max="100" step="0.1">
+            <span class="bet-input-unit">TON</span>
           </div>
-          <button class="bet-adjust" id="btn-double">2×</button>
+          <button class="bet-adjust" id="btn-double">×2</button>
         </div>
         <div class="quick-bets">
-          <button class="quick-bet" data-amount="10">10</button>
-          <button class="quick-bet" data-amount="50">50</button>
-          <button class="quick-bet active" data-amount="100">100</button>
-          <button class="quick-bet" data-amount="500">500</button>
-          <button class="quick-bet" data-amount="1000">1K</button>
+          <button class="quick-bet" data-amount="1">1</button>
+          <button class="quick-bet" data-amount="5">5</button>
+          <button class="quick-bet active" data-amount="10">10</button>
+          <button class="quick-bet" data-amount="20">20</button>
           <button class="quick-bet" data-amount="max">MAX</button>
         </div>
       </div>
@@ -313,7 +310,7 @@
       </div>
 
       <div class="potential-win">
-        Возможный выигрыш: <strong id="potential-amount">195.00</strong>
+        Возможный выигрыш: <strong id="potential-amount">1.95</strong>
       </div>
     </div>
 
@@ -419,7 +416,7 @@
               <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
             </svg>
           </div>
-          <h3>Витрина пуста</h3>
+          <h3>Подарков нет</h3>
           <p>Администратор еще не добавил товары.<br>Загляни позже!</p>
         </div>
       </div>
@@ -427,6 +424,7 @@
 
     <div class="tab-content" id="content-wallet">
       <h3 class="section-title">Кошелёк TON</h3>
+
       <div class="wallet-card">
         <div class="wallet-info">
           <div class="ton-logo"><svg viewBox="0 0 24 24">
@@ -434,19 +432,28 @@
                 d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.25 12h-2.5l-1.5 3h-1.5l3.5-7.5l3.5 7.5h-1.5l-1.5-3z" />
             </svg></div>
           <div class="wallet-details">
-            <span class="wallet-label">Пополнить баланс</span>
+            <span class="wallet-label">Платежный кошелёк</span>
             <span class="wallet-address" id="wallet-address">Не привязан</span>
           </div>
         </div>
-        <button class="ton-connect-btn" onclick="connectWallet()">Привязать TON</button>
+        <button class="ton-connect-btn" id="ton-connect-btn" onclick="connectWallet()">Привязать TON</button>
       </div>
 
       <div class="deposit-section">
-        <h4 class="section-title">Быстрое пополнение</h4>
+        <h4 class="section-title">Пополнение баланса</h4>
+        <div class="deposit-input-card">
+          <div class="dep-input-group">
+            <input type="number" id="dep-amount" placeholder="0.1" step="0.1" min="0.1">
+            <span>TON</span>
+          </div>
+          <button class="dep-go-btn" onclick="depositCustom()">Пополнить</button>
+        </div>
+        <p class="dep-hint">Минимум: <span id="min-dep-text">0.1</span> TON. Курс: 1 TON = 1000 монет.</p>
+
         <div class="deposit-grid">
+          <button class="deposit-opt" onclick="deposit(1)">1 TON</button>
           <button class="deposit-opt" onclick="deposit(5)">5 TON</button>
           <button class="deposit-opt" onclick="deposit(10)">10 TON</button>
-          <button class="deposit-opt" onclick="deposit(50)">50 TON</button>
         </div>
       </div>
     </div>

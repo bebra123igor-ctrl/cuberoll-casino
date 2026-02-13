@@ -1,7 +1,8 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const db = new Database(path.join(__dirname, 'cuberoll.db'));
+const dbPath = process.env.DB_PATH || path.join(__dirname, 'cuberoll.db');
+const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
 // таблицы
@@ -76,7 +77,15 @@ db.exec(`
 `);
 
 // дефолтные настройки (вставляем только если нет)
-const defaults = { min_bet: '10', max_bet: '10000', starting_balance: '0', house_edge: '5', maintenance_mode: '0' };
+const defaults = {
+  min_bet: '0.1',
+  max_bet: '10',
+  starting_balance: '0',
+  house_edge: '5',
+  maintenance_mode: '0',
+  ton_wallet: 'UQBE...YOUR_WALLET',
+  min_deposit: '0.1'
+};
 const ins = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
 for (const [k, v] of Object.entries(defaults)) ins.run(k, v);
 

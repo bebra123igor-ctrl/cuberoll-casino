@@ -60,10 +60,12 @@ async function init() {
     try {
         const d = await api('/api/auth', 'POST');
         user = d.user;
+        user.isAdmin = d.isAdmin;
         settings = d.settings;
         curSeeds = d.seeds;
         checkDaily();
         render();
+        if (settings.minDeposit) document.getElementById('min-dep-text').textContent = settings.minDeposit;
 
         setTimeout(() => {
             document.getElementById('loading-screen').classList.add('fade-out');
@@ -151,7 +153,7 @@ function checkDaily() {
 window.claimDaily = async function () {
     if (dailyClaimed) return;
     try {
-        const bonus = parseInt(settings.dailyBonus) || 500;
+        const bonus = parseFloat(settings.dailyBonus) || 0.01;
         // клиентский бонус (на сервере тоже нужно поддержать)
         user.balance += bonus;
         setBalance(user.balance, true);
@@ -161,7 +163,7 @@ window.claimDaily = async function () {
         document.getElementById('daily-label').textContent = 'Бонус получен';
         document.getElementById('daily-desc').textContent = 'Приходи завтра';
         document.getElementById('daily-amount').textContent = '✓';
-        toast('+' + bonus + ' монет!', 'success');
+        toast('+' + bonus + ' TON!', 'success');
         hOk();
     } catch (e) { toast(e.message, 'error'); }
 };
@@ -248,11 +250,11 @@ document.querySelectorAll('.bet-type-btn').forEach(btn => {
 // сумма
 const betInput = document.getElementById('bet-amount');
 document.getElementById('btn-half').addEventListener('click', () => {
-    betInput.value = Math.max(settings.minBet || 10, ~~(parseInt(betInput.value) / 2));
+    betInput.value = Math.max(settings.minBet || 0.1, (parseFloat(betInput.value) / 2)).toFixed(2);
     calcWin(); hLight();
 });
 document.getElementById('btn-double').addEventListener('click', () => {
-    betInput.value = Math.min(settings.maxBet || 10000, parseInt(betInput.value) * 2, user?.balance || 0);
+    betInput.value = Math.min(settings.maxBet || 10, parseFloat(betInput.value) * 2, user?.balance || 0).toFixed(2);
     calcWin(); hLight();
 });
 betInput.addEventListener('input', calcWin);
@@ -262,7 +264,7 @@ document.querySelectorAll('.quick-bet[data-amount]').forEach(btn => {
         document.querySelectorAll('.quick-bet[data-amount]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         const a = btn.dataset.amount;
-        betInput.value = a === 'max' ? Math.min(user?.balance || 0, settings.maxBet || 10000) : parseInt(a);
+        betInput.value = a === 'max' ? Math.min(user?.balance || 0, settings.maxBet || 10).toFixed(2) : parseFloat(a).toFixed(2);
         calcWin(); hLight();
     });
 });
@@ -297,7 +299,8 @@ const rollBtn = document.getElementById('roll-btn');
 rollBtn.addEventListener('click', async () => {
     if (rolling) return;
     const amt = parseFloat(betInput.value);
-    if (!amt || amt < (settings.minBet || 10)) { toast('Мин. ставка: ' + (settings.minBet || 10), 'error'); return; }
+    const minB = parseFloat(settings.minBet) || 0.1;
+    if (!amt || amt < minB) { toast('Мин. ставка: ' + minB, 'error'); return; }
     if (amt > (user?.balance || 0)) { toast('Недостаточно средств', 'error'); hErr(); return; }
 
     rolling = true;
@@ -534,7 +537,16 @@ async function loadGifts() {
     try {
         const d = await api('/api/gifts');
         if (!d.gifts?.length) {
-            list.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/></svg></div><p>Подарков пока нет</p></div>';
+            list.innerHTML = `
+                <div class="premium-empty">
+                    <div class="empty-glow"></div>
+                    <div class="empty-icon-wrap">
+                        <svg viewBox="0 0 24 24"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+                    </div>
+                    <h3>Подарков нет</h3>
+                    <p>Администратор еще не добавил товары.<br>Загляни позже!</p>
+                </div>
+            `;
             return;
         }
         list.innerHTML = d.gifts.map(g => `
@@ -545,7 +557,7 @@ async function loadGifts() {
         </div>
         <div class="shop-item-info">
           <div class="shop-item-name">${g.title}</div>
-          <div class="shop-item-price">${g.price} C</div>
+          <div class="shop-item-price">${g.price} TON</div>
         </div>
       </div>
     `).join('');
@@ -557,7 +569,7 @@ window.openGift = async function (id) {
     toast('Загрузка подарка...', 'info');
     try {
         const g = await api('/api/gifts/' + id);
-        if (confirm(`Купить "${g.title}" за ${g.price} монет?`)) {
+        if (confirm(`Купить "${g.title}" за ${g.price} TON?`)) {
             const res = await api('/api/gifts/buy', 'POST', { giftId: id });
             user.balance = res.newBalance;
             setBalance(user.balance, true);
@@ -578,16 +590,47 @@ window.connectWallet = async function () {
     } catch (e) { toast('Ошибка привязки', 'error'); }
 };
 
+window.depositCustom = function () {
+    const val = parseFloat(document.getElementById('dep-amount').value);
+    if (!val || isNaN(val)) return toast('Введите сумму', 'error');
+    deposit(val);
+};
+
 window.deposit = async function (amount) {
-    toast(`Переходим к оплате ${amount} TON...`, 'info');
-    // симуляция пополнения через бота/инвойс
-    setTimeout(async () => {
-        const bonus = amount * 1000; // курс 1 TON = 1000 монет
-        user.balance += bonus;
+    if (!tonConnectUI.connected) return toast('Сначала привяжите кошелёк', 'error');
+
+    // Проверка лимита (админу можно всё)
+    const min = settings.minDeposit || 0.1;
+    if (amount < min && !user.isAdmin) return toast(`Минимум ${min} TON`, 'error');
+
+    const wallet = settings.tonWallet;
+    if (!wallet || wallet.includes('YOUR_WALLET')) return toast('Кошелёк админа не настроен', 'error');
+
+    toast(`Подтвердите транзакцию в кошельке...`, 'info');
+
+    try {
+        const result = await tonConnectUI.sendTransaction({
+            validUntil: Math.floor(Date.now() / 1000) + 600,
+            messages: [
+                {
+                    address: wallet,
+                    amount: (amount * 1000000000).toString(), // в нанотонах
+                }
+            ]
+        });
+
+        toast('Транзакция отправлена! Ждем подтверждения...', 'info');
+
+        // Отправляем на сервер для начисления
+        const res = await api('/api/deposit', 'POST', { amount, hash: result.boc });
+        user.balance = res.balance;
         setBalance(user.balance, true);
-        toast(`Баланс пополнен на ${bonus} монет`, 'success');
+        toast('Баланс успешно пополнен!', 'success');
         hOk();
-    }, 2000);
+    } catch (e) {
+        console.error(e);
+        toast('Транзакция отменена или ошибка', 'error');
+    }
 };
 
 // парсинг ссылки (для админки)

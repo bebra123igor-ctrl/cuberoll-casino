@@ -557,7 +557,7 @@
                                 <input type="text" id="gift-title" class="si-i"
                                     style="width:100%;text-align:left;margin-bottom:4px" placeholder="Название">
                                 <input type="number" id="gift-price" class="si-i" style="width:100%;text-align:left"
-                                    placeholder="Цена (монеты)">
+                                    placeholder="Цена (TON)">
                             </div>
                         </div>
                         <button id="btn-save-gift" class="btn btn-s" style="display:none;margin-top:8px"
@@ -737,7 +737,15 @@
             try {
                 const d = await api('/api/admin/stats');
                 const g = document.getElementById('sgrp'); const s = d.settings || {};
-                const n = { min_bet: 'Мин. ставка', max_bet: 'Макс. ставка', starting_balance: 'Старт баланс', house_edge: 'Хаус эдж (%)', maintenance_mode: 'Обслуживание (0/1)' };
+                const n = {
+                    min_bet: 'Мин. ставка',
+                    max_bet: 'Макс. ставка',
+                    starting_balance: 'Старт баланс',
+                    house_edge: 'Хаус эдж (%)',
+                    maintenance_mode: 'Обслуживание (0/1)',
+                    ton_wallet: 'Кошелёк для TON (принимающий)',
+                    min_deposit: 'Мин. пополнение (TON)'
+                };
                 g.innerHTML = Object.entries(s).map(([k, v]) => `<div class="si"><span class="si-l">${n[k] || k}</span><input type="text" class="si-i" data-k="${k}" value="${v}"></div>`).join('');
             } catch (e) { console.error(e); }
         }

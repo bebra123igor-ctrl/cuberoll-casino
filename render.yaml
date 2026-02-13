@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: cuberoll-casino
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 18.0.0
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: WEBAPP_URL
+        sync: false
+      - key: DB_PATH
+        value: /opt/render/project/src/data/cuberoll.db
+    disk:
+      name: sqlite-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
