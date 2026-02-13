@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>CubeRoll Casino 🎲</title>
+  <meta name="description" content="CubeRoll — Telegram Casino with Provably Fair dice game">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-content">
+      <div class="loading-dice">
+        <div class="dice-loader">🎲</div>
+      </div>
+      <h1 class="loading-title">CubeRoll</h1>
+      <p class="loading-subtitle">Casino</p>
+      <div class="loading-bar">
+        <div class="loading-bar-fill"></div>
+      </div>
+    </div>
+    <div class="loading-particles" id="loading-particles"></div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="app hidden">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="user-avatar" id="user-avatar">
+          <span id="user-initial">?</span>
+        </div>
+        <div class="user-info">
+          <span class="user-name" id="user-name">Loading...</span>
+          <span class="user-id" id="user-id">ID: ---</span>
+        </div>
+      </div>
+      <div class="balance-display" id="balance-display">
+        <span class="balance-icon">💰</span>
+        <span class="balance-amount" id="balance-amount">0.00</span>
+      </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="game" id="tab-game">
+        <span class="nav-icon">🎲</span>
+        <span class="nav-label">Игра</span>
+      </button>
+      <button class="nav-tab" data-tab="history" id="tab-history">
+        <span class="nav-icon">📜</span>
+        <span class="nav-label">История</span>
+      </button>
+      <button class="nav-tab" data-tab="leaderboard" id="tab-leaderboard">
+        <span class="nav-icon">🏆</span>
+        <span class="nav-label">Топ</span>
+      </button>
+      <button class="nav-tab" data-tab="fairness" id="tab-fairness">
+        <span class="nav-icon">🔒</span>
+        <span class="nav-label">Fair</span>
+      </button>
+    </nav>
+
+    <!-- Game Tab -->
+    <div class="tab-content active" id="content-game">
+      <!-- Dice Area -->
+      <div class="dice-arena">
+        <div class="dice-container" id="dice-container">
+          <div class="dice-wrapper">
+            <div class="dice3d" id="die1">
+              <div class="dice-face front"><div class="dots d1"><span></span></div></div>
+              <div class="dice-face back"><div class="dots d6"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+              <div class="dice-face right"><div class="dots d3"><span></span><span></span><span></span></div></div>
+              <div class="dice-face left"><div class="dots d4"><span></span><span></span><span></span><span></span></div></div>
+              <div class="dice-face top"><div class="dots d2"><span></span><span></span></div></div>
+              <div class="dice-face bottom"><div class="dots d5"><span></span><span></span><span></span><span></span><span></span></div></div>
+            </div>
+          </div>
+          <div class="dice-wrapper">
+            <div class="dice3d" id="die2">
+              <div class="dice-face front"><div class="dots d1"><span></span></div></div>
+              <div class="dice-face back"><div class="dots d6"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+              <div class="dice-face right"><div class="dots d3"><span></span><span></span><span></span></div></div>
+              <div class="dice-face left"><div class="dots d4"><span></span><span></span><span></span><span></span></div></div>
+              <div class="dice-face top"><div class="dots d2"><span></span><span></span></div></div>
+              <div class="dice-face bottom"><div class="dots d5"><span></span><span></span><span></span><span></span><span></span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="dice-result" id="dice-result">
+          <span class="result-text" id="result-text">Выбери ставку</span>
+        </div>
+      </div>
+
+      <!-- Bet Type Selection -->
+      <div class="bet-section">
+        <h3 class="section-title">Тип ставки</h3>
+        <div class="bet-types" id="bet-types">
+          <button class="bet-type-btn active" data-bet="high" id="btn-high">
+            <span class="bet-emoji">⬆️</span>
+            <span class="bet-name">Больше</span>
+            <span class="bet-mult">×1.95</span>
+            <span class="bet-desc">8–12</span>
+          </button>
+          <button class="bet-type-btn" data-bet="low" id="btn-low">
+            <span class="bet-emoji">⬇️</span>
+            <span class="bet-name">Меньше</span>
+            <span class="bet-mult">×1.95</span>
+            <span class="bet-desc">2–6</span>
+          </button>
+          <button class="bet-type-btn" data-bet="seven" id="btn-seven">
+            <span class="bet-emoji">7️⃣</span>
+            <span class="bet-name">Семёрка</span>
+            <span class="bet-mult">×3.5</span>
+            <span class="bet-desc">= 7</span>
+          </button>
+          <button class="bet-type-btn" data-bet="even" id="btn-even">
+            <span class="bet-emoji">🔵</span>
+            <span class="bet-name">Чётное</span>
+            <span class="bet-mult">×1.9</span>
+            <span class="bet-desc">2,4,6...</span>
+          </button>
+          <button class="bet-type-btn" data-bet="odd" id="btn-odd">
+            <span class="bet-emoji">🔴</span>
+            <span class="bet-name">Нечётное</span>
+            <span class="bet-mult">×1.9</span>
+            <span class="bet-desc">3,5,7...</span>
+          </button>
+          <button class="bet-type-btn" data-bet="doubles" id="btn-doubles">
+            <span class="bet-emoji">🎯</span>
+            <span class="bet-name">Дубль</span>
+            <span class="bet-mult">×5.0</span>
+            <span class="bet-desc">1-1, 2-2...</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bet Amount -->
+      <div class="bet-amount-section">
+        <h3 class="section-title">Сумма ставки</h3>
+        <div class="bet-input-container">
+          <button class="bet-adjust" id="btn-half">½</button>
+          <div class="bet-input-wrapper">
+            <span class="bet-currency">💰</span>
+            <input type="number" id="bet-amount" class="bet-input" value="100" min="10" max="10000" step="10">
+          </div>
+          <button class="bet-adjust" id="btn-double">×2</button>
+        </div>
+        <div class="quick-bets">
+          <button class="quick-bet" data-amount="10">10</button>
+          <button class="quick-bet" data-amount="50">50</button>
+          <button class="quick-bet active" data-amount="100">100</button>
+          <button class="quick-bet" data-amount="500">500</button>
+          <button class="quick-bet" data-amount="1000">1K</button>
+          <button class="quick-bet" data-amount="max">MAX</button>
+        </div>
+      </div>
+
+      <!-- Roll Button -->
+      <button class="roll-button" id="roll-btn">
+        <span class="roll-text">🎲 БРОСИТЬ КОСТИ</span>
+        <div class="roll-shine"></div>
+      </button>
+
+      <!-- Potential Win -->
+      <div class="potential-win" id="potential-win">
+        <span>Возможный выигрыш: </span>
+        <strong id="potential-amount">195.00</strong>
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div class="tab-content" id="content-history">
+      <h3 class="section-title">История игр</h3>
+      <div class="history-list" id="history-list">
+        <div class="empty-state">
+          <span class="empty-icon">📜</span>
+          <p>Пока нет игр</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaderboard Tab -->
+    <div class="tab-content" id="content-leaderboard">
+      <h3 class="section-title">🏆 Таблица лидеров</h3>
+      <div class="leaderboard-list" id="leaderboard-list">
+        <div class="empty-state">
+          <span class="empty-icon">🏆</span>
+          <p>Загрузка...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fairness Tab -->
+    <div class="tab-content" id="content-fairness">
+      <h3 class="section-title">🔒 Provably Fair</h3>
+      <div class="fairness-info">
+        <div class="fair-card">
+          <h4>Как это работает?</h4>
+          <p>Каждый бросок генерируется с помощью комбинации серверного и клиентского сидов. Вы можете проверить честность каждой игры.</p>
+        </div>
+        
+        <div class="fair-card">
+          <h4>Текущие сиды</h4>
+          <div class="seed-field">
+            <label>Server Seed Hash:</label>
+            <div class="seed-value" id="server-seed-hash">---</div>
+          </div>
+          <div class="seed-field">
+            <label>Client Seed:</label>
+            <div class="seed-input-row">
+              <input type="text" id="client-seed-input" class="seed-input" placeholder="Ваш seed">
+              <button class="seed-btn" id="btn-update-seed">💾</button>
+            </div>
+          </div>
+          <div class="seed-field">
+            <label>Nonce:</label>
+            <div class="seed-value" id="nonce-value">0</div>
+          </div>
+        </div>
+
+        <button class="rotate-btn" id="btn-rotate-seed">
+          🔄 Сменить Server Seed (покажет старый)
+        </button>
+
+        <div class="fair-card" id="old-seed-reveal" style="display:none;">
+          <h4>Предыдущий Server Seed</h4>
+          <div class="seed-field">
+            <label>Seed:</label>
+            <div class="seed-value" id="old-server-seed">---</div>
+          </div>
+          <div class="seed-field">
+            <label>Hash:</label>
+            <div class="seed-value" id="old-server-hash">---</div>
+          </div>
+        </div>
+
+        <div class="fair-card">
+          <h4>🔍 Проверить игру</h4>
+          <div class="verify-form">
+            <input type="text" id="verify-server-seed" class="verify-input" placeholder="Server Seed">
+            <input type="text" id="verify-client-seed" class="verify-input" placeholder="Client Seed">
+            <input type="number" id="verify-nonce" class="verify-input" placeholder="Nonce">
+            <button class="verify-btn" id="btn-verify">Проверить</button>
+          </div>
+          <div class="verify-result" id="verify-result" style="display:none;">
+            <p>Результат: <strong id="verify-dice">-</strong></p>
+            <p>Сумма: <strong id="verify-total">-</strong></p>
+            <p>Hash: <code id="verify-hash">-</code></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Result Overlay -->
+    <div class="result-overlay hidden" id="result-overlay">
+      <div class="result-modal">
+        <div class="result-icon" id="result-icon">🎉</div>
+        <h2 class="result-title" id="result-title">Победа!</h2>
+        <div class="result-dice" id="result-dice-display"></div>
+        <p class="result-amount" id="result-amount">+100.00</p>
+        <button class="result-close" id="result-close">Продолжить</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

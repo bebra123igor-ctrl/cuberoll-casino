@@ -1,0 +1,4 @@
+node_modules/
+cuberoll.db
+.env
+*.db-journal

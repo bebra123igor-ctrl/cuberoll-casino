@@ -1,0 +1,17 @@
+{
+  "name": "cuberoll-casino",
+  "version": "1.0.0",
+  "description": "Telegram Mini App Casino - Dice Game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}

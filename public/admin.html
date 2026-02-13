@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CubeRoll Admin 👑</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-card: #1a1f2e;
+            --bg-card-hover: #222840;
+            --bg-elevated: #252b3d;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.3);
+            --accent-2: #a855f7;
+            --green: #10b981;
+            --red: #ef4444;
+            --yellow: #f59e0b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: rgba(255, 255, 255, 0.06);
+            --border-accent: rgba(99, 102, 241, 0.3);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --radius-xs: 6px;
+            --font: 'Inter', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            background: radial-gradient(ellipse at 20% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(168, 85, 247, 0.06) 0%, transparent 50%),
+                var(--bg-primary);
+        }
+
+        .admin-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        .admin-header {
+            text-align: center;
+            padding: 24px 0;
+        }
+
+        .admin-header h1 {
+            font-size: 28px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .admin-header p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        /* Auth Form */
+        .auth-form {
+            max-width: 400px;
+            margin: 40px auto;
+            text-align: center;
+        }
+
+        .auth-notice {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--border-accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            margin-top: 4px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-value.green {
+            background: linear-gradient(135deg, var(--green), #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-value.yellow {
+            background: linear-gradient(135deg, var(--yellow), #fbbf24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-value.red {
+            background: linear-gradient(135deg, var(--red), #f87171);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Section */
+        .admin-section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Tabs */
+        .admin-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 16px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-xs);
+            padding: 4px;
+        }
+
+        .admin-tab {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-family: var(--font);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: var(--radius-xs);
+            transition: all 0.2s;
+        }
+
+        .admin-tab.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .admin-tab:hover:not(.active) {
+            color: var(--text-primary);
+        }
+
+        .admin-panel {
+            display: none;
+        }
+
+        .admin-panel.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Settings */
+        .settings-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            padding: 12px 16px;
+        }
+
+        .setting-label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .setting-input {
+            width: 120px;
+            padding: 8px 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            color: var(--text-primary);
+            font-family: var(--font);
+            font-size: 14px;
+            text-align: right;
+            outline: none;
+        }
+
+        .setting-input:focus {
+            border-color: var(--accent);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--radius-xs);
+            font-family: var(--font);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+        .btn-danger {
+            background: var(--red);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--green);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* Table */
+        .data-table {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .table-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            margin-bottom: 6px;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .table-row:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .table-row .col-id {
+            width: 100px;
+            color: var(--text-muted);
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .table-row .col-name {
+            flex: 1;
+            font-weight: 600;
+        }
+
+        .table-row .col-balance {
+            width: 100px;
+            text-align: right;
+            font-weight: 700;
+            color: var(--yellow);
+        }
+
+        .table-row .col-games {
+            width: 70px;
+            text-align: center;
+        }
+
+        .table-row .col-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .col-status {
+            width: 60px;
+            text-align: center;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-active {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--green);
+        }
+
+        .badge-banned {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--red);
+        }
+
+        /* Game Log */
+        .game-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .game-row .g-user {
+            width: 100px;
+            font-weight: 600;
+        }
+
+        .game-row .g-type {
+            width: 80px;
+        }
+
+        .game-row .g-dice {
+            width: 60px;
+            text-align: center;
+        }
+
+        .game-row .g-bet {
+            width: 80px;
+            text-align: right;
+        }
+
+        .game-row .g-result {
+            width: 80px;
+            text-align: right;
+            font-weight: 700;
+        }
+
+        .game-row .g-result.win {
+            color: var(--green);
+        }
+
+        .game-row .g-result.loss {
+            color: var(--red);
+        }
+
+        .game-row .g-time {
+            flex: 1;
+            text-align: right;
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        /* Set Balance Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            width: 90%;
+            max-width: 360px;
+        }
+
+        .modal h3 {
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            color: var(--text-primary);
+            font-family: var(--font);
+            font-size: 16px;
+            outline: none;
+            margin-bottom: 16px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Maintenance banner */
+        .maintenance-banner {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--red);
+            border-radius: var(--radius-xs);
+            padding: 10px 16px;
+            font-size: 14px;
+            color: var(--red);
+            text-align: center;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .maintenance-banner.show {
+            display: block;
+        }
+
+        /* Refresh button */
+        .refresh-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            color: var(--text-primary);
+            padding: 8px 14px;
+            font-size: 13px;
+            font-family: var(--font);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-accent);
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>👑 CubeRoll Admin</h1>
+            <p>Панель управления казино</p>
+        </div>
+
+        <div id="auth-section" class="auth-form">
+            <div class="auth-notice">
+                🔐 Откройте эту страницу через Telegram WebApp бота или войдите с правами администратора.
+                <br><br>
+                В режиме разработки авторизация не требуется.
+            </div>
+        </div>
+
+        <div id="admin-content" class="hidden">
+            <div id="maintenance-banner" class="maintenance-banner">
+                🔧 Режим обслуживания ВКЛЮЧЁН — игры приостановлены
+            </div>
+
+            <div class="header-actions">
+                <button class="refresh-btn" onclick="loadAll()">🔄 Обновить</button>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Пользователи</div>
+                    <div class="stat-value" id="s-users">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Всего игр</div>
+                    <div class="stat-value" id="s-games">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Поставлено</div>
+                    <div class="stat-value yellow" id="s-wagered">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Выплачено</div>
+                    <div class="stat-value red" id="s-payouts">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Прибыль казино</div>
+                    <div class="stat-value green" id="s-profit">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Игр сегодня</div>
+                    <div class="stat-value" id="s-today-games">0</div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="admin-tabs">
+                <button class="admin-tab active" data-panel="users">👥 Игроки</button>
+                <button class="admin-tab" data-panel="games">🎮 Игры</button>
+                <button class="admin-tab" data-panel="settings">⚙️ Настройки</button>
+            </div>
+
+            <!-- Users Panel -->
+            <div class="admin-panel active" id="panel-users">
+                <div class="data-table" id="users-table"></div>
+            </div>
+
+            <!-- Games Panel -->
+            <div class="admin-panel" id="panel-games">
+                <div class="data-table" id="games-table"></div>
+            </div>
+
+            <!-- Settings Panel -->
+            <div class="admin-panel" id="panel-settings">
+                <div class="settings-group" id="settings-group"></div>
+                <br>
+                <button class="btn btn-primary" onclick="saveSettings()">💾 Сохранить настройки</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Set Balance Modal -->
+    <div class="modal-overlay" id="balance-modal">
+        <div class="modal">
+            <h3>💰 Установить баланс</h3>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+                Пользователь: <strong id="modal-user-name">-</strong>
+            </p>
+            <input type="number" class="modal-input" id="modal-balance" placeholder="Новый баланс">
+            <div class="modal-buttons">
+                <button class="btn" style="background: var(--bg-elevated); color: var(--text-primary);"
+                    onclick="closeModal()">Отмена</button>
+                <button class="btn btn-primary" id="modal-save">Установить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tg = null;
+        let initData = '';
+
+        // Init
+        if (window.Telegram && window.Telegram.WebApp) {
+            tg = window.Telegram.WebApp;
+            tg.expand();
+            tg.ready();
+            tg.setHeaderColor('#0a0e17');
+            tg.setBackgroundColor('#0a0e17');
+            initData = tg.initData;
+        }
+
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (initData) headers['X-Telegram-Init-Data'] = initData;
+            else headers['X-Dev-User-Id'] = '12345';
+
+            const options = { method, headers };
+            if (body) options.body = JSON.stringify(body);
+
+            const res = await fetch(endpoint, options);
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || `HTTP ${res.status}`);
+            }
+            return res.json();
+        }
+
+        // Tab switching
+        document.querySelectorAll('.admin-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`panel-${tab.dataset.panel}`).classList.add('active');
+            });
+        });
+
+        // Load all data
+        async function loadAll() {
+            try {
+                // Try auth first
+                await apiCall('/api/auth', 'POST');
+
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('admin-content').classList.remove('hidden');
+
+                await Promise.all([loadStats(), loadUsers(), loadGames(), loadSettings()]);
+            } catch (err) {
+                if (err.message === 'Access denied') {
+                    document.querySelector('.auth-notice').innerHTML = '🚫 <strong>Доступ запрещён.</strong> Вы не являетесь администратором.';
+                } else {
+                    // Dev mode: show admin anyway
+                    document.getElementById('auth-section').classList.add('hidden');
+                    document.getElementById('admin-content').classList.remove('hidden');
+                    await Promise.all([loadStats(), loadUsers(), loadGames(), loadSettings()]).catch(console.error);
+                }
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const data = await apiCall('/api/admin/stats');
+
+                document.getElementById('s-users').textContent = data.userCount || 0;
+                document.getElementById('s-games').textContent = data.overall?.total_games || 0;
+                document.getElementById('s-wagered').textContent = (data.overall?.total_wagered || 0).toFixed(0);
+                document.getElementById('s-payouts').textContent = (data.overall?.total_payouts || 0).toFixed(0);
+                document.getElementById('s-profit').textContent = (-(data.overall?.total_profit || 0)).toFixed(0);
+                document.getElementById('s-today-games').textContent = data.today?.total_games || 0;
+
+                const banner = document.getElementById('maintenance-banner');
+                if (data.settings?.maintenance_mode === '1') {
+                    banner.classList.add('show');
+                } else {
+                    banner.classList.remove('show');
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadUsers() {
+            try {
+                const data = await apiCall('/api/admin/users');
+                const table = document.getElementById('users-table');
+
+                if (!data.users || data.users.length === 0) {
+                    table.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Нет пользователей</p>';
+                    return;
+                }
+
+                table.innerHTML = data.users.map(u => `
+          <div class="table-row">
+            <div class="col-id">${u.telegram_id}</div>
+            <div class="col-name">${u.username ? '@' + u.username : (u.first_name || 'N/A')}</div>
+            <div class="col-balance">💰 ${u.balance.toFixed(0)}</div>
+            <div class="col-games">${u.games_played} 🎮</div>
+            <div class="col-status">
+              <span class="badge ${u.is_banned ? 'badge-banned' : 'badge-active'}">
+                ${u.is_banned ? 'BAN' : 'OK'}
+              </span>
+            </div>
+            <div class="col-actions">
+              <button class="btn btn-sm btn-primary" onclick="openBalanceModal(${u.telegram_id}, '${(u.username || u.first_name || 'N/A').replace(/'/g, "\\'")}', ${u.balance})">💰</button>
+              <button class="btn btn-sm ${u.is_banned ? 'btn-success' : 'btn-danger'}" 
+                onclick="${u.is_banned ? `unbanUser(${u.telegram_id})` : `banUser(${u.telegram_id})`}">
+                ${u.is_banned ? '✅' : '🚫'}
+              </button>
+            </div>
+          </div>
+        `).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadGames() {
+            try {
+                const data = await apiCall('/api/admin/games');
+                const table = document.getElementById('games-table');
+
+                if (!data.games || data.games.length === 0) {
+                    table.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Нет игр</p>';
+                    return;
+                }
+
+                table.innerHTML = data.games.map(g => {
+                    const isWin = g.won === 1;
+                    const time = new Date(g.created_at).toLocaleString('ru-RU', {
+                        hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit'
+                    });
+                    return `
+            <div class="game-row">
+              <div class="g-user">${g.username ? '@' + g.username : (g.first_name || g.telegram_id)}</div>
+              <div class="g-type">${g.player_choice}</div>
+              <div class="g-dice">${g.dice_result} (${g.dice_total})</div>
+              <div class="g-bet">${g.bet_amount.toFixed(0)}</div>
+              <div class="g-result ${isWin ? 'win' : 'loss'}">${isWin ? '+' + g.payout.toFixed(0) : '-' + g.bet_amount.toFixed(0)}</div>
+              <div class="g-time">${time}</div>
+            </div>
+          `;
+                }).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadSettings() {
+            try {
+                const data = await apiCall('/api/admin/stats');
+                const group = document.getElementById('settings-group');
+                const settings = data.settings || {};
+
+                const settingNames = {
+                    min_bet: 'Минимальная ставка',
+                    max_bet: 'Максимальная ставка',
+                    starting_balance: 'Стартовый баланс',
+                    house_edge: 'Преимущество казино (%)',
+                    maintenance_mode: 'Режим обслуживания (0/1)'
+                };
+
+                group.innerHTML = Object.entries(settings).map(([key, value]) => `
+          <div class="setting-item">
+            <span class="setting-label">${settingNames[key] || key}</span>
+            <input type="text" class="setting-input" data-key="${key}" value="${value}">
+          </div>
+        `).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function saveSettings() {
+            const inputs = document.querySelectorAll('.setting-input[data-key]');
+            for (const input of inputs) {
+                try {
+                    await apiCall('/api/admin/settings', 'POST', { key: input.dataset.key, value: input.value });
+                } catch (e) { console.error(e); }
+            }
+            alert('✅ Настройки сохранены!');
+            loadAll();
+        }
+
+        // User Actions
+        let modalUserId = null;
+
+        function openBalanceModal(userId, name, balance) {
+            modalUserId = userId;
+            document.getElementById('modal-user-name').textContent = name;
+            document.getElementById('modal-balance').value = balance;
+            document.getElementById('balance-modal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('balance-modal').classList.remove('show');
+            modalUserId = null;
+        }
+
+        document.getElementById('modal-save').addEventListener('click', async () => {
+            if (!modalUserId) return;
+            const balance = parseFloat(document.getElementById('modal-balance').value);
+            if (isNaN(balance)) return;
+
+            try {
+                await apiCall(`/api/admin/user/${modalUserId}/balance`, 'POST', { balance });
+                closeModal();
+                loadUsers();
+                loadStats();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        });
+
+        async function banUser(userId) {
+            if (!confirm('Забанить пользователя?')) return;
+            try {
+                await apiCall(`/api/admin/user/${userId}/ban`, 'POST');
+                loadUsers();
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        async function unbanUser(userId) {
+            try {
+                await apiCall(`/api/admin/user/${userId}/unban`, 'POST');
+                loadUsers();
+            } catch (e) { alert('Error: ' + e.message); }
+        }
+
+        // Close modal on backdrop click
+        document.getElementById('balance-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'balance-modal') closeModal();
+        });
+
+        // Start
+        loadAll();
+    </script>
+</body>
+
+</html>
