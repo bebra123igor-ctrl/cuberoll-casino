@@ -1,84 +1,51 @@
-// ===== CubeRoll Casino — Frontend App =====
+// cuberoll frontend
 
-const API_BASE = '';
-let tg = null;
-let initData = '';
-let currentUser = null;
-let currentSettings = {};
-let currentSeeds = {};
-let selectedBetType = 'high';
-let isRolling = false;
-let isAdmin = false;
+const API = '';
+let tg = null, initData = '';
+let user = null, settings = {}, curSeeds = {};
+let betType = 'high';
+let rolling = false;
 
-// ===== Telegram WebApp Init =====
-function initTelegram() {
+// тг вебапп инит
+function initTg() {
     if (window.Telegram && window.Telegram.WebApp) {
         tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
-
-        // Apply TG theme
-        document.documentElement.style.setProperty('--tg-header-height',
-            (tg.headerColor ? '0px' : '0px'));
-
-        if (tg.themeParams) {
-            if (tg.themeParams.bg_color) {
-                // We keep our own theme, but set header color
-                tg.setHeaderColor('#0a0e17');
-                tg.setBackgroundColor('#0a0e17');
-            }
-        }
-
+        try {
+            tg.setHeaderColor('#0a0e17');
+            tg.setBackgroundColor('#0a0e17');
+        } catch (e) { }
         initData = tg.initData;
-
-        // Haptic feedback
-        if (tg.HapticFeedback) {
-            window.haptic = tg.HapticFeedback;
-        }
+        if (tg.HapticFeedback) window.haptic = tg.HapticFeedback;
     }
 }
 
-// ===== API Calls =====
-async function apiCall(endpoint, method = 'GET', body = null) {
-    const headers = {
-        'Content-Type': 'application/json',
-    };
-
-    if (initData) {
-        headers['X-Telegram-Init-Data'] = initData;
-    } else {
-        // Dev mode
-        headers['X-Dev-User-Id'] = '12345';
+async function api(url, method = 'GET', body = null) {
+    const h = { 'Content-Type': 'application/json' };
+    if (initData) h['X-Telegram-Init-Data'] = initData;
+    else h['X-Dev-User-Id'] = '12345'; // дев мод
+    const opts = { method, headers: h };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(API + url, opts);
+    if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || 'err ' + res.status);
     }
-
-    const options = { method, headers };
-    if (body) options.body = JSON.stringify(body);
-
-    const response = await fetch(`${API_BASE}${endpoint}`, options);
-
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${response.status}`);
-    }
-
-    return response.json();
+    return res.json();
 }
 
-// ===== Init App =====
-async function initApp() {
-    initTelegram();
-    createLoadingParticles();
-
+// запуск
+async function init() {
+    initTg();
+    mkParticles();
     try {
-        const data = await apiCall('/api/auth', 'POST');
-        currentUser = data.user;
-        currentSettings = data.settings;
-        currentSeeds = data.seeds;
-        isAdmin = data.isAdmin;
-
-        updateUI();
-
-        // Finish loading
+        const d = await api('/api/auth', 'POST');
+        user = d.user;
+        settings = d.settings;
+        curSeeds = d.seeds;
+        render();
+        // убираем лоадер
         setTimeout(() => {
             document.getElementById('loading-screen').classList.add('fade-out');
             setTimeout(() => {
@@ -86,525 +53,335 @@ async function initApp() {
                 document.getElementById('app').classList.remove('hidden');
             }, 600);
         }, 1800);
-    } catch (err) {
-        console.error('Init error:', err);
-        document.querySelector('.loading-subtitle').textContent = 'Ошибка загрузки...';
+    } catch (e) {
+        console.error(e);
+        document.querySelector('.loading-subtitle').textContent = 'Ошибка...';
     }
 }
 
-// ===== Create Loading Particles =====
-function createLoadingParticles() {
-    const container = document.getElementById('loading-particles');
+function mkParticles() {
+    const c = document.getElementById('loading-particles');
+    const colors = ['#6366f1', '#a855f7', '#ec4899', '#10b981'];
     for (let i = 0; i < 30; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'particle';
-        particle.style.left = Math.random() * 100 + '%';
-        particle.style.animationDelay = Math.random() * 4 + 's';
-        particle.style.animationDuration = (3 + Math.random() * 3) + 's';
-        const colors = ['#6366f1', '#a855f7', '#ec4899', '#10b981'];
-        particle.style.background = colors[Math.floor(Math.random() * colors.length)];
-        container.appendChild(particle);
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = Math.random() * 100 + '%';
+        p.style.animationDelay = Math.random() * 4 + 's';
+        p.style.animationDuration = (3 + Math.random() * 3) + 's';
+        p.style.background = colors[~~(Math.random() * colors.length)];
+        c.appendChild(p);
     }
 }
 
-// ===== Update UI =====
-function updateUI() {
-    if (!currentUser) return;
+function render() {
+    if (!user) return;
+    document.getElementById('user-name').textContent = user.firstName || user.username || 'Player';
+    document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
+    document.getElementById('user-initial').textContent = (user.firstName || user.username || '?')[0].toUpperCase();
+    setBalance(user.balance);
 
-    // User info
-    document.getElementById('user-name').textContent = currentUser.firstName || currentUser.username || 'Player';
-    document.getElementById('user-id').textContent = `ID: ${currentUser.telegramId}`;
-    document.getElementById('user-initial').textContent =
-        (currentUser.firstName || currentUser.username || '?').charAt(0).toUpperCase();
-
-    // Balance
-    updateBalance(currentUser.balance);
-
-    // Seeds
-    if (currentSeeds) {
-        document.getElementById('server-seed-hash').textContent = currentSeeds.serverSeedHash || '---';
-        document.getElementById('client-seed-input').value = currentSeeds.clientSeed || '';
-        document.getElementById('nonce-value').textContent = currentSeeds.nonce || '0';
+    if (curSeeds) {
+        document.getElementById('server-seed-hash').textContent = curSeeds.serverSeedHash || '---';
+        document.getElementById('client-seed-input').value = curSeeds.clientSeed || '';
+        document.getElementById('nonce-value').textContent = curSeeds.nonce || '0';
     }
-
-    // Update potential win
-    updatePotentialWin();
+    calcWin();
 }
 
-function updateBalance(amount, animate = false) {
+function setBalance(val, anim) {
     const el = document.getElementById('balance-amount');
-    const display = document.getElementById('balance-display');
-
-    if (animate) {
-        const oldAmount = parseFloat(el.textContent);
-        animateNumber(el, oldAmount, amount, 600);
-
-        if (amount > oldAmount) {
-            display.classList.add('pulse');
-            setTimeout(() => display.classList.remove('pulse'), 500);
-        } else {
-            display.classList.add('pulse-loss');
-            setTimeout(() => display.classList.remove('pulse-loss'), 500);
-        }
+    const wrap = document.getElementById('balance-display');
+    if (anim) {
+        const old = parseFloat(el.textContent);
+        animNum(el, old, val, 600);
+        wrap.classList.add(val > old ? 'pulse' : 'pulse-loss');
+        setTimeout(() => { wrap.classList.remove('pulse'); wrap.classList.remove('pulse-loss'); }, 500);
     } else {
-        el.textContent = amount.toFixed(2);
+        el.textContent = val.toFixed(2);
     }
 }
 
-function animateNumber(el, from, to, duration) {
+function animNum(el, from, to, dur) {
     const start = performance.now();
     const diff = to - from;
-
-    function update(now) {
-        const elapsed = now - start;
-        const progress = Math.min(elapsed / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
-        const current = from + diff * eased;
-        el.textContent = current.toFixed(2);
-
-        if (progress < 1) requestAnimationFrame(update);
+    function tick(now) {
+        const t = Math.min((now - start) / dur, 1);
+        const ease = 1 - Math.pow(1 - t, 3);
+        el.textContent = (from + diff * ease).toFixed(2);
+        if (t < 1) requestAnimationFrame(tick);
     }
-
-    requestAnimationFrame(update);
+    requestAnimationFrame(tick);
 }
 
-// ===== Tab Navigation =====
+// табы
 document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', () => {
-        const tabName = tab.dataset.tab;
-
-        // Remove active from all tabs and content
+        const name = tab.dataset.tab;
         document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-        // Activate selected
         tab.classList.add('active');
-        document.getElementById(`content-${tabName}`).classList.add('active');
-
-        // Load data for tab
-        if (tabName === 'history') loadHistory();
-        if (tabName === 'leaderboard') loadLeaderboard();
-
-        hapticLight();
+        document.getElementById('content-' + name).classList.add('active');
+        if (name === 'history') loadHistory();
+        if (name === 'leaderboard') loadTop();
+        hLight();
     });
 });
 
-// ===== Bet Type Selection =====
+// выбор типа ставки
 document.querySelectorAll('.bet-type-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.bet-type-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        selectedBetType = btn.dataset.bet;
-        updatePotentialWin();
-        hapticLight();
+        betType = btn.dataset.bet;
+        calcWin();
+        hLight();
     });
 });
 
-// ===== Bet Amount Controls =====
+// управление суммой
 const betInput = document.getElementById('bet-amount');
 
 document.getElementById('btn-half').addEventListener('click', () => {
-    betInput.value = Math.max(currentSettings.minBet || 10, Math.floor(parseInt(betInput.value) / 2));
-    updatePotentialWin();
-    hapticLight();
+    betInput.value = Math.max(settings.minBet || 10, ~~(parseInt(betInput.value) / 2));
+    calcWin(); hLight();
 });
-
 document.getElementById('btn-double').addEventListener('click', () => {
-    const doubled = parseInt(betInput.value) * 2;
-    betInput.value = Math.min(currentSettings.maxBet || 10000, doubled, currentUser?.balance || 0);
-    updatePotentialWin();
-    hapticLight();
+    betInput.value = Math.min(settings.maxBet || 10000, parseInt(betInput.value) * 2, user?.balance || 0);
+    calcWin(); hLight();
 });
+betInput.addEventListener('input', calcWin);
 
-betInput.addEventListener('input', () => {
-    updatePotentialWin();
-});
-
-// Quick bet buttons
 document.querySelectorAll('.quick-bet').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.quick-bet').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-
-        const amount = btn.dataset.amount;
-        if (amount === 'max') {
-            betInput.value = Math.min(currentUser?.balance || 0, currentSettings.maxBet || 10000);
-        } else {
-            betInput.value = parseInt(amount);
-        }
-        updatePotentialWin();
-        hapticLight();
+        const a = btn.dataset.amount;
+        betInput.value = a === 'max' ? Math.min(user?.balance || 0, settings.maxBet || 10000) : parseInt(a);
+        calcWin(); hLight();
     });
 });
 
-// ===== Potential Win Calculation =====
-function updatePotentialWin() {
+function calcWin() {
     const bet = parseFloat(betInput.value) || 0;
-    const multipliers = {
-        high: 1.95, low: 1.95, seven: 3.5,
-        even: 1.9, odd: 1.9, doubles: 5.0
-    };
-    const mult = multipliers[selectedBetType] || 1.95;
-    const potential = bet * mult;
-    document.getElementById('potential-amount').textContent = potential.toFixed(2);
+    const mults = { high: 1.95, low: 1.95, seven: 3.5, even: 1.9, odd: 1.9, doubles: 5.0 };
+    document.getElementById('potential-amount').textContent = (bet * (mults[betType] || 1.95)).toFixed(2);
 }
 
-// ===== Roll Dice =====
+// бросок
 const rollBtn = document.getElementById('roll-btn');
-
 rollBtn.addEventListener('click', async () => {
-    if (isRolling) return;
+    if (rolling) return;
+    const amt = parseFloat(betInput.value);
+    if (!amt || amt < (settings.minBet || 10)) { toast('Мин. ставка: ' + (settings.minBet || 10), 'error'); return; }
+    if (amt > (user?.balance || 0)) { toast('Не хватает монет', 'error'); hErr(); return; }
 
-    const betAmount = parseFloat(betInput.value);
-
-    if (!betAmount || betAmount < (currentSettings.minBet || 10)) {
-        showToast(`Минимальная ставка: ${currentSettings.minBet || 10}`, 'error');
-        return;
-    }
-
-    if (betAmount > (currentUser?.balance || 0)) {
-        showToast('Недостаточно средств!', 'error');
-        hapticError();
-        return;
-    }
-
-    isRolling = true;
+    rolling = true;
     rollBtn.disabled = true;
     rollBtn.classList.add('rolling');
     rollBtn.querySelector('.roll-text').textContent = '🎲 БРОСАЮ...';
 
-    // Start dice animation
-    const die1 = document.getElementById('die1');
-    const die2 = document.getElementById('die2');
-    die1.classList.add('rolling');
-    die2.classList.add('rolling');
-
-    hapticMedium();
+    const d1 = document.getElementById('die1');
+    const d2 = document.getElementById('die2');
+    d1.classList.add('rolling');
+    d2.classList.add('rolling');
+    hMed();
 
     try {
-        const data = await apiCall('/api/bet', 'POST', {
-            betAmount,
-            betType: selectedBetType
-        });
-
-        // Wait for animation
+        const data = await api('/api/bet', 'POST', { betAmount: amt, betType });
         await sleep(1000);
 
-        die1.classList.remove('rolling');
-        die2.classList.remove('rolling');
+        d1.classList.remove('rolling');
+        d2.classList.remove('rolling');
+        showDie(d1, data.result.dice[0]);
+        showDie(d2, data.result.dice[1]);
 
-        // Show result on dice
-        setDiceFace(die1, data.result.dice[0]);
-        setDiceFace(die2, data.result.dice[1]);
-
-        // Update balance with animation
-        currentUser.balance = data.result.newBalance;
-        updateBalance(data.result.newBalance, true);
-
-        // Update seeds
-        currentSeeds.nonce = data.fairness.nonce;
+        user.balance = data.result.newBalance;
+        setBalance(data.result.newBalance, true);
+        curSeeds.nonce = data.fairness.nonce;
         document.getElementById('nonce-value').textContent = data.fairness.nonce;
 
-        // Show result overlay
-        setTimeout(() => {
-            showResult(data.result);
-        }, 400);
-
-        if (data.result.won) {
-            hapticSuccess();
-        } else {
-            hapticError();
-        }
-
-    } catch (err) {
-        die1.classList.remove('rolling');
-        die2.classList.remove('rolling');
-        showToast(err.message, 'error');
-        hapticError();
+        setTimeout(() => showResult(data.result), 400);
+        data.result.won ? hOk() : hErr();
+    } catch (e) {
+        d1.classList.remove('rolling');
+        d2.classList.remove('rolling');
+        toast(e.message, 'error');
+        hErr();
     }
 
-    isRolling = false;
+    rolling = false;
     rollBtn.disabled = false;
     rollBtn.classList.remove('rolling');
     rollBtn.querySelector('.roll-text').textContent = '🎲 БРОСИТЬ КОСТИ';
 });
 
-// ===== Set Dice Face =====
-function setDiceFace(dieEl, value) {
-    const rotations = {
-        1: 'rotateX(0deg) rotateY(0deg)',
-        2: 'rotateX(-90deg) rotateY(0deg)',
-        3: 'rotateX(0deg) rotateY(-90deg)',
-        4: 'rotateX(0deg) rotateY(90deg)',
-        5: 'rotateX(90deg) rotateY(0deg)',
-        6: 'rotateX(180deg) rotateY(0deg)'
+function showDie(el, val) {
+    const rot = {
+        1: 'rotateX(0) rotateY(0)',
+        2: 'rotateX(-90deg) rotateY(0)',
+        3: 'rotateX(0) rotateY(-90deg)',
+        4: 'rotateX(0) rotateY(90deg)',
+        5: 'rotateX(90deg) rotateY(0)',
+        6: 'rotateX(180deg) rotateY(0)'
     };
-
-    dieEl.style.transform = rotations[value] || rotations[1];
+    el.style.transform = rot[val] || rot[1];
 }
 
-// ===== Show Result =====
-function showResult(result) {
-    const overlay = document.getElementById('result-overlay');
-    const modal = overlay.querySelector('.result-modal');
-    const icon = document.getElementById('result-icon');
+function showResult(r) {
+    const ov = document.getElementById('result-overlay');
+    const modal = ov.querySelector('.result-modal');
+    modal.className = 'result-modal ' + (r.won ? 'win' : 'loss');
+
+    document.getElementById('result-icon').textContent = r.won ? '🎉' : '😢';
     const title = document.getElementById('result-title');
-    const diceDisplay = document.getElementById('result-dice-display');
-    const amount = document.getElementById('result-amount');
+    title.textContent = r.won ? 'Победа!' : 'Мимо';
+    title.className = 'result-title ' + (r.won ? 'win' : 'loss');
 
-    modal.className = 'result-modal ' + (result.won ? 'win' : 'loss');
+    const amt = document.getElementById('result-amount');
+    amt.textContent = r.won ? ('+' + r.payout.toFixed(2)) : ('-' + Math.abs(r.profit).toFixed(2));
+    amt.className = 'result-amount ' + (r.won ? 'win' : 'loss');
 
-    if (result.won) {
-        icon.textContent = '🎉';
-        title.textContent = 'Победа!';
-        title.className = 'result-title win';
-        amount.textContent = `+${result.payout.toFixed(2)}`;
-        amount.className = 'result-amount win';
+    const emojis = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+    document.getElementById('result-dice-display').innerHTML = r.dice.map(d => `<span style="font-size:40px">${emojis[d]}</span>`).join('');
 
-        // Fire confetti
-        fireConfetti();
-    } else {
-        icon.textContent = '😢';
-        title.textContent = 'Проигрыш';
-        title.className = 'result-title loss';
-        amount.textContent = `-${Math.abs(result.profit).toFixed(2)}`;
-        amount.className = 'result-amount loss';
-    }
-
-    // Show dice
-    const diceEmojis = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-    diceDisplay.innerHTML = result.dice.map(d =>
-        `<span style="font-size: 40px;">${diceEmojis[d]}</span>`
-    ).join('');
-
-    overlay.classList.remove('hidden');
+    if (r.won) confetti();
+    ov.classList.remove('hidden');
 }
 
-// ===== Close Result =====
 document.getElementById('result-close').addEventListener('click', () => {
     document.getElementById('result-overlay').classList.add('hidden');
-    hapticLight();
+});
+document.getElementById('result-overlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) document.getElementById('result-overlay').classList.add('hidden');
 });
 
-document.getElementById('result-overlay').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) {
-        document.getElementById('result-overlay').classList.add('hidden');
-    }
-});
-
-// ===== Confetti =====
-function fireConfetti() {
+function confetti() {
     const colors = ['#6366f1', '#a855f7', '#ec4899', '#10b981', '#f59e0b', '#ef4444'];
-
     for (let i = 0; i < 50; i++) {
-        const confetti = document.createElement('div');
-        confetti.className = 'confetti-piece';
-        confetti.style.left = Math.random() * 100 + '%';
-        confetti.style.top = '-10px';
-        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
-        confetti.style.animationDelay = Math.random() * 0.5 + 's';
-        confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
-        confetti.style.width = (6 + Math.random() * 8) + 'px';
-        confetti.style.height = (6 + Math.random() * 8) + 'px';
-        document.body.appendChild(confetti);
-
-        setTimeout(() => confetti.remove(), 2500);
+        const c = document.createElement('div');
+        c.className = 'confetti-piece';
+        c.style.left = Math.random() * 100 + '%';
+        c.style.top = '-10px';
+        c.style.background = colors[~~(Math.random() * colors.length)];
+        c.style.animationDelay = Math.random() * .5 + 's';
+        c.style.borderRadius = Math.random() > .5 ? '50%' : '2px';
+        c.style.width = (6 + Math.random() * 8) + 'px';
+        c.style.height = (6 + Math.random() * 8) + 'px';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 2500);
     }
 }
 
-// ===== History =====
+// история
 async function loadHistory() {
     try {
-        const data = await apiCall('/api/history');
+        const d = await api('/api/history');
         const list = document.getElementById('history-list');
+        if (!d.games?.length) { list.innerHTML = '<div class="empty-state"><span class="empty-icon">📜</span><p>Пока пусто</p></div>'; return; }
 
-        if (!data.games || data.games.length === 0) {
-            list.innerHTML = '<div class="empty-state"><span class="empty-icon">📜</span><p>Пока нет игр</p></div>';
-            return;
-        }
+        const names = { high: '⬆️ Больше', low: '⬇️ Меньше', seven: '7️⃣ Семёрка', even: '🔵 Чёт', odd: '🔴 Нечёт', doubles: '🎯 Дубль' };
+        const emojis = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
-        const betTypeNames = {
-            high: '⬆️ Больше', low: '⬇️ Меньше', seven: '7️⃣ Семёрка',
-            even: '🔵 Чётное', odd: '🔴 Нечётное', doubles: '🎯 Дубль'
-        };
-
-        list.innerHTML = data.games.map((game, i) => {
-            const diceEmojis = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-            const dice = game.dice_result.split(',').map(Number);
-            const isWin = game.won === 1;
-            const time = new Date(game.created_at).toLocaleString('ru-RU', {
-                hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit'
-            });
-
-            return `
-        <div class="history-item" style="animation-delay: ${i * 0.05}s">
-          <div class="history-left">
-            <div class="history-dice">
-              ${dice.map(d => diceEmojis[d]).join(' ')}
-            </div>
-            <div class="history-details">
-              <span class="history-bet-type">${betTypeNames[game.player_choice] || game.player_choice} (${game.dice_total})</span>
-              <span class="history-time">${time}</span>
-            </div>
-          </div>
-          <div class="history-right">
-            <div class="history-amount ${isWin ? 'win' : 'loss'}">
-              ${isWin ? '+' + game.payout.toFixed(2) : '-' + game.bet_amount.toFixed(2)}
-            </div>
-            <div class="history-bet">Ставка: ${game.bet_amount.toFixed(2)}</div>
+        list.innerHTML = d.games.map((g, i) => {
+            const dice = g.dice_result.split(',').map(Number);
+            const w = g.won === 1;
+            const time = new Date(g.created_at).toLocaleString('ru-RU', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+            return `<div class="history-item" style="animation-delay:${i * .05}s">
+        <div class="history-left">
+          <div class="history-dice">${dice.map(d => emojis[d]).join(' ')}</div>
+          <div class="history-details">
+            <span class="history-bet-type">${names[g.player_choice] || g.player_choice} (${g.dice_total})</span>
+            <span class="history-time">${time}</span>
           </div>
         </div>
-      `;
+        <div class="history-right">
+          <div class="history-amount ${w ? 'win' : 'loss'}">${w ? '+' + g.payout.toFixed(2) : '-' + g.bet_amount.toFixed(2)}</div>
+          <div class="history-bet">Ставка: ${g.bet_amount.toFixed(2)}</div>
+        </div>
+      </div>`;
         }).join('');
-    } catch (err) {
-        console.error('History load error:', err);
-    }
+    } catch (e) { console.error(e); }
 }
 
-// ===== Leaderboard =====
-async function loadLeaderboard() {
+async function loadTop() {
     try {
-        const data = await apiCall('/api/leaderboard');
+        const d = await api('/api/leaderboard');
         const list = document.getElementById('leaderboard-list');
-
-        if (!data.players || data.players.length === 0) {
-            list.innerHTML = '<div class="empty-state"><span class="empty-icon">🏆</span><p>Нет игроков</p></div>';
-            return;
-        }
-
+        if (!d.players?.length) { list.innerHTML = '<div class="empty-state"><span class="empty-icon">🏆</span><p>Пусто</p></div>'; return; }
         const medals = ['🥇', '🥈', '🥉'];
-
-        list.innerHTML = data.players.map((player, i) => `
-      <div class="leaderboard-item ${i < 3 ? 'top-3' : ''}" style="animation-delay: ${i * 0.05}s">
-        <div class="leaderboard-rank">${i < 3 ? medals[i] : (i + 1)}</div>
+        list.innerHTML = d.players.map((p, i) => `
+      <div class="leaderboard-item ${i < 3 ? 'top-3' : ''}" style="animation-delay:${i * .05}s">
+        <div class="leaderboard-rank">${i < 3 ? medals[i] : i + 1}</div>
         <div class="leaderboard-info">
-          <span class="leaderboard-name">${player.username || 'Anonymous'}</span>
-          <span class="leaderboard-stats">${player.gamesPlayed} игр • ${player.gamesWon} побед</span>
+          <span class="leaderboard-name">${p.username || 'Аноним'}</span>
+          <span class="leaderboard-stats">${p.gamesPlayed} игр • ${p.gamesWon} побед</span>
         </div>
-        <span class="leaderboard-balance">💰 ${player.balance.toFixed(0)}</span>
+        <span class="leaderboard-balance">💰 ${p.balance.toFixed(0)}</span>
       </div>
     `).join('');
-    } catch (err) {
-        console.error('Leaderboard load error:', err);
-    }
+    } catch (e) { console.error(e); }
 }
 
-// ===== Fairness — Seeds =====
+// сиды
 document.getElementById('btn-update-seed').addEventListener('click', async () => {
-    const newSeed = document.getElementById('client-seed-input').value.trim();
-    if (!newSeed) {
-        showToast('Введите client seed', 'error');
-        return;
-    }
-
+    const s = document.getElementById('client-seed-input').value.trim();
+    if (!s) { toast('Введи seed', 'error'); return; }
     try {
-        await apiCall('/api/seeds/client', 'POST', { clientSeed: newSeed });
-        currentSeeds.clientSeed = newSeed;
-        showToast('Client seed обновлён ✅', 'success');
-        hapticSuccess();
-    } catch (err) {
-        showToast(err.message, 'error');
-    }
+        await api('/api/seeds/client', 'POST', { clientSeed: s });
+        curSeeds.clientSeed = s;
+        toast('Обновлено', 'success'); hOk();
+    } catch (e) { toast(e.message, 'error'); }
 });
 
 document.getElementById('btn-rotate-seed').addEventListener('click', async () => {
     try {
-        const data = await apiCall('/api/seeds/rotate', 'POST', {
+        const d = await api('/api/seeds/rotate', 'POST', {
             clientSeed: document.getElementById('client-seed-input').value.trim() || undefined
         });
-
-        // Show old seed
-        document.getElementById('old-server-seed').textContent = data.oldServerSeed;
-        document.getElementById('old-server-hash').textContent = data.oldServerSeedHash;
+        document.getElementById('old-server-seed').textContent = d.oldServerSeed;
+        document.getElementById('old-server-hash').textContent = d.oldServerSeedHash;
         document.getElementById('old-seed-reveal').style.display = 'block';
-
-        // Update current display
-        document.getElementById('server-seed-hash').textContent = data.newServerSeedHash;
-        document.getElementById('nonce-value').textContent = data.nonce;
-
-        currentSeeds.serverSeedHash = data.newServerSeedHash;
-        currentSeeds.clientSeed = data.clientSeed;
-        currentSeeds.nonce = data.nonce;
-
-        showToast('Server seed обновлён! Старый seed раскрыт.', 'success');
-        hapticSuccess();
-    } catch (err) {
-        showToast(err.message, 'error');
-    }
+        document.getElementById('server-seed-hash').textContent = d.newServerSeedHash;
+        document.getElementById('nonce-value').textContent = d.nonce;
+        curSeeds.serverSeedHash = d.newServerSeedHash;
+        curSeeds.clientSeed = d.clientSeed;
+        curSeeds.nonce = d.nonce;
+        toast('Старый seed раскрыт', 'success'); hOk();
+    } catch (e) { toast(e.message, 'error'); }
 });
 
-// ===== Verify Game =====
 document.getElementById('btn-verify').addEventListener('click', async () => {
-    const serverSeed = document.getElementById('verify-server-seed').value.trim();
-    const clientSeed = document.getElementById('verify-client-seed').value.trim();
-    const nonce = document.getElementById('verify-nonce').value;
-
-    if (!serverSeed || !clientSeed || nonce === '') {
-        showToast('Заполните все поля', 'error');
-        return;
-    }
-
+    const ss = document.getElementById('verify-server-seed').value.trim();
+    const cs = document.getElementById('verify-client-seed').value.trim();
+    const n = document.getElementById('verify-nonce').value;
+    if (!ss || !cs || n === '') { toast('Заполни поля', 'error'); return; }
     try {
-        const data = await apiCall('/api/verify', 'POST', {
-            serverSeed, clientSeed, nonce: parseInt(nonce)
-        });
-
-        const diceEmojis = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-
-        document.getElementById('verify-dice').textContent =
-            data.dice.map(d => `${diceEmojis[d]} (${d})`).join(' + ');
-        document.getElementById('verify-total').textContent = data.total;
-        document.getElementById('verify-hash').textContent = data.serverSeedHash;
+        const d = await api('/api/verify', 'POST', { serverSeed: ss, clientSeed: cs, nonce: parseInt(n) });
+        const em = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+        document.getElementById('verify-dice').textContent = d.dice.map(x => em[x] + ' (' + x + ')').join(' + ');
+        document.getElementById('verify-total').textContent = d.total;
+        document.getElementById('verify-hash').textContent = d.serverSeedHash;
         document.getElementById('verify-result').style.display = 'block';
-
-        showToast('Верификация пройдена ✅', 'success');
-        hapticSuccess();
-    } catch (err) {
-        showToast(err.message, 'error');
-    }
+        toast('Проверено ✅', 'success');
+    } catch (e) { toast(e.message, 'error'); }
 });
 
-// ===== Haptic Feedback =====
-function hapticLight() {
-    try { window.haptic?.impactOccurred?.('light'); } catch (e) { }
-}
+// хаптик
+function hLight() { try { window.haptic?.impactOccurred?.('light'); } catch (e) { } }
+function hMed() { try { window.haptic?.impactOccurred?.('medium'); } catch (e) { } }
+function hOk() { try { window.haptic?.notificationOccurred?.('success'); } catch (e) { } }
+function hErr() { try { window.haptic?.notificationOccurred?.('error'); } catch (e) { } }
 
-function hapticMedium() {
-    try { window.haptic?.impactOccurred?.('medium'); } catch (e) { }
-}
-
-function hapticSuccess() {
-    try { window.haptic?.notificationOccurred?.('success'); } catch (e) { }
-}
-
-function hapticError() {
-    try { window.haptic?.notificationOccurred?.('error'); } catch (e) { }
-}
-
-// ===== Toast =====
-function showToast(message, type = '') {
-    // Remove existing toast
+function toast(msg, type) {
     document.querySelectorAll('.toast').forEach(t => t.remove());
-
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-
-    requestAnimationFrame(() => {
-        toast.classList.add('show');
-    });
-
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 2500);
+    const el = document.createElement('div');
+    el.className = 'toast ' + (type || '');
+    el.textContent = msg;
+    document.body.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 2500);
 }
 
-// ===== Utility =====
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// ===== Start =====
-document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('DOMContentLoaded', init);

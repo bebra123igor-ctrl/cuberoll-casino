@@ -1,11 +1,10 @@
 {
-  "name": "cuberoll-casino",
+  "name": "cuberoll",
   "version": "1.0.0",
-  "description": "Telegram Mini App Casino - Dice Game",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "bot": "node bot.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",

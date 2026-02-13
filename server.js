@@ -15,360 +15,237 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ===== Telegram WebApp Auth Validation =====
-function validateTelegramWebAppData(initData) {
+// валидация данных от тг вебапп (hmac проверка)
+function validateTgData(initData) {
     if (!BOT_TOKEN) return null;
-
     try {
         const params = new URLSearchParams(initData);
         const hash = params.get('hash');
         params.delete('hash');
 
-        const sortedParams = [...params.entries()]
+        const sorted = [...params.entries()]
             .sort(([a], [b]) => a.localeCompare(b))
-            .map(([key, value]) => `${key}=${value}`)
+            .map(([k, v]) => `${k}=${v}`)
             .join('\n');
 
-        const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
-        const computedHash = crypto.createHmac('sha256', secretKey).update(sortedParams).digest('hex');
+        const secret = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest();
+        const check = crypto.createHmac('sha256', secret).update(sorted).digest('hex');
 
-        if (computedHash !== hash) return null;
-
-        const userData = JSON.parse(params.get('user') || '{}');
-        return userData;
-    } catch (err) {
-        console.error('Auth validation error:', err);
+        if (check !== hash) return null;
+        return JSON.parse(params.get('user') || '{}');
+    } catch (e) {
+        console.error('auth err:', e);
         return null;
     }
 }
 
-// Auth middleware
-function authMiddleware(req, res, next) {
-    const initData = req.headers['x-telegram-init-data'];
+// мидлвара авторизации
+function auth(req, res, next) {
+    const data = req.headers['x-telegram-init-data'];
 
-    // For development: allow mock auth
+    // дев мод без токена
     if (!BOT_TOKEN && req.headers['x-dev-user-id']) {
-        req.telegramUser = {
-            id: parseInt(req.headers['x-dev-user-id']),
-            username: 'dev_user',
-            first_name: 'Developer'
-        };
+        req.tgUser = { id: parseInt(req.headers['x-dev-user-id']), username: 'dev_user', first_name: 'Developer' };
         return next();
     }
 
-    if (!initData) {
-        return res.status(401).json({ error: 'No auth data provided' });
-    }
+    if (!data) return res.status(401).json({ error: 'No auth data provided' });
 
-    const user = validateTelegramWebAppData(initData);
-    if (!user) {
-        return res.status(401).json({ error: 'Invalid auth data' });
-    }
+    const user = validateTgData(data);
+    if (!user) return res.status(401).json({ error: 'Invalid auth data' });
 
-    req.telegramUser = user;
+    req.tgUser = user;
     next();
 }
 
-// Admin middleware
-function adminMiddleware(req, res, next) {
-    if (!req.telegramUser || !ADMIN_IDS.includes(req.telegramUser.id)) {
+function adminOnly(req, res, next) {
+    if (!req.tgUser || !ADMIN_IDS.includes(req.tgUser.id))
         return res.status(403).json({ error: 'Access denied' });
-    }
     next();
 }
 
-// In-memory session seeds
-const userSeeds = {};
+// сиды в памяти (при рестарте сбрасываются, это ок - просто новая сессия)
+const seeds = {};
 
-function getUserSeed(telegramId) {
-    if (!userSeeds[telegramId]) {
-        userSeeds[telegramId] = {
+function getSeed(tgId) {
+    if (!seeds[tgId]) {
+        seeds[tgId] = {
             serverSeed: ProvablyFair.generateServerSeed(),
             clientSeed: ProvablyFair.generateClientSeed(),
             nonce: 0,
-            serverSeedHash: ''
+            hash: ''
         };
-        userSeeds[telegramId].serverSeedHash = ProvablyFair.hashServerSeed(userSeeds[telegramId].serverSeed);
+        seeds[tgId].hash = ProvablyFair.hashServerSeed(seeds[tgId].serverSeed);
     }
-    return userSeeds[telegramId];
+    return seeds[tgId];
 }
 
-// ===== API Routes =====
 
-// Get user profile
-app.post('/api/auth', authMiddleware, (req, res) => {
-    const tgUser = req.telegramUser;
-    const user = userOps.getOrCreate(tgUser.id, tgUser.username || '', tgUser.first_name || '', tgUser.last_name || '');
+// --- роуты ---
 
-    if (user.is_banned) {
-        return res.status(403).json({ error: 'Account is banned' });
-    }
+// авторизация + получение профиля
+app.post('/api/auth', auth, (req, res) => {
+    const u = req.tgUser;
+    const user = userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '');
+    if (user.is_banned) return res.status(403).json({ error: 'Account is banned' });
 
-    const seeds = getUserSeed(tgUser.id);
-
+    const s = getSeed(u.id);
     res.json({
         user: {
-            telegramId: user.telegram_id,
-            username: user.username,
-            firstName: user.first_name,
-            balance: user.balance,
-            gamesPlayed: user.games_played,
-            gamesWon: user.games_won,
-            totalWagered: user.total_wagered,
-            totalWon: user.total_won,
-            totalLost: user.total_lost
+            telegramId: user.telegram_id, username: user.username, firstName: user.first_name,
+            balance: user.balance, gamesPlayed: user.games_played, gamesWon: user.games_won,
+            totalWagered: user.total_wagered, totalWon: user.total_won, totalLost: user.total_lost
         },
-        seeds: {
-            serverSeedHash: seeds.serverSeedHash,
-            clientSeed: seeds.clientSeed,
-            nonce: seeds.nonce
-        },
+        seeds: { serverSeedHash: s.hash, clientSeed: s.clientSeed, nonce: s.nonce },
         settings: {
             minBet: parseFloat(settingsOps.get('min_bet') || '10'),
             maxBet: parseFloat(settingsOps.get('max_bet') || '10000')
         },
-        isAdmin: ADMIN_IDS.includes(tgUser.id)
+        isAdmin: ADMIN_IDS.includes(u.id)
     });
 });
 
-// Place a bet
-app.post('/api/bet', authMiddleware, (req, res) => {
-    const tgUser = req.telegramUser;
-    const user = userOps.get(tgUser.id);
-
+// ставка
+app.post('/api/bet', auth, (req, res) => {
+    const u = req.tgUser;
+    const user = userOps.get(u.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.is_banned) return res.status(403).json({ error: 'Account is banned' });
-
-    const maintenance = settingsOps.get('maintenance_mode');
-    if (maintenance === '1') {
-        return res.status(503).json({ error: 'Casino is under maintenance' });
-    }
+    if (settingsOps.get('maintenance_mode') === '1') return res.status(503).json({ error: 'Casino is under maintenance' });
 
     const { betAmount, betType } = req.body;
+    if (!betAmount || !betType) return res.status(400).json({ error: 'Missing bet amount or type' });
 
-    if (!betAmount || !betType) {
-        return res.status(400).json({ error: 'Missing bet amount or type' });
-    }
-
-    const amount = parseFloat(betAmount);
+    const amt = parseFloat(betAmount);
     const minBet = parseFloat(settingsOps.get('min_bet') || '10');
     const maxBet = parseFloat(settingsOps.get('max_bet') || '10000');
 
-    if (isNaN(amount) || amount < minBet || amount > maxBet) {
-        return res.status(400).json({ error: `Bet must be between ${minBet} and ${maxBet}` });
-    }
+    if (isNaN(amt) || amt < minBet || amt > maxBet) return res.status(400).json({ error: `Bet must be between ${minBet} and ${maxBet}` });
+    if (amt > user.balance) return res.status(400).json({ error: 'Insufficient balance' });
 
-    if (amount > user.balance) {
-        return res.status(400).json({ error: 'Insufficient balance' });
-    }
-
+    // проверяем что тип ставки валидный
     const validBets = ['high', 'low', 'seven', 'even', 'odd', 'doubles'];
     for (let i = 2; i <= 12; i++) validBets.push(`exact_${i}`);
+    if (!validBets.includes(betType)) return res.status(400).json({ error: 'Invalid bet type' });
 
-    if (!validBets.includes(betType)) {
-        return res.status(400).json({ error: 'Invalid bet type' });
-    }
+    const s = getSeed(u.id);
+    s.nonce++;
 
-    // Get user seeds and roll
-    const seeds = getUserSeed(tgUser.id);
-    seeds.nonce++;
+    const dice = ProvablyFair.generateDice(s.serverSeed, s.clientSeed, s.nonce);
+    const result = ProvablyFair.calculatePayout(betType, dice, amt);
 
-    const diceResult = ProvablyFair.generateDice(seeds.serverSeed, seeds.clientSeed, seeds.nonce);
-    const payoutResult = ProvablyFair.calculatePayout(betType, diceResult, amount);
-
-    // Update balance
-    const balanceChange = payoutResult.won ? (payoutResult.payout - amount) : -amount;
-    userOps.updateBalance(tgUser.id, balanceChange, payoutResult.won ? 'win' : 'loss',
-        `Dice game: ${betType} | Result: ${diceResult.dice.join(',')} (${diceResult.total})`
+    // обновляем баланс
+    const change = result.won ? (result.payout - amt) : -amt;
+    userOps.updateBalance(u.id, change, result.won ? 'win' : 'loss',
+        `Dice: ${betType} | ${dice.dice.join(',')} (${dice.total})`
     );
-    userOps.updateStats(tgUser.id, amount, payoutResult.won, payoutResult.profit);
+    userOps.updateStats(u.id, amt, result.won, result.profit);
 
-    // Save game record
+    // сохраняем игру в бд
     gameOps.create({
-        telegramId: tgUser.id,
-        betAmount: amount,
-        gameType: 'dice',
-        playerChoice: betType,
-        diceResult: diceResult.dice.join(','),
-        diceTotal: diceResult.total,
-        multiplier: payoutResult.multiplier,
-        payout: payoutResult.payout,
-        profit: payoutResult.profit,
-        serverSeed: seeds.serverSeed,
-        clientSeed: seeds.clientSeed,
-        nonce: seeds.nonce,
-        hash: diceResult.hash,
-        won: payoutResult.won
+        telegramId: u.id, betAmount: amt, gameType: 'dice', playerChoice: betType,
+        diceResult: dice.dice.join(','), diceTotal: dice.total,
+        multiplier: result.multiplier, payout: result.payout, profit: result.profit,
+        serverSeed: s.serverSeed, clientSeed: s.clientSeed, nonce: s.nonce, hash: dice.hash, won: result.won
     });
 
-    const updatedUser = userOps.get(tgUser.id);
-
+    const updated = userOps.get(u.id);
     res.json({
-        result: {
-            dice: diceResult.dice,
-            total: diceResult.total,
-            won: payoutResult.won,
-            multiplier: payoutResult.multiplier,
-            payout: payoutResult.payout,
-            profit: payoutResult.profit,
-            newBalance: updatedUser.balance
-        },
-        fairness: {
-            serverSeedHash: seeds.serverSeedHash,
-            clientSeed: seeds.clientSeed,
-            nonce: seeds.nonce
-        }
+        result: { dice: dice.dice, total: dice.total, won: result.won, multiplier: result.multiplier, payout: result.payout, profit: result.profit, newBalance: updated.balance },
+        fairness: { serverSeedHash: s.hash, clientSeed: s.clientSeed, nonce: s.nonce }
     });
 });
 
-// Rotate server seed (reveals old one, generates new)
-app.post('/api/seeds/rotate', authMiddleware, (req, res) => {
-    const tgUser = req.telegramUser;
-    const seeds = getUserSeed(tgUser.id);
+// ротация сидов (показываем старый, генерим новый)
+app.post('/api/seeds/rotate', auth, (req, res) => {
+    const s = getSeed(req.tgUser.id);
+    const oldSeed = s.serverSeed;
+    const oldHash = s.hash;
 
-    const oldServerSeed = seeds.serverSeed;
-    const oldHash = seeds.serverSeedHash;
+    s.serverSeed = ProvablyFair.generateServerSeed();
+    s.hash = ProvablyFair.hashServerSeed(s.serverSeed);
+    s.nonce = 0;
+    if (req.body.clientSeed) s.clientSeed = req.body.clientSeed;
 
-    // Generate new seeds
-    seeds.serverSeed = ProvablyFair.generateServerSeed();
-    seeds.serverSeedHash = ProvablyFair.hashServerSeed(seeds.serverSeed);
-    seeds.nonce = 0;
-
-    if (req.body.clientSeed) {
-        seeds.clientSeed = req.body.clientSeed;
-    }
-
-    res.json({
-        oldServerSeed,
-        oldServerSeedHash: oldHash,
-        newServerSeedHash: seeds.serverSeedHash,
-        clientSeed: seeds.clientSeed,
-        nonce: seeds.nonce
-    });
+    res.json({ oldServerSeed: oldSeed, oldServerSeedHash: oldHash, newServerSeedHash: s.hash, clientSeed: s.clientSeed, nonce: s.nonce });
 });
 
-// Update client seed
-app.post('/api/seeds/client', authMiddleware, (req, res) => {
-    const tgUser = req.telegramUser;
+// обновление клиент сида
+app.post('/api/seeds/client', auth, (req, res) => {
     const { clientSeed } = req.body;
-
-    if (!clientSeed || clientSeed.length < 1) {
-        return res.status(400).json({ error: 'Invalid client seed' });
-    }
-
-    const seeds = getUserSeed(tgUser.id);
-    seeds.clientSeed = clientSeed;
-
-    res.json({ clientSeed: seeds.clientSeed });
+    if (!clientSeed || clientSeed.length < 1) return res.status(400).json({ error: 'Invalid client seed' });
+    const s = getSeed(req.tgUser.id);
+    s.clientSeed = clientSeed;
+    res.json({ clientSeed: s.clientSeed });
 });
 
-// Get game history
-app.get('/api/history', authMiddleware, (req, res) => {
-    const tgUser = req.telegramUser;
-    const games = gameOps.getByUser(tgUser.id, 50);
-    res.json({ games });
+app.get('/api/history', auth, (req, res) => {
+    res.json({ games: gameOps.getByUser(req.tgUser.id, 50) });
 });
 
-// Verify a game
+// верификация (публичный эндпоинт)
 app.post('/api/verify', (req, res) => {
     const { serverSeed, clientSeed, nonce } = req.body;
-
-    if (!serverSeed || !clientSeed || nonce === undefined) {
-        return res.status(400).json({ error: 'Missing parameters' });
-    }
-
-    const result = ProvablyFair.verify(serverSeed, clientSeed, parseInt(nonce));
-    const hash = ProvablyFair.hashServerSeed(serverSeed);
-
-    res.json({
-        dice: result.dice,
-        total: result.total,
-        serverSeedHash: hash
-    });
+    if (!serverSeed || !clientSeed || nonce === undefined) return res.status(400).json({ error: 'Missing parameters' });
+    const r = ProvablyFair.verify(serverSeed, clientSeed, parseInt(nonce));
+    res.json({ dice: r.dice, total: r.total, serverSeedHash: ProvablyFair.hashServerSeed(serverSeed) });
 });
 
-// Leaderboard
-app.get('/api/leaderboard', authMiddleware, (req, res) => {
+app.get('/api/leaderboard', auth, (req, res) => {
     const top = userOps.getTopPlayers(20);
     res.json({
         players: top.map(p => ({
             username: p.username || p.first_name || `User ${p.telegram_id}`,
-            balance: p.balance,
-            gamesPlayed: p.games_played,
-            gamesWon: p.games_won
+            balance: p.balance, gamesPlayed: p.games_played, gamesWon: p.games_won
         }))
     });
 });
 
-// ===== Admin API =====
 
-app.get('/api/admin/stats', authMiddleware, adminMiddleware, (req, res) => {
-    const allStats = gameOps.getStats();
-    const todayStats = gameOps.getTodayStats();
-    const userCount = userOps.getCount();
-    const settings = settingsOps.getAll();
+// --- админка ---
 
+app.get('/api/admin/stats', auth, adminOnly, (req, res) => {
     res.json({
-        overall: allStats,
-        today: todayStats,
-        userCount,
-        settings
+        overall: gameOps.getStats(), today: gameOps.getTodayStats(),
+        userCount: userOps.getCount(), settings: settingsOps.getAll()
     });
 });
 
-app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
-    const users = userOps.getAll();
-    res.json({ users });
+app.get('/api/admin/users', auth, adminOnly, (req, res) => {
+    res.json({ users: userOps.getAll() });
 });
 
-app.get('/api/admin/games', authMiddleware, adminMiddleware, (req, res) => {
-    const games = gameOps.getRecent(100);
-    res.json({ games });
+app.get('/api/admin/games', auth, adminOnly, (req, res) => {
+    res.json({ games: gameOps.getRecent(100) });
 });
 
-app.post('/api/admin/user/:id/balance', authMiddleware, adminMiddleware, (req, res) => {
-    const telegramId = parseInt(req.params.id);
-    const { balance } = req.body;
-
-    const result = userOps.setBalance(telegramId, parseFloat(balance));
-    if (!result) return res.status(404).json({ error: 'User not found' });
-
-    res.json({ success: true, ...result });
+app.post('/api/admin/user/:id/balance', auth, adminOnly, (req, res) => {
+    const r = userOps.setBalance(parseInt(req.params.id), parseFloat(req.body.balance));
+    if (!r) return res.status(404).json({ error: 'User not found' });
+    res.json({ success: true, ...r });
 });
 
-app.post('/api/admin/user/:id/ban', authMiddleware, adminMiddleware, (req, res) => {
-    const telegramId = parseInt(req.params.id);
-    userOps.ban(telegramId);
+app.post('/api/admin/user/:id/ban', auth, adminOnly, (req, res) => {
+    userOps.ban(parseInt(req.params.id));
     res.json({ success: true });
 });
 
-app.post('/api/admin/user/:id/unban', authMiddleware, adminMiddleware, (req, res) => {
-    const telegramId = parseInt(req.params.id);
-    userOps.unban(telegramId);
+app.post('/api/admin/user/:id/unban', auth, adminOnly, (req, res) => {
+    userOps.unban(parseInt(req.params.id));
     res.json({ success: true });
 });
 
-app.post('/api/admin/settings', authMiddleware, adminMiddleware, (req, res) => {
-    const { key, value } = req.body;
-    if (!key) return res.status(400).json({ error: 'Missing key' });
-    settingsOps.set(key, value);
+app.post('/api/admin/settings', auth, adminOnly, (req, res) => {
+    if (!req.body.key) return res.status(400).json({ error: 'Missing key' });
+    settingsOps.set(req.body.key, req.body.value);
     res.json({ success: true });
 });
 
-// Serve admin page
-app.get('/admin', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-// Serve main page
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.listen(PORT, () => {
-    console.log(`🎲 CubeRoll Casino server running on port ${PORT}`);
-    console.log(`📱 WebApp: http://localhost:${PORT}`);
-    console.log(`👑 Admin: http://localhost:${PORT}/admin`);
+    console.log(`CubeRoll server on :${PORT}`);
 });
 
 module.exports = app;

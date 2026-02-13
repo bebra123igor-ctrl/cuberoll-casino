@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CubeRoll Admin 👑</title>
+    <title>CubeRoll Admin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
@@ -12,26 +12,26 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-primary: #0a0e17;
-            --bg-secondary: #111827;
-            --bg-card: #1a1f2e;
-            --bg-card-hover: #222840;
-            --bg-elevated: #252b3d;
+            --bg: #0a0e17;
+            --bg2: #111827;
+            --card: #1a1f2e;
+            --card-h: #222840;
+            --elev: #252b3d;
             --accent: #6366f1;
-            --accent-hover: #818cf8;
-            --accent-glow: rgba(99, 102, 241, 0.3);
-            --accent-2: #a855f7;
+            --accent-h: #818cf8;
+            --accent-g: rgba(99, 102, 241, .3);
+            --purple: #a855f7;
             --green: #10b981;
             --red: #ef4444;
             --yellow: #f59e0b;
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
-            --border: rgba(255, 255, 255, 0.06);
-            --border-accent: rgba(99, 102, 241, 0.3);
-            --radius: 16px;
-            --radius-sm: 10px;
-            --radius-xs: 6px;
+            --t1: #f1f5f9;
+            --t2: #94a3b8;
+            --t3: #64748b;
+            --border: rgba(255, 255, 255, .06);
+            --border-a: rgba(99, 102, 241, .3);
+            --r: 16px;
+            --r-sm: 10px;
+            --r-xs: 6px;
             --font: 'Inter', sans-serif;
         }
 
@@ -43,254 +43,233 @@
 
         body {
             font-family: var(--font);
-            background: var(--bg-primary);
-            color: var(--text-primary);
+            background: var(--bg);
+            color: var(--t1);
             min-height: 100vh;
-            background: radial-gradient(ellipse at 20% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 100%, rgba(168, 85, 247, 0.06) 0%, transparent 50%),
-                var(--bg-primary);
+            background: radial-gradient(ellipse at 20% 0%, rgba(99, 102, 241, .08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(168, 85, 247, .06) 0%, transparent 50%), var(--bg);
         }
 
-        .admin-container {
+        .wrap {
             max-width: 800px;
             margin: 0 auto;
             padding: 16px;
         }
 
-        .admin-header {
+        .hdr {
             text-align: center;
             padding: 24px 0;
         }
 
-        .admin-header h1 {
+        .hdr h1 {
             font-size: 28px;
             font-weight: 900;
-            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            background: linear-gradient(135deg, var(--accent), var(--purple));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .admin-header p {
-            color: var(--text-muted);
+        .hdr p {
+            color: var(--t3);
             font-size: 14px;
             margin-top: 4px;
         }
 
-        /* Auth Form */
-        .auth-form {
+        .auth-box {
             max-width: 400px;
             margin: 40px auto;
             text-align: center;
         }
 
-        .auth-notice {
-            background: var(--bg-card);
+        .auth-msg {
+            background: var(--card);
             border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
+            border-radius: var(--r-sm);
             padding: 20px;
-            margin-bottom: 16px;
-            color: var(--text-secondary);
+            color: var(--t2);
             font-size: 14px;
             line-height: 1.6;
         }
 
-        /* Stats Grid */
-        .stats-grid {
+        .stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 12px;
             margin-bottom: 24px;
         }
 
-        .stat-card {
-            background: var(--bg-card);
+        .st {
+            background: var(--card);
             border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
+            border-radius: var(--r-sm);
             padding: 16px;
-            transition: all 0.3s ease;
+            transition: all .3s;
         }
 
-        .stat-card:hover {
-            border-color: var(--border-accent);
-            box-shadow: 0 0 20px var(--accent-glow);
+        .st:hover {
+            border-color: var(--border-a);
+            box-shadow: 0 0 20px var(--accent-g);
         }
 
-        .stat-label {
+        .st-l {
             font-size: 12px;
-            color: var(--text-muted);
+            color: var(--t3);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: .5px;
         }
 
-        .stat-value {
+        .st-v {
             font-size: 24px;
             font-weight: 800;
             margin-top: 4px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            background: linear-gradient(135deg, var(--accent), var(--purple));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .stat-value.green {
+        .st-v.g {
             background: linear-gradient(135deg, var(--green), #34d399);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .stat-value.yellow {
+        .st-v.y {
             background: linear-gradient(135deg, var(--yellow), #fbbf24);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .stat-value.red {
+        .st-v.r {
             background: linear-gradient(135deg, var(--red), #f87171);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        /* Section */
-        .admin-section {
-            margin-bottom: 24px;
-        }
-
-        .section-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-secondary);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* Tabs */
-        .admin-tabs {
+        .tabs {
             display: flex;
             gap: 4px;
             margin-bottom: 16px;
-            background: var(--bg-secondary);
-            border-radius: var(--radius-xs);
+            background: var(--bg2);
+            border-radius: var(--r-xs);
             padding: 4px;
         }
 
-        .admin-tab {
+        .tab {
             flex: 1;
             padding: 10px;
             border: none;
             background: transparent;
-            color: var(--text-muted);
+            color: var(--t3);
             font-family: var(--font);
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            border-radius: var(--radius-xs);
-            transition: all 0.2s;
+            border-radius: var(--r-xs);
+            transition: all .2s;
         }
 
-        .admin-tab.active {
+        .tab.active {
             background: var(--accent);
-            color: white;
+            color: #fff;
         }
 
-        .admin-tab:hover:not(.active) {
-            color: var(--text-primary);
+        .tab:hover:not(.active) {
+            color: var(--t1);
         }
 
-        .admin-panel {
+        .pnl {
             display: none;
         }
 
-        .admin-panel.active {
+        .pnl.active {
             display: block;
-            animation: fadeIn 0.3s ease;
+            animation: fi .3s ease;
         }
 
-        @keyframes fadeIn {
+        @keyframes fi {
             from {
                 opacity: 0;
-                transform: translateY(10px);
+                transform: translateY(10px)
             }
 
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translateY(0)
             }
         }
 
-        /* Settings */
-        .settings-group {
+        .sgrp {
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
 
-        .setting-item {
+        .si {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: var(--bg-card);
+            background: var(--card);
             border: 1px solid var(--border);
-            border-radius: var(--radius-xs);
+            border-radius: var(--r-xs);
             padding: 12px 16px;
         }
 
-        .setting-label {
+        .si-l {
             font-size: 14px;
             font-weight: 500;
         }
 
-        .setting-input {
+        .si-i {
             width: 120px;
             padding: 8px 12px;
-            background: var(--bg-primary);
+            background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: var(--radius-xs);
-            color: var(--text-primary);
+            border-radius: var(--r-xs);
+            color: var(--t1);
             font-family: var(--font);
             font-size: 14px;
             text-align: right;
             outline: none;
         }
 
-        .setting-input:focus {
+        .si-i:focus {
             border-color: var(--accent);
         }
 
         .btn {
             padding: 8px 16px;
             border: none;
-            border-radius: var(--radius-xs);
+            border-radius: var(--r-xs);
             font-family: var(--font);
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all .2s;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent), var(--accent-2));
-            color: white;
+        .btn-p {
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            color: #fff;
         }
 
-        .btn-primary:hover {
+        .btn-p:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px var(--accent-glow);
+            box-shadow: 0 4px 12px var(--accent-g);
         }
 
-        .btn-danger {
+        .btn-d {
             background: var(--red);
-            color: white;
+            color: #fff;
         }
 
-        .btn-success {
+        .btn-s {
             background: var(--green);
-            color: white;
+            color: #fff;
         }
 
         .btn-sm {
@@ -298,59 +277,58 @@
             font-size: 12px;
         }
 
-        /* Table */
-        .data-table {
+        .tbl {
             width: 100%;
             overflow-x: auto;
         }
 
-        .table-row {
+        .row {
             display: flex;
             align-items: center;
             gap: 8px;
             padding: 10px 14px;
-            background: var(--bg-card);
+            background: var(--card);
             border: 1px solid var(--border);
-            border-radius: var(--radius-xs);
+            border-radius: var(--r-xs);
             margin-bottom: 6px;
             font-size: 13px;
-            transition: all 0.2s;
+            transition: all .2s;
         }
 
-        .table-row:hover {
-            background: var(--bg-card-hover);
+        .row:hover {
+            background: var(--card-h);
         }
 
-        .table-row .col-id {
+        .row .cid {
             width: 100px;
-            color: var(--text-muted);
+            color: var(--t3);
             font-family: monospace;
             font-size: 12px;
         }
 
-        .table-row .col-name {
+        .row .cname {
             flex: 1;
             font-weight: 600;
         }
 
-        .table-row .col-balance {
+        .row .cbal {
             width: 100px;
             text-align: right;
             font-weight: 700;
             color: var(--yellow);
         }
 
-        .table-row .col-games {
+        .row .cgames {
             width: 70px;
             text-align: center;
         }
 
-        .table-row .col-actions {
+        .row .cact {
             display: flex;
             gap: 4px;
         }
 
-        .col-status {
+        .cst {
             width: 60px;
             text-align: center;
         }
@@ -363,74 +341,72 @@
             font-weight: 600;
         }
 
-        .badge-active {
-            background: rgba(16, 185, 129, 0.15);
+        .badge-ok {
+            background: rgba(16, 185, 129, .15);
             color: var(--green);
         }
 
-        .badge-banned {
-            background: rgba(239, 68, 68, 0.15);
+        .badge-ban {
+            background: rgba(239, 68, 68, .15);
             color: var(--red);
         }
 
-        /* Game Log */
-        .game-row {
+        .grow {
             display: flex;
             align-items: center;
             gap: 8px;
             padding: 8px 14px;
-            background: var(--bg-card);
+            background: var(--card);
             border: 1px solid var(--border);
-            border-radius: var(--radius-xs);
+            border-radius: var(--r-xs);
             margin-bottom: 4px;
             font-size: 12px;
         }
 
-        .game-row .g-user {
+        .grow .gu {
             width: 100px;
             font-weight: 600;
         }
 
-        .game-row .g-type {
+        .grow .gt {
             width: 80px;
         }
 
-        .game-row .g-dice {
+        .grow .gd {
             width: 60px;
             text-align: center;
         }
 
-        .game-row .g-bet {
+        .grow .gb {
             width: 80px;
             text-align: right;
         }
 
-        .game-row .g-result {
+        .grow .gr {
             width: 80px;
             text-align: right;
             font-weight: 700;
         }
 
-        .game-row .g-result.win {
+        .grow .gr.w {
             color: var(--green);
         }
 
-        .game-row .g-result.loss {
+        .grow .gr.l {
             color: var(--red);
         }
 
-        .game-row .g-time {
+        .grow .gtime {
             flex: 1;
             text-align: right;
-            color: var(--text-muted);
+            color: var(--t3);
             font-size: 11px;
         }
 
-        /* Set Balance Modal */
-        .modal-overlay {
+        .modal-bg {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, .6);
             backdrop-filter: blur(10px);
             display: none;
             align-items: center;
@@ -438,14 +414,14 @@
             z-index: 100;
         }
 
-        .modal-overlay.show {
+        .modal-bg.show {
             display: flex;
         }
 
         .modal {
-            background: var(--bg-card);
+            background: var(--card);
             border: 1px solid var(--border);
-            border-radius: var(--radius);
+            border-radius: var(--r);
             padding: 24px;
             width: 90%;
             max-width: 360px;
@@ -456,20 +432,20 @@
             font-size: 18px;
         }
 
-        .modal-input {
+        .modal-in {
             width: 100%;
             padding: 10px 14px;
-            background: var(--bg-primary);
+            background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: var(--radius-xs);
-            color: var(--text-primary);
+            border-radius: var(--r-xs);
+            color: var(--t1);
             font-family: var(--font);
             font-size: 16px;
             outline: none;
             margin-bottom: 16px;
         }
 
-        .modal-buttons {
+        .modal-btns {
             display: flex;
             gap: 8px;
             justify-content: flex-end;
@@ -479,11 +455,10 @@
             display: none;
         }
 
-        /* Maintenance banner */
-        .maintenance-banner {
-            background: rgba(239, 68, 68, 0.1);
+        .maint {
+            background: rgba(239, 68, 68, .1);
             border: 1px solid var(--red);
-            border-radius: var(--radius-xs);
+            border-radius: var(--r-xs);
             padding: 10px 16px;
             font-size: 14px;
             color: var(--red);
@@ -492,239 +467,186 @@
             display: none;
         }
 
-        .maintenance-banner.show {
+        .maint.show {
             display: block;
         }
 
-        /* Refresh button */
-        .refresh-btn {
-            background: var(--bg-card);
+        .topbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 12px;
+        }
+
+        .rbtn {
+            background: var(--card);
             border: 1px solid var(--border);
-            border-radius: var(--radius-xs);
-            color: var(--text-primary);
+            border-radius: var(--r-xs);
+            color: var(--t1);
             padding: 8px 14px;
             font-size: 13px;
             font-family: var(--font);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all .2s;
         }
 
-        .refresh-btn:hover {
-            background: var(--bg-card-hover);
-            border-color: var(--border-accent);
-        }
-
-        .header-actions {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 12px;
+        .rbtn:hover {
+            background: var(--card-h);
+            border-color: var(--border-a);
         }
     </style>
 </head>
 
 <body>
-    <div class="admin-container">
-        <div class="admin-header">
+    <div class="wrap">
+        <div class="hdr">
             <h1>👑 CubeRoll Admin</h1>
-            <p>Панель управления казино</p>
+            <p>Панель управления</p>
         </div>
 
-        <div id="auth-section" class="auth-form">
-            <div class="auth-notice">
-                🔐 Откройте эту страницу через Telegram WebApp бота или войдите с правами администратора.
-                <br><br>
-                В режиме разработки авторизация не требуется.
-            </div>
+        <div id="auth-box" class="auth-box">
+            <div class="auth-msg">🔐 Откройте через Telegram или войдите как админ.<br><br>В дев режиме авторизация не
+                нужна.</div>
         </div>
 
-        <div id="admin-content" class="hidden">
-            <div id="maintenance-banner" class="maintenance-banner">
-                🔧 Режим обслуживания ВКЛЮЧЁН — игры приостановлены
-            </div>
+        <div id="content" class="hidden">
+            <div id="maint-bar" class="maint">🔧 Обслуживание ВКЛ — игры приостановлены</div>
+            <div class="topbar"><button class="rbtn" onclick="loadAll()">🔄 Обновить</button></div>
 
-            <div class="header-actions">
-                <button class="refresh-btn" onclick="loadAll()">🔄 Обновить</button>
-            </div>
-
-            <!-- Stats -->
-            <div class="stats-grid" id="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Пользователи</div>
-                    <div class="stat-value" id="s-users">0</div>
+            <div class="stats" id="stats">
+                <div class="st">
+                    <div class="st-l">Юзеры</div>
+                    <div class="st-v" id="s-users">0</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">Всего игр</div>
-                    <div class="stat-value" id="s-games">0</div>
+                <div class="st">
+                    <div class="st-l">Игр</div>
+                    <div class="st-v" id="s-games">0</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">Поставлено</div>
-                    <div class="stat-value yellow" id="s-wagered">0</div>
+                <div class="st">
+                    <div class="st-l">Поставлено</div>
+                    <div class="st-v y" id="s-wager">0</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">Выплачено</div>
-                    <div class="stat-value red" id="s-payouts">0</div>
+                <div class="st">
+                    <div class="st-l">Выплачено</div>
+                    <div class="st-v r" id="s-pay">0</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">Прибыль казино</div>
-                    <div class="stat-value green" id="s-profit">0</div>
+                <div class="st">
+                    <div class="st-l">Профит</div>
+                    <div class="st-v g" id="s-profit">0</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">Игр сегодня</div>
-                    <div class="stat-value" id="s-today-games">0</div>
+                <div class="st">
+                    <div class="st-l">Сегодня</div>
+                    <div class="st-v" id="s-today">0</div>
                 </div>
             </div>
 
-            <!-- Tabs -->
-            <div class="admin-tabs">
-                <button class="admin-tab active" data-panel="users">👥 Игроки</button>
-                <button class="admin-tab" data-panel="games">🎮 Игры</button>
-                <button class="admin-tab" data-panel="settings">⚙️ Настройки</button>
+            <div class="tabs">
+                <button class="tab active" data-p="users">👥 Игроки</button>
+                <button class="tab" data-p="games">🎮 Игры</button>
+                <button class="tab" data-p="settings">⚙️ Настройки</button>
             </div>
 
-            <!-- Users Panel -->
-            <div class="admin-panel active" id="panel-users">
-                <div class="data-table" id="users-table"></div>
+            <div class="pnl active" id="p-users">
+                <div class="tbl" id="tbl-users"></div>
             </div>
-
-            <!-- Games Panel -->
-            <div class="admin-panel" id="panel-games">
-                <div class="data-table" id="games-table"></div>
+            <div class="pnl" id="p-games">
+                <div class="tbl" id="tbl-games"></div>
             </div>
-
-            <!-- Settings Panel -->
-            <div class="admin-panel" id="panel-settings">
-                <div class="settings-group" id="settings-group"></div>
-                <br>
-                <button class="btn btn-primary" onclick="saveSettings()">💾 Сохранить настройки</button>
+            <div class="pnl" id="p-settings">
+                <div class="sgrp" id="sgrp"></div><br>
+                <button class="btn btn-p" onclick="saveSets()">💾 Сохранить</button>
             </div>
         </div>
     </div>
 
-    <!-- Set Balance Modal -->
-    <div class="modal-overlay" id="balance-modal">
+    <div class="modal-bg" id="bal-modal">
         <div class="modal">
-            <h3>💰 Установить баланс</h3>
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
-                Пользователь: <strong id="modal-user-name">-</strong>
-            </p>
-            <input type="number" class="modal-input" id="modal-balance" placeholder="Новый баланс">
-            <div class="modal-buttons">
-                <button class="btn" style="background: var(--bg-elevated); color: var(--text-primary);"
+            <h3>💰 Баланс</h3>
+            <p style="font-size:13px;color:var(--t3);margin-bottom:12px">Юзер: <strong id="m-name">-</strong></p>
+            <input type="number" class="modal-in" id="m-bal" placeholder="Новый баланс">
+            <div class="modal-btns">
+                <button class="btn" style="background:var(--elev);color:var(--t1)"
                     onclick="closeModal()">Отмена</button>
-                <button class="btn btn-primary" id="modal-save">Установить</button>
+                <button class="btn btn-p" id="m-save">Установить</button>
             </div>
         </div>
     </div>
 
     <script>
-        let tg = null;
-        let initData = '';
-
-        // Init
+        let tg = null, initData = '';
         if (window.Telegram && window.Telegram.WebApp) {
             tg = window.Telegram.WebApp;
-            tg.expand();
-            tg.ready();
-            tg.setHeaderColor('#0a0e17');
-            tg.setBackgroundColor('#0a0e17');
+            tg.expand(); tg.ready();
+            try { tg.setHeaderColor('#0a0e17'); tg.setBackgroundColor('#0a0e17'); } catch (e) { }
             initData = tg.initData;
         }
 
-        async function apiCall(endpoint, method = 'GET', body = null) {
-            const headers = { 'Content-Type': 'application/json' };
-            if (initData) headers['X-Telegram-Init-Data'] = initData;
-            else headers['X-Dev-User-Id'] = '12345';
-
-            const options = { method, headers };
-            if (body) options.body = JSON.stringify(body);
-
-            const res = await fetch(endpoint, options);
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || `HTTP ${res.status}`);
-            }
-            return res.json();
+        async function api(url, method = 'GET', body = null) {
+            const h = { 'Content-Type': 'application/json' };
+            if (initData) h['X-Telegram-Init-Data'] = initData;
+            else h['X-Dev-User-Id'] = '12345';
+            const o = { method, headers: h };
+            if (body) o.body = JSON.stringify(body);
+            const r = await fetch(url, o);
+            if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'err ' + r.status); }
+            return r.json();
         }
 
-        // Tab switching
-        document.querySelectorAll('.admin-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById(`panel-${tab.dataset.panel}`).classList.add('active');
+        // табы
+        document.querySelectorAll('.tab').forEach(t => {
+            t.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+                document.querySelectorAll('.pnl').forEach(x => x.classList.remove('active'));
+                t.classList.add('active');
+                document.getElementById('p-' + t.dataset.p).classList.add('active');
             });
         });
 
-        // Load all data
         async function loadAll() {
             try {
-                // Try auth first
-                await apiCall('/api/auth', 'POST');
-
-                document.getElementById('auth-section').classList.add('hidden');
-                document.getElementById('admin-content').classList.remove('hidden');
-
-                await Promise.all([loadStats(), loadUsers(), loadGames(), loadSettings()]);
-            } catch (err) {
-                if (err.message === 'Access denied') {
-                    document.querySelector('.auth-notice').innerHTML = '🚫 <strong>Доступ запрещён.</strong> Вы не являетесь администратором.';
+                await api('/api/auth', 'POST');
+                document.getElementById('auth-box').classList.add('hidden');
+                document.getElementById('content').classList.remove('hidden');
+                await Promise.all([loadStats(), loadUsers(), loadGames(), loadSets()]);
+            } catch (e) {
+                if (e.message === 'Access denied') {
+                    document.querySelector('.auth-msg').innerHTML = '🚫 <b>Нет доступа.</b>';
                 } else {
-                    // Dev mode: show admin anyway
-                    document.getElementById('auth-section').classList.add('hidden');
-                    document.getElementById('admin-content').classList.remove('hidden');
-                    await Promise.all([loadStats(), loadUsers(), loadGames(), loadSettings()]).catch(console.error);
+                    document.getElementById('auth-box').classList.add('hidden');
+                    document.getElementById('content').classList.remove('hidden');
+                    await Promise.all([loadStats(), loadUsers(), loadGames(), loadSets()]).catch(console.error);
                 }
             }
         }
 
         async function loadStats() {
             try {
-                const data = await apiCall('/api/admin/stats');
-
-                document.getElementById('s-users').textContent = data.userCount || 0;
-                document.getElementById('s-games').textContent = data.overall?.total_games || 0;
-                document.getElementById('s-wagered').textContent = (data.overall?.total_wagered || 0).toFixed(0);
-                document.getElementById('s-payouts').textContent = (data.overall?.total_payouts || 0).toFixed(0);
-                document.getElementById('s-profit').textContent = (-(data.overall?.total_profit || 0)).toFixed(0);
-                document.getElementById('s-today-games').textContent = data.today?.total_games || 0;
-
-                const banner = document.getElementById('maintenance-banner');
-                if (data.settings?.maintenance_mode === '1') {
-                    banner.classList.add('show');
-                } else {
-                    banner.classList.remove('show');
-                }
+                const d = await api('/api/admin/stats');
+                document.getElementById('s-users').textContent = d.userCount || 0;
+                document.getElementById('s-games').textContent = d.overall?.total_games || 0;
+                document.getElementById('s-wager').textContent = (d.overall?.total_wagered || 0).toFixed(0);
+                document.getElementById('s-pay').textContent = (d.overall?.total_payouts || 0).toFixed(0);
+                document.getElementById('s-profit').textContent = (-(d.overall?.total_profit || 0)).toFixed(0);
+                document.getElementById('s-today').textContent = d.today?.total_games || 0;
+                const bar = document.getElementById('maint-bar');
+                d.settings?.maintenance_mode === '1' ? bar.classList.add('show') : bar.classList.remove('show');
             } catch (e) { console.error(e); }
         }
 
         async function loadUsers() {
             try {
-                const data = await apiCall('/api/admin/users');
-                const table = document.getElementById('users-table');
-
-                if (!data.users || data.users.length === 0) {
-                    table.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Нет пользователей</p>';
-                    return;
-                }
-
-                table.innerHTML = data.users.map(u => `
-          <div class="table-row">
-            <div class="col-id">${u.telegram_id}</div>
-            <div class="col-name">${u.username ? '@' + u.username : (u.first_name || 'N/A')}</div>
-            <div class="col-balance">💰 ${u.balance.toFixed(0)}</div>
-            <div class="col-games">${u.games_played} 🎮</div>
-            <div class="col-status">
-              <span class="badge ${u.is_banned ? 'badge-banned' : 'badge-active'}">
-                ${u.is_banned ? 'BAN' : 'OK'}
-              </span>
-            </div>
-            <div class="col-actions">
-              <button class="btn btn-sm btn-primary" onclick="openBalanceModal(${u.telegram_id}, '${(u.username || u.first_name || 'N/A').replace(/'/g, "\\'")}', ${u.balance})">💰</button>
-              <button class="btn btn-sm ${u.is_banned ? 'btn-success' : 'btn-danger'}" 
-                onclick="${u.is_banned ? `unbanUser(${u.telegram_id})` : `banUser(${u.telegram_id})`}">
-                ${u.is_banned ? '✅' : '🚫'}
-              </button>
+                const d = await api('/api/admin/users');
+                const t = document.getElementById('tbl-users');
+                if (!d.users?.length) { t.innerHTML = '<p style="text-align:center;color:var(--t3);padding:20px">Нет юзеров</p>'; return; }
+                t.innerHTML = d.users.map(u => `
+          <div class="row">
+            <div class="cid">${u.telegram_id}</div>
+            <div class="cname">${u.username ? '@' + u.username : (u.first_name || '—')}</div>
+            <div class="cbal">💰 ${u.balance.toFixed(0)}</div>
+            <div class="cgames">${u.games_played} 🎮</div>
+            <div class="cst"><span class="badge ${u.is_banned ? 'badge-ban' : 'badge-ok'}">${u.is_banned ? 'BAN' : 'OK'}</span></div>
+            <div class="cact">
+              <button class="btn btn-sm btn-p" onclick="openModal(${u.telegram_id},'${(u.username || u.first_name || '—').replace(/'/g, "\\'")}',${u.balance})">💰</button>
+              <button class="btn btn-sm ${u.is_banned ? 'btn-s' : 'btn-d'}" onclick="${u.is_banned ? `unban(${u.telegram_id})` : `ban(${u.telegram_id})`}">${u.is_banned ? '✅' : '🚫'}</button>
             </div>
           </div>
         `).join('');
@@ -733,118 +655,65 @@
 
         async function loadGames() {
             try {
-                const data = await apiCall('/api/admin/games');
-                const table = document.getElementById('games-table');
-
-                if (!data.games || data.games.length === 0) {
-                    table.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">Нет игр</p>';
-                    return;
-                }
-
-                table.innerHTML = data.games.map(g => {
-                    const isWin = g.won === 1;
-                    const time = new Date(g.created_at).toLocaleString('ru-RU', {
-                        hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit'
-                    });
-                    return `
-            <div class="game-row">
-              <div class="g-user">${g.username ? '@' + g.username : (g.first_name || g.telegram_id)}</div>
-              <div class="g-type">${g.player_choice}</div>
-              <div class="g-dice">${g.dice_result} (${g.dice_total})</div>
-              <div class="g-bet">${g.bet_amount.toFixed(0)}</div>
-              <div class="g-result ${isWin ? 'win' : 'loss'}">${isWin ? '+' + g.payout.toFixed(0) : '-' + g.bet_amount.toFixed(0)}</div>
-              <div class="g-time">${time}</div>
-            </div>
-          `;
+                const d = await api('/api/admin/games');
+                const t = document.getElementById('tbl-games');
+                if (!d.games?.length) { t.innerHTML = '<p style="text-align:center;color:var(--t3);padding:20px">Нет игр</p>'; return; }
+                t.innerHTML = d.games.map(g => {
+                    const w = g.won === 1;
+                    const tm = new Date(g.created_at).toLocaleString('ru-RU', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+                    return `<div class="grow">
+            <div class="gu">${g.username ? '@' + g.username : (g.first_name || g.telegram_id)}</div>
+            <div class="gt">${g.player_choice}</div>
+            <div class="gd">${g.dice_result} (${g.dice_total})</div>
+            <div class="gb">${g.bet_amount.toFixed(0)}</div>
+            <div class="gr ${w ? 'w' : 'l'}">${w ? '+' + g.payout.toFixed(0) : '-' + g.bet_amount.toFixed(0)}</div>
+            <div class="gtime">${tm}</div>
+          </div>`;
                 }).join('');
             } catch (e) { console.error(e); }
         }
 
-        async function loadSettings() {
+        async function loadSets() {
             try {
-                const data = await apiCall('/api/admin/stats');
-                const group = document.getElementById('settings-group');
-                const settings = data.settings || {};
-
-                const settingNames = {
-                    min_bet: 'Минимальная ставка',
-                    max_bet: 'Максимальная ставка',
-                    starting_balance: 'Стартовый баланс',
-                    house_edge: 'Преимущество казино (%)',
-                    maintenance_mode: 'Режим обслуживания (0/1)'
-                };
-
-                group.innerHTML = Object.entries(settings).map(([key, value]) => `
-          <div class="setting-item">
-            <span class="setting-label">${settingNames[key] || key}</span>
-            <input type="text" class="setting-input" data-key="${key}" value="${value}">
-          </div>
+                const d = await api('/api/admin/stats');
+                const g = document.getElementById('sgrp');
+                const s = d.settings || {};
+                const names = { min_bet: 'Мин. ставка', max_bet: 'Макс. ставка', starting_balance: 'Старт баланс', house_edge: 'Хаус эдж (%)', maintenance_mode: 'Обслуживание (0/1)' };
+                g.innerHTML = Object.entries(s).map(([k, v]) => `
+          <div class="si"><span class="si-l">${names[k] || k}</span><input type="text" class="si-i" data-k="${k}" value="${v}"></div>
         `).join('');
             } catch (e) { console.error(e); }
         }
 
-        async function saveSettings() {
-            const inputs = document.querySelectorAll('.setting-input[data-key]');
-            for (const input of inputs) {
-                try {
-                    await apiCall('/api/admin/settings', 'POST', { key: input.dataset.key, value: input.value });
-                } catch (e) { console.error(e); }
+        async function saveSets() {
+            for (const inp of document.querySelectorAll('.si-i[data-k]')) {
+                try { await api('/api/admin/settings', 'POST', { key: inp.dataset.k, value: inp.value }); } catch (e) { console.error(e); }
             }
-            alert('✅ Настройки сохранены!');
+            alert('Сохранено ✅');
             loadAll();
         }
 
-        // User Actions
-        let modalUserId = null;
-
-        function openBalanceModal(userId, name, balance) {
-            modalUserId = userId;
-            document.getElementById('modal-user-name').textContent = name;
-            document.getElementById('modal-balance').value = balance;
-            document.getElementById('balance-modal').classList.add('show');
+        let mUid = null;
+        function openModal(id, name, bal) {
+            mUid = id;
+            document.getElementById('m-name').textContent = name;
+            document.getElementById('m-bal').value = bal;
+            document.getElementById('bal-modal').classList.add('show');
         }
+        function closeModal() { document.getElementById('bal-modal').classList.remove('show'); mUid = null; }
 
-        function closeModal() {
-            document.getElementById('balance-modal').classList.remove('show');
-            modalUserId = null;
-        }
-
-        document.getElementById('modal-save').addEventListener('click', async () => {
-            if (!modalUserId) return;
-            const balance = parseFloat(document.getElementById('modal-balance').value);
-            if (isNaN(balance)) return;
-
-            try {
-                await apiCall(`/api/admin/user/${modalUserId}/balance`, 'POST', { balance });
-                closeModal();
-                loadUsers();
-                loadStats();
-            } catch (e) {
-                alert('Error: ' + e.message);
-            }
+        document.getElementById('m-save').addEventListener('click', async () => {
+            if (!mUid) return;
+            const b = parseFloat(document.getElementById('m-bal').value);
+            if (isNaN(b)) return;
+            try { await api(`/api/admin/user/${mUid}/balance`, 'POST', { balance: b }); closeModal(); loadUsers(); loadStats(); }
+            catch (e) { alert(e.message); }
         });
 
-        async function banUser(userId) {
-            if (!confirm('Забанить пользователя?')) return;
-            try {
-                await apiCall(`/api/admin/user/${userId}/ban`, 'POST');
-                loadUsers();
-            } catch (e) { alert('Error: ' + e.message); }
-        }
+        async function ban(id) { if (!confirm('Забанить?')) return; try { await api(`/api/admin/user/${id}/ban`, 'POST'); loadUsers(); } catch (e) { alert(e.message); } }
+        async function unban(id) { try { await api(`/api/admin/user/${id}/unban`, 'POST'); loadUsers(); } catch (e) { alert(e.message); } }
 
-        async function unbanUser(userId) {
-            try {
-                await apiCall(`/api/admin/user/${userId}/unban`, 'POST');
-                loadUsers();
-            } catch (e) { alert('Error: ' + e.message); }
-        }
-
-        // Close modal on backdrop click
-        document.getElementById('balance-modal').addEventListener('click', (e) => {
-            if (e.target.id === 'balance-modal') closeModal();
-        });
-
-        // Start
+        document.getElementById('bal-modal').addEventListener('click', e => { if (e.target.id === 'bal-modal') closeModal(); });
         loadAll();
     </script>
 </body>

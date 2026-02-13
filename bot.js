@@ -2,219 +2,153 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const { userOps, gameOps, settingsOps } = require('./database');
 
-const BOT_TOKEN = process.env.BOT_TOKEN;
-const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim()));
-const WEBAPP_URL = process.env.WEBAPP_URL || 'https://your-domain.com';
+const TOKEN = process.env.BOT_TOKEN;
+const ADMINS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim()));
+const WEBAPP = process.env.WEBAPP_URL || 'https://your-domain.com';
 
-if (!BOT_TOKEN) {
-    console.error('❌ BOT_TOKEN is required in .env file');
-    process.exit(1);
-}
+if (!TOKEN) { console.error('нет BOT_TOKEN в .env'); process.exit(1); }
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(TOKEN, { polling: true });
 
-function isAdmin(userId) {
-    return ADMIN_IDS.includes(userId);
-}
-
-// ===== User Commands =====
+function isAdmin(id) { return ADMINS.includes(id); }
 
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
-    const user = msg.from;
+    const u = msg.from;
+    userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '');
 
-    // Register the user
-    userOps.getOrCreate(user.id, user.username || '', user.first_name || '', user.last_name || '');
-
-    const keyboard = {
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '🎲 Играть в CubeRoll', web_app: { url: WEBAPP_URL } }],
-                [{ text: '📊 Мой профиль', callback_data: 'profile' }],
-                [{ text: '🏆 Топ игроков', callback_data: 'leaderboard' }]
-            ]
-        }
-    };
+    const startBal = settingsOps.get('starting_balance') || 1000;
 
     await bot.sendMessage(chatId,
-        `🎲 *Добро пожаловать в CubeRoll Casino!*\n\n` +
-        `Привет, ${user.first_name}! 🎰\n\n` +
-        `🎯 *Как играть:*\n` +
-        `• Выбери тип ставки (Больше/Меньше/Чёт/Нечет и др.)\n` +
-        `• Выбери сумму ставки\n` +
-        `• Бросай кости!\n\n` +
-        `🔒 *Provably Fair* — каждая игра проверяема!\n` +
-        `💰 Стартовый баланс: ${settingsOps.get('starting_balance') || 1000} монет\n\n` +
-        `Нажми кнопку ниже, чтобы начать играть! 👇`,
-        { parse_mode: 'Markdown', ...keyboard }
+        `🎲 *CubeRoll Casino*\n\n` +
+        `Привет, ${u.first_name}!\n\n` +
+        `Как играть:\n` +
+        `• Выбираешь тип ставки\n` +
+        `• Ставишь сумму\n` +
+        `• Бросаешь кости\n\n` +
+        `🔒 Provably Fair — каждая игра проверяема\n` +
+        `💰 Стартовый баланс: ${startBal}`,
+        {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🎲 Играть', web_app: { url: WEBAPP } }],
+                    [{ text: '📊 Профиль', callback_data: 'profile' }, { text: '🏆 Топ', callback_data: 'top' }]
+                ]
+            }
+        }
     );
 });
 
-bot.on('callback_query', async (query) => {
-    const chatId = query.message.chat.id;
-    const userId = query.from.id;
+bot.on('callback_query', async (q) => {
+    const chatId = q.message.chat.id;
+    const uid = q.from.id;
 
-    if (query.data === 'profile') {
-        const user = userOps.get(userId);
-        if (!user) {
-            return bot.answerCallbackQuery(query.id, { text: 'Профиль не найден. Нажмите /start' });
-        }
+    if (q.data === 'profile') {
+        const user = userOps.get(uid);
+        if (!user) return bot.answerCallbackQuery(q.id, { text: 'Нажми /start' });
 
-        const winRate = user.games_played > 0
-            ? ((user.games_won / user.games_played) * 100).toFixed(1)
-            : '0.0';
+        const wr = user.games_played > 0 ? ((user.games_won / user.games_played) * 100).toFixed(1) : '0';
 
         await bot.sendMessage(chatId,
-            `👤 *Ваш профиль*\n\n` +
-            `🆔 ID: \`${user.telegram_id}\`\n` +
-            `👤 Имя: ${user.first_name || 'N/A'}\n` +
-            `💰 Баланс: *${user.balance.toFixed(2)}* монет\n` +
-            `🎮 Игр сыграно: ${user.games_played}\n` +
-            `🏆 Побед: ${user.games_won}\n` +
-            `📊 Процент побед: ${winRate}%\n` +
-            `💵 Всего поставлено: ${user.total_wagered.toFixed(2)}\n` +
-            `✅ Всего выиграно: ${user.total_won.toFixed(2)}\n` +
-            `❌ Всего проиграно: ${user.total_lost.toFixed(2)}`,
+            `👤 *Профиль*\n\n` +
+            `ID: \`${user.telegram_id}\`\n` +
+            `💰 Баланс: *${user.balance.toFixed(2)}*\n` +
+            `🎮 Игр: ${user.games_played} (побед: ${user.games_won})\n` +
+            `📊 Винрейт: ${wr}%\n` +
+            `💵 Поставлено: ${user.total_wagered.toFixed(2)}\n` +
+            `✅ Выиграно: ${user.total_won.toFixed(2)}\n` +
+            `❌ Проиграно: ${user.total_lost.toFixed(2)}`,
             { parse_mode: 'Markdown' }
         );
-        return bot.answerCallbackQuery(query.id);
+        return bot.answerCallbackQuery(q.id);
     }
 
-    if (query.data === 'leaderboard') {
+    if (q.data === 'top') {
         const top = userOps.getTopPlayers(10);
-
-        let text = '🏆 *Топ 10 игроков*\n\n';
+        const medals = ['🥇', '🥈', '🥉'];
+        let txt = '🏆 *Топ игроков*\n\n';
         top.forEach((p, i) => {
-            const medals = ['🥇', '🥈', '🥉'];
-            const prefix = i < 3 ? medals[i] : `${i + 1}.`;
-            const name = p.username ? `@${p.username}` : (p.first_name || `User ${p.telegram_id}`);
-            text += `${prefix} ${name} — *${p.balance.toFixed(2)}* монет\n`;
+            const name = p.username ? `@${p.username}` : (p.first_name || `#${p.telegram_id}`);
+            txt += `${i < 3 ? medals[i] : (i + 1) + '.'} ${name} — *${p.balance.toFixed(2)}*\n`;
         });
-
-        await bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
-        return bot.answerCallbackQuery(query.id);
+        await bot.sendMessage(chatId, txt, { parse_mode: 'Markdown' });
+        return bot.answerCallbackQuery(q.id);
     }
 
-    // Admin callbacks
-    if (query.data === 'admin_stats' && isAdmin(userId)) {
-        const stats = gameOps.getStats();
-        const todayStats = gameOps.getTodayStats();
-        const userCount = userOps.getCount();
+    // админские
+    if (q.data === 'adm_stats' && isAdmin(uid)) {
+        const st = gameOps.getStats();
+        const td = gameOps.getTodayStats();
+        const uc = userOps.getCount();
 
         await bot.sendMessage(chatId,
-            `📊 *Статистика казино*\n\n` +
-            `*Общая:*\n` +
-            `👥 Всего пользователей: ${userCount}\n` +
-            `🎮 Всего игр: ${stats.total_games || 0}\n` +
-            `💰 Поставлено: ${(stats.total_wagered || 0).toFixed(2)}\n` +
-            `💸 Выплачено: ${(stats.total_payouts || 0).toFixed(2)}\n` +
-            `📈 Прибыль казино: ${(-(stats.total_profit || 0)).toFixed(2)}\n\n` +
-            `*Сегодня:*\n` +
-            `🎮 Игр: ${todayStats.total_games || 0}\n` +
-            `💰 Поставлено: ${(todayStats.total_wagered || 0).toFixed(2)}\n` +
-            `💸 Выплачено: ${(todayStats.total_payouts || 0).toFixed(2)}\n` +
-            `📈 Прибыль: ${(-(todayStats.total_profit || 0)).toFixed(2)}`,
+            `📊 *Статистика*\n\n` +
+            `👥 Юзеров: ${uc}\n` +
+            `🎮 Игр: ${st.total_games || 0}\n` +
+            `💰 Поставлено: ${(st.total_wagered || 0).toFixed(2)}\n` +
+            `💸 Выплачено: ${(st.total_payouts || 0).toFixed(2)}\n` +
+            `📈 Профит: ${(-(st.total_profit || 0)).toFixed(2)}\n\n` +
+            `_Сегодня: ${td.total_games || 0} игр, профит ${(-(td.total_profit || 0)).toFixed(2)}_`,
             { parse_mode: 'Markdown' }
         );
-        return bot.answerCallbackQuery(query.id);
+        return bot.answerCallbackQuery(q.id);
     }
 
-    if (query.data === 'admin_maintenance' && isAdmin(userId)) {
-        const current = settingsOps.get('maintenance_mode');
-        const newValue = current === '1' ? '0' : '1';
-        settingsOps.set('maintenance_mode', newValue);
-
-        await bot.sendMessage(chatId,
-            newValue === '1'
-                ? '🔧 Режим обслуживания *ВКЛЮЧЁН*. Игры приостановлены.'
-                : '✅ Режим обслуживания *ВЫКЛЮЧЕН*. Игры возобновлены.',
-            { parse_mode: 'Markdown' }
-        );
-        return bot.answerCallbackQuery(query.id);
+    if (q.data === 'adm_maint' && isAdmin(uid)) {
+        const cur = settingsOps.get('maintenance_mode');
+        const next = cur === '1' ? '0' : '1';
+        settingsOps.set('maintenance_mode', next);
+        await bot.sendMessage(chatId, next === '1' ? '🔧 Обслуживание *вкл*' : '✅ Обслуживание *выкл*', { parse_mode: 'Markdown' });
+        return bot.answerCallbackQuery(q.id);
     }
 
-    bot.answerCallbackQuery(query.id);
+    bot.answerCallbackQuery(q.id);
 });
 
-// ===== Admin Commands =====
-
+// админ команды
 bot.onText(/\/admin/, async (msg) => {
     if (!isAdmin(msg.from.id)) return;
-
-    const keyboard = {
+    await bot.sendMessage(msg.chat.id, '👑 *Админка*', {
+        parse_mode: 'Markdown',
         reply_markup: {
             inline_keyboard: [
-                [{ text: '📊 Статистика', callback_data: 'admin_stats' }],
-                [{ text: '🔧 Вкл/Выкл обслуживание', callback_data: 'admin_maintenance' }],
-                [{ text: '👑 Админ панель', web_app: { url: `${WEBAPP_URL}/admin` } }]
+                [{ text: '📊 Стата', callback_data: 'adm_stats' }],
+                [{ text: '🔧 Обслуживание', callback_data: 'adm_maint' }],
+                [{ text: '👑 Веб-панель', web_app: { url: `${WEBAPP}/admin` } }]
             ]
         }
-    };
-
-    await bot.sendMessage(msg.chat.id,
-        `👑 *Панель администратора*\n\n` +
-        `Выберите действие:`,
-        { parse_mode: 'Markdown', ...keyboard }
-    );
+    });
 });
 
-// /setbalance <user_id> <amount>
 bot.onText(/\/setbalance (\d+) ([\d.]+)/, async (msg, match) => {
     if (!isAdmin(msg.from.id)) return;
-
-    const targetId = parseInt(match[1]);
-    const amount = parseFloat(match[2]);
-
-    const result = userOps.setBalance(targetId, amount);
-    if (!result) {
-        return bot.sendMessage(msg.chat.id, '❌ Пользователь не найден');
-    }
-
-    await bot.sendMessage(msg.chat.id,
-        `✅ Баланс пользователя \`${targetId}\` изменён:\n` +
-        `${result.balanceBefore.toFixed(2)} → *${result.balanceAfter.toFixed(2)}*`,
-        { parse_mode: 'Markdown' }
-    );
+    const r = userOps.setBalance(parseInt(match[1]), parseFloat(match[2]));
+    if (!r) return bot.sendMessage(msg.chat.id, '❌ Юзер не найден');
+    await bot.sendMessage(msg.chat.id, `✅ \`${match[1]}\`: ${r.balanceBefore.toFixed(2)} → *${r.balanceAfter.toFixed(2)}*`, { parse_mode: 'Markdown' });
 });
 
-// /ban <user_id>
 bot.onText(/\/ban (\d+)/, async (msg, match) => {
     if (!isAdmin(msg.from.id)) return;
-
-    const targetId = parseInt(match[1]);
-    userOps.ban(targetId);
-    await bot.sendMessage(msg.chat.id, `🚫 Пользователь \`${targetId}\` забанен`, { parse_mode: 'Markdown' });
+    userOps.ban(parseInt(match[1]));
+    bot.sendMessage(msg.chat.id, `🚫 \`${match[1]}\` забанен`, { parse_mode: 'Markdown' });
 });
 
-// /unban <user_id>
 bot.onText(/\/unban (\d+)/, async (msg, match) => {
     if (!isAdmin(msg.from.id)) return;
-
-    const targetId = parseInt(match[1]);
-    userOps.unban(targetId);
-    await bot.sendMessage(msg.chat.id, `✅ Пользователь \`${targetId}\` разбанен`, { parse_mode: 'Markdown' });
+    userOps.unban(parseInt(match[1]));
+    bot.sendMessage(msg.chat.id, `✅ \`${match[1]}\` разбанен`, { parse_mode: 'Markdown' });
 });
 
-// /broadcast <message>
 bot.onText(/\/broadcast (.+)/, async (msg, match) => {
     if (!isAdmin(msg.from.id)) return;
-
-    const text = match[1];
     const users = userOps.getAll();
-    let sent = 0;
-    let failed = 0;
-
-    for (const user of users) {
-        try {
-            await bot.sendMessage(user.telegram_id, `📢 *Объявление:*\n\n${text}`, { parse_mode: 'Markdown' });
-            sent++;
-        } catch (e) {
-            failed++;
-        }
+    let ok = 0, fail = 0;
+    for (const u of users) {
+        try { await bot.sendMessage(u.telegram_id, `📢 ${match[1]}`); ok++; }
+        catch (e) { fail++; }
     }
-
-    await bot.sendMessage(msg.chat.id, `📢 Рассылка завершена: ✅ ${sent} отправлено, ❌ ${failed} ошибок`);
+    bot.sendMessage(msg.chat.id, `📢 Отправлено: ${ok}, ошибок: ${fail}`);
 });
 
-console.log('🤖 CubeRoll Bot is running...');
-console.log(`👑 Admin IDs: ${ADMIN_IDS.join(', ')}`);
+console.log('bot started');

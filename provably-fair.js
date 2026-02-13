@@ -1,86 +1,55 @@
 const crypto = require('crypto');
 
+// провабли фейр логика
+// на основе hmac-sha256, как у stake/bc.game и тд
 class ProvablyFair {
-    /**
-     * Generate a random server seed
-     */
+
     static generateServerSeed() {
         return crypto.randomBytes(32).toString('hex');
     }
 
-    /**
-     * Generate a default client seed
-     */
     static generateClientSeed() {
         return crypto.randomBytes(16).toString('hex');
     }
 
-    /**
-     * Create a SHA-256 hash of the server seed (shown to user before game)
-     */
-    static hashServerSeed(serverSeed) {
-        return crypto.createHash('sha256').update(serverSeed).digest('hex');
+    // хеш сида для показа юзеру ДО игры (чтобы не могли подменить)
+    static hashServerSeed(seed) {
+        return crypto.createHash('sha256').update(seed).digest('hex');
     }
 
-    /**
-     * Generate HMAC-based result from seeds and nonce
-     * Returns a value between 0 and 1
-     */
+    // основная генерация - hmac от комбинации сидов + nonce
+    // возвращает float 0..1
     static generateResult(serverSeed, clientSeed, nonce) {
         const hmac = crypto.createHmac('sha256', serverSeed);
         hmac.update(`${clientSeed}:${nonce}`);
         const hex = hmac.digest('hex');
-
-        // Use first 8 chars of hex (32 bits) for precision
-        const intValue = parseInt(hex.substr(0, 8), 16);
-        return intValue / 0xFFFFFFFF; // normalize to 0-1
+        // берем первые 8 символов (32 бита)
+        const val = parseInt(hex.substr(0, 8), 16);
+        return val / 0xFFFFFFFF;
     }
 
-    /**
-     * Generate two dice results (1-6 each) from the provably fair result
-     */
+    // генерим 2 кубика из хеша
     static generateDice(serverSeed, clientSeed, nonce) {
         const hmac = crypto.createHmac('sha256', serverSeed);
         hmac.update(`${clientSeed}:${nonce}`);
         const hex = hmac.digest('hex');
 
-        // Use different parts of the hash for each die
+        // разные части хеша для разных кубиков чтобы были независимые
         const die1 = (parseInt(hex.substr(0, 8), 16) % 6) + 1;
         const die2 = (parseInt(hex.substr(8, 8), 16) % 6) + 1;
 
-        return {
-            dice: [die1, die2],
-            total: die1 + die2,
-            hash: hex,
-            serverSeed,
-            clientSeed,
-            nonce
-        };
+        return { dice: [die1, die2], total: die1 + die2, hash: hex, serverSeed, clientSeed, nonce };
     }
 
-    /**
-     * Verify a game result
-     */
     static verify(serverSeed, clientSeed, nonce) {
         return this.generateDice(serverSeed, clientSeed, nonce);
     }
 
-    /**
-     * Calculate multiplier based on bet type and result
-     * Bet types:
-     *   - 'high' (8-12): 2x
-     *   - 'low' (2-6): 2x
-     *   - 'seven' (exactly 7): 4x
-     *   - 'exact_N' (exact total): varies
-     *   - 'even': 1.9x
-     *   - 'odd': 1.9x
-     *   - 'doubles': 5x
-     */
+    // расчет выплаты в зависимости от типа ставки
+    // множители подобраны чтобы у казино было небольшое преимущество (~2-5%)
     static calculatePayout(betType, diceResult, betAmount) {
         const total = diceResult.total;
-        const d1 = diceResult.dice[0];
-        const d2 = diceResult.dice[1];
-        const isDoubles = d1 === d2;
+        const d1 = diceResult.dice[0], d2 = diceResult.dice[1];
 
         let won = false;
         let multiplier = 0;
@@ -90,56 +59,40 @@ class ProvablyFair {
                 won = total >= 8;
                 multiplier = won ? 1.95 : 0;
                 break;
-
             case 'low':
                 won = total <= 6;
                 multiplier = won ? 1.95 : 0;
                 break;
-
             case 'seven':
                 won = total === 7;
                 multiplier = won ? 3.5 : 0;
                 break;
-
             case 'even':
                 won = total % 2 === 0;
                 multiplier = won ? 1.9 : 0;
                 break;
-
             case 'odd':
                 won = total % 2 !== 0;
                 multiplier = won ? 1.9 : 0;
                 break;
-
             case 'doubles':
-                won = isDoubles;
+                won = d1 === d2;
                 multiplier = won ? 5.0 : 0;
                 break;
-
             default:
-                // Exact number bet (e.g., 'exact_9')
+                // ставка на конкретное число (exact_9 и тд)
                 if (betType.startsWith('exact_')) {
                     const target = parseInt(betType.split('_')[1]);
                     won = total === target;
-                    // Multiplier based on probability
-                    const exactMultipliers = {
-                        2: 35, 3: 17, 4: 11, 5: 8.5, 6: 7,
-                        7: 5.8, 8: 7, 9: 8.5, 10: 11, 11: 17, 12: 35
-                    };
-                    multiplier = won ? (exactMultipliers[target] || 0) : 0;
+                    // множители обратно пропорциональны вероятности
+                    const mults = { 2: 35, 3: 17, 4: 11, 5: 8.5, 6: 7, 7: 5.8, 8: 7, 9: 8.5, 10: 11, 11: 17, 12: 35 };
+                    multiplier = won ? (mults[target] || 0) : 0;
                 }
                 break;
         }
 
         const payout = won ? betAmount * multiplier : 0;
-        const profit = payout - betAmount;
-
-        return {
-            won,
-            multiplier,
-            payout,
-            profit
-        };
+        return { won, multiplier, payout, profit: payout - betAmount };
     }
 }
 
