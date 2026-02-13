@@ -45,9 +45,8 @@ class ProvablyFair {
         return this.generateDice(serverSeed, clientSeed, nonce);
     }
 
-    // расчет выплаты в зависимости от типа ставки
-    // множители подобраны чтобы у казино было небольшое преимущество (~2-5%)
-    static calculatePayout(betType, diceResult, betAmount) {
+    // расчет выплаты
+    static calculatePayout(betType, diceResult, betAmount, rangeBounds) {
         const total = diceResult.total;
         const d1 = diceResult.dice[0], d2 = diceResult.dice[1];
 
@@ -79,12 +78,24 @@ class ProvablyFair {
                 won = d1 === d2;
                 multiplier = won ? 5.0 : 0;
                 break;
+            case 'range':
+                // ставка на диапазон — множитель по вероятности
+                if (rangeBounds) {
+                    won = total >= rangeBounds.min && total <= rangeBounds.max;
+                    // считаем вероятность
+                    let combos = 0;
+                    for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) {
+                        if (a + b >= rangeBounds.min && a + b <= rangeBounds.max) combos++;
+                    }
+                    const prob = combos / 36;
+                    multiplier = won ? parseFloat((0.95 / prob).toFixed(2)) : 0;
+                }
+                break;
             default:
-                // ставка на конкретное число (exact_9 и тд)
+                // exact_N
                 if (betType.startsWith('exact_')) {
                     const target = parseInt(betType.split('_')[1]);
                     won = total === target;
-                    // множители обратно пропорциональны вероятности
                     const mults = { 2: 35, 3: 17, 4: 11, 5: 8.5, 6: 7, 7: 5.8, 8: 7, 9: 8.5, 10: 11, 11: 17, 12: 35 };
                     multiplier = won ? (mults[target] || 0) : 0;
                 }

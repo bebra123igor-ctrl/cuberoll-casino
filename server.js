@@ -113,7 +113,7 @@ app.post('/api/bet', auth, (req, res) => {
     if (user.is_banned) return res.status(403).json({ error: 'Account is banned' });
     if (settingsOps.get('maintenance_mode') === '1') return res.status(503).json({ error: 'Casino is under maintenance' });
 
-    const { betAmount, betType } = req.body;
+    const { betAmount, betType, exactNumber, rangeMin, rangeMax } = req.body;
     if (!betAmount || !betType) return res.status(400).json({ error: 'Missing bet amount or type' });
 
     const amt = parseFloat(betAmount);
@@ -123,27 +123,39 @@ app.post('/api/bet', auth, (req, res) => {
     if (isNaN(amt) || amt < minBet || amt > maxBet) return res.status(400).json({ error: `Bet must be between ${minBet} and ${maxBet}` });
     if (amt > user.balance) return res.status(400).json({ error: 'Insufficient balance' });
 
-    // проверяем что тип ставки валидный
-    const validBets = ['high', 'low', 'seven', 'even', 'odd', 'doubles'];
-    for (let i = 2; i <= 12; i++) validBets.push(`exact_${i}`);
+    // тип ставки — exact и range обрабатываем отдельно
+    const validBets = ['high', 'low', 'seven', 'even', 'odd', 'doubles', 'exact', 'range'];
     if (!validBets.includes(betType)) return res.status(400).json({ error: 'Invalid bet type' });
+
+    // конвертируем exact в exact_N
+    let resolvedType = betType;
+    let rangeBounds = null;
+    if (betType === 'exact') {
+        const n = parseInt(exactNumber);
+        if (isNaN(n) || n < 2 || n > 12) return res.status(400).json({ error: 'Exact number must be 2-12' });
+        resolvedType = `exact_${n}`;
+    }
+    if (betType === 'range') {
+        const rMin = parseInt(rangeMin), rMax = parseInt(rangeMax);
+        if (isNaN(rMin) || isNaN(rMax) || rMin < 2 || rMax > 12 || rMin >= rMax) return res.status(400).json({ error: 'Invalid range' });
+        rangeBounds = { min: rMin, max: rMax };
+        resolvedType = 'range';
+    }
 
     const s = getSeed(u.id);
     s.nonce++;
 
     const dice = ProvablyFair.generateDice(s.serverSeed, s.clientSeed, s.nonce);
-    const result = ProvablyFair.calculatePayout(betType, dice, amt);
+    const result = ProvablyFair.calculatePayout(resolvedType, dice, amt, rangeBounds);
 
-    // обновляем баланс
     const change = result.won ? (result.payout - amt) : -amt;
     userOps.updateBalance(u.id, change, result.won ? 'win' : 'loss',
-        `Dice: ${betType} | ${dice.dice.join(',')} (${dice.total})`
+        `Dice: ${resolvedType} | ${dice.dice.join(',')} (${dice.total})`
     );
     userOps.updateStats(u.id, amt, result.won, result.profit);
 
-    // сохраняем игру в бд
     gameOps.create({
-        telegramId: u.id, betAmount: amt, gameType: 'dice', playerChoice: betType,
+        telegramId: u.id, betAmount: amt, gameType: 'dice', playerChoice: resolvedType,
         diceResult: dice.dice.join(','), diceTotal: dice.total,
         multiplier: result.multiplier, payout: result.payout, profit: result.profit,
         serverSeed: s.serverSeed, clientSeed: s.clientSeed, nonce: s.nonce, hash: dice.hash, won: result.won
