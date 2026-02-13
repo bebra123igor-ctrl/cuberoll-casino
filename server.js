@@ -10,7 +10,9 @@ require('./bot');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
-const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim()));
+const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => Number(id.trim())).filter(id => !isNaN(id));
+
+app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'admin.html')); });
 
 app.use(cors());
 app.use(express.json());

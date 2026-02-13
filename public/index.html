@@ -64,15 +64,27 @@
           <span id="streak-count">0</span>
         </div>
         <div class="balance-display" id="balance-display" onclick="switchTab('wallet')">
-          <div class="balance-coin">TON</div>
+          <div class="balance-coin">
+            <svg viewBox="0 0 540 540" width="12" height="12">
+              <path d="M270 0c149.117 0 270 120.883 270 270S419.117 540 270 540 0 419.117 0 270 120.883 0 270 0z"
+                fill="#0088cc" />
+              <path
+                d="M393.212 153.284H146.788c-26.152 0-38.623 15.652-30.134 38.304l97.025 212.871c8.489 22.652 23.491 22.652 31.98 0l21.246-46.012c4.244-9.196 11.232-9.196 15.476 0l21.246 46.012c8.489 22.652 23.491 22.652 31.98 0l97.025-212.871c8.489-22.652-3.985-38.304-30.137-38.304z"
+                fill="#fff" />
+            </svg>
+          </div>
           <span class="balance-amount" id="balance-amount">0.00</span>
         </div>
         <button class="wallet-btn" id="ton-connect" onclick="connectWallet()">
-          <span class="icon icon-sm"><svg viewBox="0 0 24 24">
-              <path d="M20 7h-9c-1.1 0-2 .9-2 2v5c0 1.1.9 2 2 2h9c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2z" />
+          <span class="icon icon-sm">
+            <svg viewBox="0 0 540 540">
+              <path d="M270 0c149.117 0 270 120.883 270 270S419.117 540 270 540 0 419.117 0 270 120.883 0 270 0z"
+                fill="white" />
               <path
-                d="M16 12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2v-3c0-1.1-.9-2-2-2z" />
-            </svg></span>
+                d="M393.212 153.284H146.788c-26.152 0-38.623 15.652-30.134 38.304l97.025 212.871c8.489 22.652 23.491 22.652 31.98 0l21.246-46.012c4.244-9.196 11.232-9.196 15.476 0l21.246 46.012c8.489 22.652 23.491 22.652 31.98 0l97.025-212.871c8.489-22.652-3.985-38.304-30.137-38.304z"
+                fill="#0088cc" />
+            </svg>
+          </span>
         </button>
       </div>
     </header>
@@ -138,11 +150,13 @@
           </div>
           <div class="daily-text">
             <span class="daily-label" id="daily-label">Дейли бонус</span>
-            <span class="daily-desc" id="daily-desc">Забери бесплатные монеты</span>
+            <span class="daily-desc" id="daily-desc">Забери бесплатные TON</span>
           </div>
         </div>
         <span class="daily-amount" id="daily-amount">+500</span>
       </div>
+
+
 
       <!-- кубики -->
       <div class="dice-arena">
@@ -423,23 +437,7 @@
     </div>
 
     <div class="tab-content" id="content-wallet">
-      <h3 class="section-title">Кошелёк TON</h3>
-
-      <div class="wallet-card">
-        <div class="wallet-info">
-          <div class="ton-logo"><svg viewBox="0 0 24 24">
-              <path fill="currentColor"
-                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.25 12h-2.5l-1.5 3h-1.5l3.5-7.5l3.5 7.5h-1.5l-1.5-3z" />
-            </svg></div>
-          <div class="wallet-details">
-            <span class="wallet-label">Платежный кошелёк</span>
-            <span class="wallet-address" id="wallet-address">Не привязан</span>
-          </div>
-        </div>
-        <button class="ton-connect-btn" id="ton-connect-btn" onclick="connectWallet()">Привязать TON</button>
-      </div>
-
-      <div class="deposit-section">
+      <div class="deposit-section" style="margin-top: 10px;">
         <h4 class="section-title">Пополнение баланса</h4>
         <div class="deposit-input-card">
           <div class="dep-input-group">
@@ -448,7 +446,7 @@
           </div>
           <button class="dep-go-btn" onclick="depositCustom()">Пополнить</button>
         </div>
-        <p class="dep-hint">Минимум: <span id="min-dep-text">0.1</span> TON. Курс: 1 TON = 1000 монет.</p>
+        <p class="dep-hint">Минимум: <span id="min-dep-text">0.1</span> TON.</p>
 
         <div class="deposit-grid">
           <button class="deposit-opt" onclick="deposit(1)">1 TON</button>

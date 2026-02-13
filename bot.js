@@ -10,7 +10,11 @@ if (!TOKEN) { console.error('нет BOT_TOKEN в .env'); process.exit(1); }
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
-function isAdmin(id) { return ADMINS.includes(id); }
+function isAdmin(id) {
+    const ok = ADMINS.includes(Number(id));
+    if (!ok) console.log(`Access denied for ${id}. Admin list:`, ADMINS);
+    return ok;
+}
 
 const WELCOME_IMG = 'https://i.imgur.com/8YvYyZp.png'; // Твоя картинка (можно заменить на /welcome.png если есть на хостинге)
 
@@ -24,8 +28,7 @@ bot.onText(/\/start/, async (msg) => {
         parse_mode: 'Markdown',
         reply_markup: {
             inline_keyboard: [
-                [{ text: '🚀 ЗАПУСТИТЬ ИГРУ', web_app: { url: 'https://cuberoll-casino-production.up.railway.app/' } }],
-                [{ text: '📊 Профиль', callback_data: 'profile' }, { text: '🏆 Топ', callback_data: 'top' }]
+                [{ text: '🚀 ЗАПУСТИТЬ ИГРУ', web_app: { url: WEBAPP } }]
             ]
         }
     });
@@ -34,38 +37,6 @@ bot.onText(/\/start/, async (msg) => {
 bot.on('callback_query', async (q) => {
     const chatId = q.message.chat.id;
     const uid = q.from.id;
-
-    if (q.data === 'profile') {
-        const user = userOps.get(uid);
-        if (!user) return bot.answerCallbackQuery(q.id, { text: 'Нажми /start' });
-
-        const wr = user.games_played > 0 ? ((user.games_won / user.games_played) * 100).toFixed(1) : '0';
-
-        await bot.sendMessage(chatId,
-            `👤 *Профиль*\n\n` +
-            `ID: \`${user.telegram_id}\`\n` +
-            `💰 Баланс: *${user.balance.toFixed(2)}*\n` +
-            `🎮 Игр: ${user.games_played} (побед: ${user.games_won})\n` +
-            `📊 Винрейт: ${wr}%\n` +
-            `💵 Поставлено: ${user.total_wagered.toFixed(2)}\n` +
-            `✅ Выиграно: ${user.total_won.toFixed(2)}\n` +
-            `❌ Проиграно: ${user.total_lost.toFixed(2)}`,
-            { parse_mode: 'Markdown' }
-        );
-        return bot.answerCallbackQuery(q.id);
-    }
-
-    if (q.data === 'top') {
-        const top = userOps.getTopPlayers(10);
-        const medals = ['🥇', '🥈', '🥉'];
-        let txt = '🏆 *Топ игроков*\n\n';
-        top.forEach((p, i) => {
-            const name = p.username ? `@${p.username}` : (p.first_name || `#${p.telegram_id}`);
-            txt += `${i < 3 ? medals[i] : (i + 1) + '.'} ${name} — *${p.balance.toFixed(2)}*\n`;
-        });
-        await bot.sendMessage(chatId, txt, { parse_mode: 'Markdown' });
-        return bot.answerCallbackQuery(q.id);
-    }
 
     // админские
     if (q.data === 'adm_stats' && isAdmin(uid)) {
