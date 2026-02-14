@@ -138,7 +138,6 @@ window.getBetType = (t) => {
 
     // Показ пикеров
     document.getElementById('exact-picker').style.display = (t === 'exact') ? 'block' : 'none';
-    document.getElementById('range-picker').style.display = (t === 'range') ? 'block' : 'none';
 
     updatePayoutUI();
 };
@@ -149,12 +148,6 @@ function updatePayoutUI() {
     if (betType === 'seven') mult = 3.5;
     if (betType === 'doubles') mult = 5.0;
     if (betType === 'exact') mult = 11.0;
-    if (betType === 'range') {
-        const min = parseInt(document.getElementById('range-min').value) || 2;
-        const max = parseInt(document.getElementById('range-max').value) || 12;
-        const span = max - min + 1;
-        mult = (12 / span).toFixed(2);
-    }
     const amt = parseFloat(document.getElementById('bet-amount').value) || 0;
     document.getElementById('potential-amount').textContent = (amt * mult).toFixed(2);
 }
@@ -176,7 +169,8 @@ window.quickBet = (val) => {
 };
 
 function buildExactPicker() {
-    const container = document.getElementById('exact-picker');
+    const container = document.getElementById('exact-nums');
+    if (!container) return;
     container.innerHTML = '';
     for (let i = 2; i <= 12; i++) {
         const d = document.createElement('div');
@@ -186,6 +180,7 @@ function buildExactPicker() {
             exactNum = i;
             document.querySelectorAll('.exact-num').forEach(x => x.classList.remove('active'));
             d.classList.add('active');
+            updatePayoutUI();
         };
         container.appendChild(d);
     }
@@ -301,10 +296,6 @@ window.roll = async function () {
     try {
         const payload = { betAmount: amt, betType: betType };
         if (betType === 'exact') payload.exactNumber = exactNum;
-        if (betType === 'range') {
-            payload.rangeMin = document.getElementById('range-min').value;
-            payload.rangeMax = document.getElementById('range-max').value;
-        }
 
         const res = await api('/api/bet', 'POST', payload);
 
@@ -555,11 +546,8 @@ window.depositRequest = async function () {
         const res = await api('/api/deposit/request', 'POST', { amount: parseFloat(amountVal) });
         console.log('Server deposit response:', res);
 
-        document.getElementById('dep-addr-val').textContent = res.address;
-        document.getElementById('dep-memo-val').textContent = res.comment;
-        document.getElementById('dep-manual-info').classList.remove('hidden');
-
-        toast('Заявка создана. Оплатите в кошельке!', 'success');
+        // Убираем ручной показ данных, сразу идем в кошелек
+        toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
         // Вызываем транзакцию через TonConnect
         try {

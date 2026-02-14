@@ -8,7 +8,7 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
   <script src="https://unpkg.com/tonweb@0.0.66/dist/tonweb.bundle.js"></script>
-  <link rel="stylesheet" href="style.css?v=1.1">
+  <link rel="stylesheet" href="style.css?v=1.2">
 </head>
 
 <body>
@@ -319,7 +319,7 @@
           <div class="deposit-hero">
             <div class="hero-icon">💎</div>
             <h2>Пополнение баланса</h2>
-            <p>Переведите TON на адрес ниже, обязательно указав комментарий</p>
+            <p>Укажите сумму и нажмите кнопку. Пополнение происходит мгновенно через ваш TON кошелёк.</p>
           </div>
 
           <div class="deposit-input-card premium-dep">
@@ -332,27 +332,6 @@
               <button class="dep-go-btn main-action" id="dep-btn-go" onclick="depositRequest()">ПОПОЛНИТЬ</button>
             </div>
             <p class="dep-hint">Минимум: 0.1 TON</p>
-          </div>
-
-          <div id="dep-manual-info" class="dep-manual-card hidden">
-            <div class="dep-info-title">Реквизиты для оплаты</div>
-            <div class="dep-row">
-              <label>Адрес (Address)</label>
-              <div class="copy-box" onclick="copyText('dep-addr-val')">
-                <code id="dep-addr-val">...</code>
-                <span class="copy-icon">📋</span>
-              </div>
-            </div>
-            <div class="dep-row">
-              <label>Комментарий (Memo/Comment)</label>
-              <div class="copy-box highlight" onclick="copyText('dep-memo-val')">
-                <code id="dep-memo-val">...</code>
-                <span class="copy-icon">📋</span>
-              </div>
-            </div>
-            <div class="dep-warning">
-              ⚠️ БЕЗ КОММЕНТАРИЯ СРЕДСТВА НЕ БУДУТ ЗАЧИСЛЕНЫ!
-            </div>
           </div>
         </div>
       </div>
@@ -435,25 +414,12 @@
             <button class="bet-type-btn" data-bet="exact">
               <span class="bet-name">Точное</span><span class="bet-mult">x11</span>
             </button>
-            <button class="bet-type-btn" data-bet="range">
-              <span class="bet-name">Диапазон</span><span class="bet-mult">x2-12</span>
-            </button>
           </div>
         </div>
 
-        <div class="exact-picker" id="exact-picker" style="display:none; margin-bottom:12px;">
+        <div class="exact-picker-container" id="exact-picker" style="display:none;">
+          <label class="picker-label">Выберите точное число</label>
           <div class="exact-nums" id="exact-nums"></div>
-        </div>
-
-        <div class="range-picker" id="range-picker" style="display:none; margin-bottom:12px;">
-          <div style="display:flex;gap:8px;align-items:center;justify-content:center;">
-            <input type="number" id="range-min" class="verify-input" value="2" min="2" max="12"
-              style="width:60px;text-align:center">
-            <span>—</span>
-            <input type="number" id="range-max" class="verify-input" value="6" min="2" max="12"
-              style="width:60px;text-align:center">
-            <span id="range-mult" style="font-weight:bold;color:var(--gold)">x2.40</span>
-          </div>
         </div>
 
         <button class="roll-button main-action" id="roll-btn-confirm">
@@ -464,7 +430,7 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="app.js?v=1.1"></script>
+  <script src="app.js?v=1.2"></script>
 </body>
 
 </html>

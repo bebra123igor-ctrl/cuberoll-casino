@@ -669,6 +669,8 @@ body {
   overflow: hidden;
   background: var(--bg);
   position: relative;
+  /* Fix for scrollable areas in some mobile browsers */
+  touch-action: pan-y;
 }
 
 /* header */
@@ -755,6 +757,8 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 16px;
+  padding-bottom: 80px;
+  /* Space for bottom nav */
   -webkit-overflow-scrolling: touch;
 }
 
@@ -1694,6 +1698,7 @@ body {
   display: flex;
   flex-direction: column;
   transition: all .2s;
+  height: 100%;
 }
 
 .gift-card:hover {
@@ -1702,19 +1707,27 @@ body {
 }
 
 .gift-img-wrap {
+  width: 100%;
   aspect-ratio: 1;
   background: var(--card2);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px;
+  padding: 0;
   border-radius: 24px 24px 0 0 !important;
+  overflow: hidden !important;
+  position: relative;
 }
 
 .gift-img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.gift-card:hover .gift-img {
+  transform: scale(1.05);
 }
 
 .gift-info {
@@ -2629,6 +2642,68 @@ body {
   text-align: center;
 }
 
+/* Exact Picker Premium Styles */
+.exact-picker-container {
+  margin-bottom: 20px;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.picker-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--t4);
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+
+.exact-nums {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.exact-num {
+  aspect-ratio: 1;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--t2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.exact-num:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.exact-num.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 15px var(--accent-g);
+  transform: scale(1.05);
+}
+
 /* Fix dice transition for better sync */
 .dice3d {
   transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -2637,4 +2712,8 @@ body {
 .bet-modal-box .roll-button {
   margin-top: 10px;
   width: 100%;
+}
+
+#toast {
+  z-index: 10001;
 }
