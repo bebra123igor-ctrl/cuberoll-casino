@@ -14,16 +14,36 @@ const app = express();
 // Запуск Python менеджера подарков как дочернего процесса
 function startGiftManager() {
     console.log('🐍 [System] Запуск Gift Manager (Python)...');
-    // В Docker может быть python3, на локалке python. Попробуем python.
-    const py = spawn('python', ['gift_manager.py']);
 
-    py.stdout.on('data', (data) => console.log(`[GiftManager] ${data.toString().trim()}`));
-    py.stderr.on('data', (data) => console.error(`[GiftManager Error] ${data.toString().trim()}`));
+    // Пытаемся запустить через python3 (стандарт для Linux/Railway) 
+    // Если упадет с ENOENT, попробуем просто python (стандарт для Windows)
+    let command = 'python3';
+    let py = spawn(command, ['gift_manager.py']);
 
-    py.on('close', (code) => {
-        console.log(`[GiftManager] Процесс завершился с кодом ${code}. Перезапуск через 10 сек...`);
-        setTimeout(startGiftManager, 10000);
-    });
+    function setupHandlers(process) {
+        process.stdout.on('data', (data) => console.log(`[GiftManager] ${data.toString().trim()}`));
+        process.stderr.on('data', (data) => console.error(`[GiftManager Error] ${data.toString().trim()}`));
+
+        process.on('error', (err) => {
+            if (err.code === 'ENOENT' && command === 'python3') {
+                console.warn('⚠ [System] python3 не найден, пробуем "python"...');
+                command = 'python';
+                py = spawn(command, ['gift_manager.py']);
+                setupHandlers(py);
+            } else {
+                console.error('❌ [System] Не удалось запустить Python процесс:', err.message);
+            }
+        });
+
+        process.on('close', (code) => {
+            if (code !== 0 && code !== null) {
+                console.log(`[GiftManager] Процесс завершился с кодом ${code}. Перезапуск через 10 сек...`);
+                setTimeout(startGiftManager, 10000);
+            }
+        });
+    }
+
+    setupHandlers(py);
 }
 
 // Запускаем только если мы не в режиме тестов и есть файл
