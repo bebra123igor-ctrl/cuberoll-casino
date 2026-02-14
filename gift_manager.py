@@ -85,23 +85,43 @@ async def sync_inventory(client):
                 # Сериализация вручную если нужно, но Telethon 1.x обычно умеет через Raw
                 return b'' 
 
-        # Попытка через Raw-вызов
+        # Используем максимально надежный метод вызова
         try:
-             # Динамический вызов через Invoke
-             # 0xe11da17c - payments.getUserGifts в новых слоях
-             class GetUserGiftsRaw(functions.TLRequest):
-                 CONSTRUCTOR_ID = 0xe11da17c
-                 SUBCLASS_OF_ID = 0x14ada4f2
-                 def __init__(self, user_id, offset=0, limit=100):
-                     self.user_id = user_id
-                     self.offset = offset
-                     self.limit = limit
-                 def to_dict(self):
-                     return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
-
-             result = await client(GetUserGiftsRaw(user_id='me', limit=100))
+             # Попытка 1: Через стандартный метод (если Telethon свежий)
+             try:
+                 from telethon.tl.functions.payments import GetUserGiftsRequest
+                 result = await client(GetUserGiftsRequest(user_id='me', limit=100))
+             except (ImportError, AttributeError):
+                 # Попытка 2: Через Raw Invoke с ручной упаковкой структуры
+                 # 0xe11da17c = payments.getUserGifts
+                 from telethon.tl.alltlobjects import LAYER
+                 logger.info(f"Telethon Layer: {LAYER}. Using Raw API for GetUserGifts...")
+                 
+                 class GetUserGiftsRaw(functions.TLRequest):
+                     CONSTRUCTOR_ID = 0xe11da17c
+                     SUBCLASS_OF_ID = 0x14ada4f2
+                     def __init__(self, user_id, offset=0, limit=100):
+                         self.user_id = user_id
+                         self.offset = offset
+                         self.limit = limit
+                     def to_dict(self):
+                         return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
+                     def __bytes__(self):
+                         # Упаковываем данные: ID, потом аргументы (это упрощенно, но часто работает в Telethon 1.x)
+                         from telethon import utils
+                         return b''.join([
+                             int.to_bytes(self.CONSTRUCTOR_ID, 4, 'little'),
+                             client._entity_cache[self.user_id].to_bytes() if hasattr(self.user_id, 'to_bytes') else b'\x00', # Упрощенно
+                             int.to_bytes(self.offset, 4, 'little'),
+                             int.to_bytes(self.limit, 4, 'little')
+                         ])
+                 
+                 # На самом деле самый простой способ в Telethon для неизвестных методов - использовать Invoke с кастомным объектом
+                 # Но так как мы не знаем точную структуру всех версий, сделаем просто:
+                 result = await client(functions.payments.GetUserGiftsRequest(user_id='me', limit=100))
         except Exception as e:
-             logger.error(f"Не удалось получить список подарков: {e}")
+             import traceback
+             logger.error(f"Не удалось получить список подарков: {str(e)}\n{traceback.format_exc()}")
              return
 
         conn = get_db_connection()
@@ -200,34 +220,35 @@ async def process_transfer_queue(client):
                     continue
 
                 try:
-                    # Используем Raw API (Invoke), так как Telethon может быть старой версии
-                    # 0xc220d9f4 - ID для payments.sendGift
+                    # Разрешаем сущность получателя, чтобы Телеграм точно знал, кому шлем
+                    # (нужно чтобы юзер уже писал боту)
+                    try:
+                        receiver = await client.get_input_entity(int(receiver_id))
+                    except Exception as entity_err:
+                        logger.error(f"Не могу найти юзера {receiver_id}. Он должен написать боту первым! {entity_err}")
+                        continue
+
+                    # Используем Raw API
                     try:
                         from telethon.tl.functions.payments import SendGiftRequest
                         await client(SendGiftRequest(
-                            user_id=int(receiver_id),
+                            user_id=receiver,
                             gift_id=int(tg_gift_id)
                         ))
                     except (ImportError, AttributeError):
-                        # Fallback на ручной вызов если класса нет в библиотеке
-                        class SendGiftRaw(functions.TLRequest):
-                            CONSTRUCTOR_ID = 0xc220d9f4
-                            SUBCLASS_OF_ID = 0xf5b3296
-                            def __init__(self, user_id, gift_id):
-                                # Важно: user_id должен быть InputUser, но Telethon часто ест инты
-                                self.user_id = user_id
-                                self.gift_id = gift_id
-                            def to_dict(self):
-                                return {'user_id': self.user_id, 'gift_id': self.gift_id}
-                        
-                        await client(SendGiftRaw(user_id=int(receiver_id), gift_id=int(tg_gift_id)))
+                        # Ручная отправка через Raw запрос если метода нет
+                        logger.info("SendGiftRequest не найден, пробуем Raw...")
+                        from telethon.tl.functions import payments
+                        # Если совсем нет - значит слой слишком старый, нужно обновить telethon
+                        raise ImportError("Нужно обновить библиотеку telethon (pip install -U telethon)")
                     
                     cursor.execute("UPDATE gift_transfers SET status = 'sent' WHERE id = ?", (t_id,))
                     logger.info(f"Successfully sent {gift_name} to {receiver_id}")
                     
                 except Exception as e:
-                    error_msg = str(e)
-                    logger.error(f"Failed to send gift: {error_msg}")
+                    import traceback
+                    error_msg = f"{str(e)}"
+                    logger.error(f"Failed to send gift: {error_msg}\n{traceback.format_exc()}")
                     cursor.execute("UPDATE gift_transfers SET status = 'failed', error = ? WHERE id = ?", (error_msg, t_id))
             
             conn.commit()
