@@ -242,9 +242,16 @@ window.rotateServerSeed = async function () {
         document.getElementById('server-seed-hash').textContent = res.newServerSeedHash;
         document.getElementById('nonce-value').textContent = res.nonce;
         if (res.oldServerSeed) {
-            document.getElementById('old-seed-reveal').style.display = 'block';
+            const revealBlock = document.getElementById('old-seed-reveal');
+            revealBlock.style.display = 'block';
             document.getElementById('old-server-seed').textContent = res.oldServerSeed;
             document.getElementById('old-server-hash').textContent = res.oldServerSeedHash;
+
+            // Прокрутка вниз, чтобы увидеть результат
+            setTimeout(() => {
+                const container = revealBlock.closest('.tab-scrollable');
+                if (container) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            }, 100);
         }
         toast('Server Seed обновлён', 'success');
     } catch (e) { toast(e.message, 'error'); }
@@ -524,10 +531,6 @@ window.depositRequest = async function () {
         await tonConnectUI.openModal();
         return;
     }
-    if (!user) {
-        console.error('User not loaded');
-        return toast('Ошибка: нет пользователя', 'error');
-    }
 
     const amountEl = document.getElementById('dep-amount');
     const amountVal = amountEl ? amountEl.value : null;
@@ -546,7 +549,10 @@ window.depositRequest = async function () {
         const res = await api('/api/deposit/request', 'POST', { amount: parseFloat(amountVal) });
         console.log('Server deposit response:', res);
 
-        // Убираем ручной показ данных, сразу идем в кошелек
+        if (!res.address || res.address.includes('...')) {
+            throw new Error('Адрес кошелька для приема платежа не настроен в .env! (TON_WALLET)');
+        }
+
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
         // Вызываем транзакцию через TonConnect
@@ -555,13 +561,11 @@ window.depositRequest = async function () {
             let payload = null;
             if (typeof TonWeb !== 'undefined') {
                 const cell = new TonWeb.boc.Cell();
-                cell.bits.writeUint(0, 32); // Header for text comment
+                cell.bits.writeUint(0, 32);
                 cell.bits.writeString(res.comment);
                 const boc = await cell.toBoc();
                 payload = TonWeb.utils.bytesToBase64(boc);
                 console.log('Generated payload BOC:', payload);
-            } else {
-                console.warn('TonWeb not found, sending without payload');
             }
 
             const transaction = {
@@ -574,13 +578,32 @@ window.depositRequest = async function () {
                     }
                 ]
             };
-            console.log('Sending transaction via TonConnect:', transaction);
+
+            // Если мы в Telegram, пробуем сначала через sendTransaction
             await tonConnectUI.sendTransaction(transaction);
             console.log('Transaction sent successfully!');
             toast('Транзакция отправлена!', 'success');
         } catch (txErr) {
             console.error('TonConnect TX Error:', txErr);
-            toast('Ошибка транзакции. Оплатите вручную.', 'info');
+
+            // Резервный вариант: Deep Link (прямая ссылка для оплаты)
+            const nanoAmount = (parseFloat(amountVal) * 1e9).toString();
+            const deepLink = `ton://transfer/${res.address}?amount=${nanoAmount}&text=${encodeURIComponent(res.comment)}`;
+            console.log('Generated deep link:', deepLink);
+
+            // Показываем кнопку-ссылку, если авто-платеж не сработал
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-box">
+                    <h3 class="modal-title">Не удалось открыть кошелёк автоматически</h3>
+                    <p class="modal-desc">Нажмите кнопку ниже, чтобы оплатить через мобильный кошелёк (Tonkeeper и др.)</p>
+                    <a href="${deepLink}" class="roll-button main-action" style="text-decoration:none; display:block; margin-bottom:12px;">ОПЛАТИТЬ ЧЕРЕЗ ССЫЛКУ</a>
+                    <button class="modal-btn cancel" onclick="this.closest('.modal-overlay').remove()">Закрыть</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            toast('Используйте ссылку для оплаты', 'info');
         }
 
     } catch (e) {

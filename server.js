@@ -255,7 +255,11 @@ app.post('/api/deposit/request', auth, (req, res) => {
         return res.status(500).json({ error: 'Could not create request' });
     }
 
-    const wallet = process.env.TON_WALLET || settingsOps.get('ton_wallet');
+    let wallet = process.env.TON_WALLET || settingsOps.get('ton_wallet');
+    // Если в .env или базе заглушка, возвращаем ошибку
+    if (!wallet || wallet.includes('...') || wallet === 'UQ...') {
+        return res.status(500).json({ error: 'Admin wallet address is not configured yet.' });
+    }
     res.json({ comment, address: wallet });
 });
 
