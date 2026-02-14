@@ -569,31 +569,35 @@ window.depositRequest = async function () {
         try {
             console.log('Preparing TON transaction payload...');
             let payload = null;
-            if (typeof TonWeb !== 'undefined') {
-                const cell = new TonWeb.boc.Cell();
-                cell.bits.writeUint(0, 32);
-                if (typeof cell.bits.writeString === 'function') {
-                    cell.bits.writeString(depositComment);
-                } else if (typeof cell.bits.writeBytes === 'function' && TonWeb.utils && typeof TonWeb.utils.stringToBytes === 'function') {
-                    cell.bits.writeBytes(TonWeb.utils.stringToBytes(depositComment));
-                } else {
-                    throw new Error('TonWeb не поддерживает запись текстового комментария');
+
+            // Пробуем сформировать BOC если TonWeb доступен
+            const TW = window.TonWeb || (typeof TonWeb !== 'undefined' ? TonWeb : null);
+            if (TW) {
+                try {
+                    const cell = new TW.boc.Cell();
+                    cell.bits.writeUint(0, 32); // Opcode 0 - text message
+                    const bytes = TW.utils.stringToBytes(depositComment);
+                    cell.bits.writeBytes(bytes);
+                    const boc = cell.toBoc(); // sync in 0.0.66
+                    payload = TW.utils.bytesToBase64(boc);
+                    console.log('Generated payload BOC:', payload);
+                } catch (bocErr) {
+                    console.error('Internal BOC generation error:', bocErr);
                 }
-                const boc = await cell.toBoc();
-                payload = TonWeb.utils.bytesToBase64(boc);
-                console.log('Generated payload BOC:', payload);
+            }
+
+            if (!payload) {
+                // Если не удалось создать BOC через библиотеку, кидаем специальную ошибку для перехода к ссылке
+                console.warn('TonWeb payload generation failed, using deep link fallback');
+                throw new Error('FAILED_TO_GENERATE_PAYLOAD');
             }
 
             const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
             const message = {
                 address: (res.address || '').trim(),
-                amount: nanoAmount
+                amount: nanoAmount,
+                payload: payload
             };
-
-            if (!payload) {
-                throw new Error('Не удалось сформировать комментарий для TonConnect оплаты');
-            }
-            message.payload = payload;
 
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 360,
