@@ -36,8 +36,8 @@
   --green-dim: rgba(76, 175, 80, .1);
   --green-g: rgba(76, 175, 80, .2);
   --red: #e53935;
-  --r: 16px;
-  --r-sm: 10px;
+  --r: 24px;
+  --r-sm: 12px;
   --font: 'Inter', system-ui, -apple-system, sans-serif;
   --t1: #ffffff;
   --t2: rgba(255, 255, 255, 0.9);
@@ -46,8 +46,8 @@
   --border: rgba(255, 255, 255, 0.06);
   --border2: rgba(255, 255, 255, 0.12);
   --border3: rgba(255, 255, 255, 0.2);
-  --shadow: 0 2px 8px rgba(0, 0, 0, .3);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, .5);
+  --shadow: 0 4px 16px rgba(0, 0, 0, .4);
+  --shadow-lg: 0 12px 48px rgba(0, 0, 0, .6);
 }
 
 .wallet-btn {
