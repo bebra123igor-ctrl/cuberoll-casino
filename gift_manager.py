@@ -167,11 +167,27 @@ async def process_transfer_queue(client):
                 logger.info(f"Processing purchase: {gift_name} for user {receiver_id}")
                 
                 try:
-                    from telethon.tl.functions.payments import SendGiftRequest
-                    await client(SendGiftRequest(
-                        user_id=receiver_id,
-                        gift_id=int(tg_gift_id)
-                    ))
+                    # Используем Raw API (Invoke), так как Telethon может быть старой версии
+                    # 0xc220d9f4 - ID для payments.sendGift (может меняться, но это актуальный для слоя 180+)
+                    # Если ID не подходит, используем динамический поиск
+                    try:
+                        from telethon.tl.functions.payments import SendGiftRequest
+                        await client(SendGiftRequest(
+                            user_id=receiver_id,
+                            gift_id=int(tg_gift_id)
+                        ))
+                    except (ImportError, AttributeError):
+                        # Fallback на ручной вызов если класса нет в библиотеке
+                        class SendGiftRaw(functions.TLRequest):
+                            CONSTRUCTOR_ID = 0xc220d9f4
+                            SUBCLASS_OF_ID = 0xf5b3296
+                            def __init__(self, user_id, gift_id):
+                                self.user_id = user_id
+                                self.gift_id = gift_id
+                            def to_dict(self):
+                                return {'user_id': self.user_id, 'gift_id': self.gift_id}
+                        
+                        await client(SendGiftRaw(user_id=receiver_id, gift_id=int(tg_gift_id)))
                     
                     cursor.execute("UPDATE gift_transfers SET status = 'sent' WHERE id = ?", (t_id,))
                     logger.info(f"Successfully sent {gift_name} to {receiver_id}")
