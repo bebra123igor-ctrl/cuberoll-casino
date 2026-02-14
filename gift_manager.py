@@ -85,44 +85,44 @@ async def sync_inventory(client):
                 # Сериализация вручную если нужно, но Telethon 1.x обычно умеет через Raw
                 return b'' 
 
-        # Используем максимально надежный метод вызова
+        # Используем максимально надежный метод вызова через GenericRequest
+        class GenericRequest(functions.TLRequest):
+            def __init__(self, constructor_id, args):
+                self.CONSTRUCTOR_ID = constructor_id
+                self.args = args
+            def to_dict(self): return self.args
+            def __bytes__(self):
+                # Очень примитивная сериализация, но Telethon 1.x обычно позволяет 
+                # кидать Raw запросы через Invoke если мы просто хотим отправить ID + данные
+                return b''
+
         try:
-             # Попытка 1: Через стандартный метод (если Telethon свежий)
+             # Динамически пробуем вызвать метод, если он есть в этой версии Telethon
+             # payments.getUserGifts#e11da17c user_id:InputUser offset:int limit:int = payments.UserGifts;
              try:
-                 from telethon.tl.functions.payments import GetUserGiftsRequest
-                 result = await client(GetUserGiftsRequest(user_id='me', limit=100))
-             except (ImportError, AttributeError):
-                 # Попытка 2: Через Raw Invoke с ручной упаковкой структуры
-                 # 0xe11da17c = payments.getUserGifts
-                 from telethon.tl.alltlobjects import LAYER
-                 logger.info(f"Telethon Layer: {LAYER}. Using Raw API for GetUserGifts...")
-                 
-                 class GetUserGiftsRaw(functions.TLRequest):
+                 # Пытаемся через конструктор, который точно есть в Telethon для Invoke
+                 from telethon.tl.tlobject import TLObject
+                 class GetGiftsReq(functions.TLRequest):
                      CONSTRUCTOR_ID = 0xe11da17c
                      SUBCLASS_OF_ID = 0x14ada4f2
                      def __init__(self, user_id, offset=0, limit=100):
                          self.user_id = user_id
                          self.offset = offset
                          self.limit = limit
-                     def to_dict(self):
-                         return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
-                     def __bytes__(self):
-                         # Упаковываем данные: ID, потом аргументы (это упрощенно, но часто работает в Telethon 1.x)
-                         from telethon import utils
-                         return b''.join([
-                             int.to_bytes(self.CONSTRUCTOR_ID, 4, 'little'),
-                             client._entity_cache[self.user_id].to_bytes() if hasattr(self.user_id, 'to_bytes') else b'\x00', # Упрощенно
-                             int.to_bytes(self.offset, 4, 'little'),
-                             int.to_bytes(self.limit, 4, 'little')
-                         ])
+                     def to_dict(self): return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
                  
-                 # На самом деле самый простой способ в Telethon для неизвестных методов - использовать Invoke с кастомным объектом
-                 # Но так как мы не знаем точную структуру всех версий, сделаем просто:
-                 result = await client(functions.payments.GetUserGiftsRequest(user_id='me', limit=100))
+                 result = await client(GetGiftsReq(user_id='me', limit=100))
+             except Exception as call_err:
+                 logger.error(f"Raw call failed: {call_err}")
+                 return
         except Exception as e:
              import traceback
              logger.error(f"Не удалось получить список подарков: {str(e)}\n{traceback.format_exc()}")
              return
+
+        if not hasattr(result, 'gifts'):
+            logger.warning("Результат запроса не содержит список подарков (gifts)")
+            return
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -131,7 +131,8 @@ async def sync_inventory(client):
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS gifts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT, price REAL, gift_id TEXT UNIQUE, is_active INTEGER DEFAULT 1
+                title TEXT, price REAL, gift_id TEXT UNIQUE, is_active INTEGER DEFAULT 1,
+                link TEXT, model TEXT, background TEXT, symbol TEXT
             )
         """)
 
