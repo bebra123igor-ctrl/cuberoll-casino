@@ -160,7 +160,8 @@ const userOps = {
     const user = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
     if (!user) return null;
     const before = user.balance;
-    const after = before + amount;
+    // Округляем до 9 знаков (нанотоны), чтобы избежать проблем с точностью JS
+    const after = Math.round((before + amount) * 1e9) / 1e9;
     db.prepare('UPDATE users SET balance = ? WHERE telegram_id = ?').run(after, tgId);
     db.prepare('INSERT INTO transactions (telegram_id, type, amount, balance_before, balance_after, description) VALUES (?, ?, ?, ?, ?, ?)')
       .run(tgId, type, amount, before, after, desc);
@@ -171,10 +172,11 @@ const userOps = {
     const user = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
     if (!user) return null;
     const before = user.balance;
-    db.prepare('UPDATE users SET balance = ? WHERE telegram_id = ?').run(newBal, tgId);
+    const roundedBal = Math.round(newBal * 1e9) / 1e9;
+    db.prepare('UPDATE users SET balance = ? WHERE telegram_id = ?').run(roundedBal, tgId);
     db.prepare('INSERT INTO transactions (telegram_id, type, amount, balance_before, balance_after, description) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(tgId, 'admin_set', newBal - before, before, newBal, 'Admin set balance');
-    return { balanceBefore: before, balanceAfter: newBal };
+      .run(tgId, 'admin_set', roundedBal - before, before, roundedBal, 'Admin set balance');
+    return { balanceBefore: before, balanceAfter: roundedBal };
   },
 
   ban(tgId) { db.prepare('UPDATE users SET is_banned = 1 WHERE telegram_id = ?').run(tgId); },

@@ -182,12 +182,14 @@ app.post('/api/bet', auth, (req, res) => {
     const { betAmount, betType, exactNumber, rangeMin, rangeMax } = req.body;
     if (!betAmount || !betType) return res.status(400).secure({ error: 'Missing bet amount or type' });
 
-    const amt = parseFloat(betAmount);
+    const amt = Math.round(parseFloat(betAmount) * 1e9) / 1e9;
     const minBet = parseFloat(settingsOps.get('min_bet') || '10');
     const maxBet = parseFloat(settingsOps.get('max_bet') || '10000');
 
     if (isNaN(amt) || amt < minBet || amt > maxBet) return res.status(400).secure({ error: `Bet must be between ${minBet} and ${maxBet}` });
-    if (amt > user.balance) return res.status(400).secure({ error: 'Insufficient balance' });
+
+    // Используем микро-погрешность для сравнения, чтобы 0.1 > 0.1 не выдавало ошибку из-за точности
+    if (amt > user.balance + 0.000000001) return res.status(400).secure({ error: 'Insufficient balance' });
 
     // тип ставки — exact и range обрабатываем отдельно
     const validBets = ['high', 'low', 'seven', 'even', 'odd', 'doubles', 'exact', 'range'];
