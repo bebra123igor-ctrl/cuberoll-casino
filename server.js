@@ -450,15 +450,15 @@ async function checkTonTransactions() {
 
 setInterval(checkTonTransactions, 20000); // каждые 20 сек
 
-// Откат фейковых подтверждений (если через 5 мин денег нет в сети)
+// Откат фейковых подтверждений (увеличиваем до 60 мин для "автоматизма")
 function rollbackExpiredOptimisticDeposits() {
-    const expired = depositOps.getExpiredOptimistic(5);
+    const expired = depositOps.getExpiredOptimistic(60);
     expired.forEach(dep => {
         userOps.updateBalance(dep.telegram_id, -dep.amount, 'deposit_rollback', `Rollback failed optimistic deposit (Memo: ${dep.comment})`);
         db.prepare("UPDATE deposits SET status = 'failed' WHERE id = ?").run(dep.id);
     });
 }
-setInterval(rollbackExpiredOptimisticDeposits, 30000); // каждые 30 сек
+setInterval(rollbackExpiredOptimisticDeposits, 60000); // каждые 60 сек
 
 
 // --- админка ---

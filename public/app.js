@@ -614,23 +614,25 @@ window.depositRequest = async function () {
 
             await tonConnectUI.sendTransaction(transaction);
 
+            // МГНОВЕННОЕ ЗАЧИСЛЕНИЕ (OPTIMISTIC)
             try {
                 const opt = await api('/api/deposit/optimistic', 'POST', { comment: depositComment });
                 if (opt.success) {
                     user.balance = opt.newBalance;
                     setBalance(user.balance, true);
                     toast('Пополнение зачислено!', 'success');
+                    triggerConfetti(); // Празднуем пополнение!
                 }
             } catch (e) {
-                toast('Транзакция отправлена. Ожидаем сеть...', 'success');
+                toast('Транзакция в обработке...', 'info');
             }
 
+            // Фоновая проверка
             const waitDeposit = async () => {
                 for (let i = 0; i < 15; i++) {
                     await new Promise((r) => setTimeout(r, 4000));
                     const check = await api('/api/deposit/check');
-                    const hasActive = [...(check.pending || []), ...(check.optimistic || [])].some(d => d.comment === depositComment);
-                    if (!hasActive) {
+                    if (!check.pending?.length && !check.optimistic?.length) {
                         const authState = await api('/api/auth', 'POST');
                         user = authState.user;
                         setBalance(user.balance, true);
@@ -641,21 +643,8 @@ window.depositRequest = async function () {
             waitDeposit().catch(() => { });
 
         } catch (txErr) {
-            const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
-            const deepLink = `ton://transfer/${res.address}?amount=${nanoAmount}&text=${encodeURIComponent(depositComment)}`;
-
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `
-                <div class="modal-box">
-                    <h3 class="modal-title">Ручная оплата</h3>
-                    <p class="modal-desc">Если авто-оплата не сработала, используйте кнопку ниже.</p>
-                    <a href="${deepLink}" class="roll-button main-action" style="text-decoration:none; display:block; margin-bottom:12px;">ОПЛАТИТЬ ЧЕРЕЗ ССЫЛКУ</a>
-                    <button class="modal-btn cancel" onclick="this.closest('.modal-overlay').remove()">Закрыть</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            toast('Попробуйте еще раз или оплатите по ссылке', 'info');
+            // Если юзер отменил или ошибка - просто уведомляем
+            toast('Оплата отменена или произошла ошибка', 'error');
         }
 
     } catch (e) {
@@ -667,6 +656,28 @@ window.depositRequest = async function () {
             btn.textContent = 'ПОПОЛНИТЬ';
         }
     }
+};
+
+// --- АНИМАЦИИ И ЭФФЕКТЫ ---
+
+function triggerConfetti() {
+    for (let i = 0; i < 30; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.backgroundColor = ['#ffcf40', '#0088cc', '#ffffff'][Math.floor(Math.random() * 3)];
+        c.style.animationDuration = (Math.random() * 2 + 1) + 's';
+        c.style.opacity = Math.random();
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 3000);
+    }
+}
+
+// Перехватываем победу для конфетти (в логике showResult)
+const originalShowResult = window.showResult;
+window.showResult = function (res) {
+    if (res.won) triggerConfetti();
+    if (typeof originalShowResult === 'function') originalShowResult(res);
 };
 
 window.copyText = function (id) {
