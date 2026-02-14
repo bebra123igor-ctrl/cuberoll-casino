@@ -228,6 +228,10 @@ function initEventListeners() {
 
     const verifyBtn = document.getElementById('btn-verify');
     if (verifyBtn) verifyBtn.onclick = verifyGame;
+
+    // Deposit button specific binding
+    const depBtn = document.getElementById('dep-btn-go');
+    if (depBtn) depBtn.onclick = depositRequest;
 }
 
 window.rotateServerSeed = async function () {
@@ -394,8 +398,12 @@ async function loadGifts() {
     } catch (e) { }
 }
 
+let currentBuyId = null;
+let currentBuyPrice = 0;
+
 window.openBuyModal = function (id, name, price) {
     currentBuyId = id;
+    currentBuyPrice = parseFloat(price);
     document.getElementById('modal-gift-name').textContent = name;
     document.getElementById('modal-gift-price').textContent = price;
     document.getElementById('purchase-modal').classList.remove('hidden');
@@ -403,12 +411,11 @@ window.openBuyModal = function (id, name, price) {
 };
 
 async function confirmPurchase(id) {
-    try {
-        const gift = (await api('/api/gifts')).gifts.find(g => g.id === id);
-        if (gift && user.balance < gift.price) {
-            return toast('Недостаточно TON для покупки', 'error');
-        }
+    if (user.balance < currentBuyPrice) {
+        return toast('Недостаточно TON для покупки', 'error');
+    }
 
+    try {
         const btn = document.getElementById('modal-confirm-buy');
         btn.disabled = true;
         btn.textContent = '...';
@@ -433,10 +440,13 @@ window.closeModal = function (id) {
 
 // Депозиты
 window.depositRequest = async function () {
+    console.log('Deposit requested');
     if (!tonConnectUI.connected) return toast('Ошибка: добавьте кошелёк', 'error');
+    if (!user) return toast('Ошибка: нет пользователя', 'error');
 
-    const amount = document.getElementById('dep-amount').value;
-    if (!user) return toast('Сначала войдите', 'error');
+    const amountEl = document.getElementById('dep-amount');
+    const amount = amountEl ? amountEl.value : null;
+
     if (!amount || parseFloat(amount) < 0.1) return toast('Мин. сумма 0.1 TON', 'error');
 
     try {
@@ -451,8 +461,10 @@ window.depositRequest = async function () {
             });
         }
 
+        toast('Заявка создана', 'success');
         loadPendingDeposits();
     } catch (e) {
+        console.error(e);
         toast(e.message, 'error');
     }
 };
