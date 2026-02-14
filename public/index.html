@@ -75,10 +75,6 @@
           </div>
           <span class="balance-amount" id="balance-amount">0.00</span>
         </div>
-        <button class="wallet-btn" style="background:var(--red);margin-right:4px;"
-          onclick="api('/api/admin/add-balance','POST',{amount:100}).then(r=>{user.balance=r.newBalance;setBalance(user.balance,true);toast('+100 TON','success')})">
-          <span style="font-size:10px;font-weight:900">DEV</span>
-        </button>
         <button class="wallet-btn" id="ton-connect" onclick="connectWallet()">
           <span class="icon icon-sm">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -214,90 +210,7 @@
           </div>
         </div>
 
-        <!-- тип ставки -->
-        <div class="bet-section">
-          <h3 class="section-title">Тип ставки</h3>
-          <div class="bet-types">
-            <button class="bet-type-btn active" data-bet="high">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <polyline points="18 15 12 9 6 15" />
-                </svg></div>
-              <span class="bet-name">Больше</span><span class="bet-mult">×1.95</span><span class="bet-desc">8–12</span>
-            </button>
-            <button class="bet-type-btn" data-bet="low">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <polyline points="6 9 12 15 18 9" />
-                </svg></div>
-              <span class="bet-name">Меньше</span><span class="bet-mult">×1.95</span><span class="bet-desc">2–6</span>
-            </button>
-            <button class="bet-type-btn" data-bet="seven">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <path d="M8 6h8l-5 12" />
-                </svg></div>
-              <span class="bet-name">Семёрка</span><span class="bet-mult">×3.5</span><span class="bet-desc">= 7</span>
-            </button>
-            <button class="bet-type-btn" data-bet="exact">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="3" />
-                  <circle cx="12" cy="12" r="8" />
-                </svg></div>
-              <span class="bet-name">Точно</span><span class="bet-mult">×6–36</span><span class="bet-desc">выбери</span>
-            </button>
-            <button class="bet-type-btn" data-bet="even">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <line x1="4" y1="12" x2="20" y2="12" />
-                  <line x1="4" y1="6" x2="20" y2="6" />
-                </svg></div>
-              <span class="bet-name">Чётное</span><span class="bet-mult">×1.9</span><span
-                class="bet-desc">2,4,6...</span>
-            </button>
-            <button class="bet-type-btn" data-bet="odd">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <line x1="4" y1="8" x2="20" y2="8" />
-                  <line x1="4" y1="16" x2="14" y2="16" />
-                </svg></div>
-              <span class="bet-name">Нечётное</span><span class="bet-mult">×1.9</span><span
-                class="bet-desc">3,5,7...</span>
-            </button>
-            <button class="bet-type-btn" data-bet="doubles">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                  <rect x="14" y="14" width="7" height="7" rx="1.5" />
-                </svg></div>
-              <span class="bet-name">Дубль</span><span class="bet-mult">×5.0</span><span class="bet-desc">пара</span>
-            </button>
-            <button class="bet-type-btn" data-bet="range">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <line x1="4" y1="12" x2="20" y2="12" />
-                  <circle cx="8" cy="12" r="2" />
-                  <circle cx="16" cy="12" r="2" />
-                </svg></div>
-              <span class="bet-name">Диапазон</span><span class="bet-mult">×2–12</span><span
-                class="bet-desc">2–12</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- выбор точного числа -->
-        <div class="exact-picker" id="exact-picker" style="display:none">
-          <h3 class="section-title">Выбери число</h3>
-          <div class="exact-nums" id="exact-nums"></div>
-        </div>
-
-        <!-- выбор диапазона -->
-        <div class="range-picker" id="range-picker" style="display:none">
-          <h3 class="section-title">Диапазон</h3>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-            <input type="number" id="range-min" class="verify-input" value="2" min="2" max="12"
-              style="width:60px;text-align:center">
-            <span style="color:var(--t3);font-size:12px">—</span>
-            <input type="number" id="range-max" class="verify-input" value="6" min="2" max="12"
-              style="width:60px;text-align:center">
-            <span style="color:var(--gold);font-size:12px;font-weight:700" id="range-mult">×2.40</span>
-          </div>
-        </div>
-
-        <!-- сумма -->
+        <!-- сумма и кнопка броска (теперь выше) -->
         <div class="bet-amount-section">
           <h3 class="section-title">Сумма</h3>
           <div class="bet-input-container">
@@ -316,11 +229,7 @@
             <button class="quick-bet" data-amount="max">MAX</button>
           </div>
         </div>
-      </div> <!-- end tab-scrollable -->
 
-      <div class="roll-section-fixed">
-
-        <!-- бросок -->
         <div class="roll-section">
           <div class="streak-multiplier" id="streak-mult">×1.1</div>
           <button class="roll-button" id="roll-btn">
@@ -332,168 +241,246 @@
             <span class="roll-text">БРОСИТЬ КОСТИ</span>
           </button>
         </div>
-
         <div class="potential-win">
           Возможный выигрыш: <strong id="potential-amount">1.95</strong>
         </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="tab-content" id="content-history">
-    <div class="tab-scrollable">
-      <h3 class="section-title">История</h3>
-      <div class="history-list" id="history-list">
-        <div class="empty-state">
-          <div class="empty-icon"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5">
-              <circle cx="12" cy="12" r="9" />
-              <polyline points="12 7 12 12 15 15" />
-            </svg></div>
-          <p>Пока пусто</p>
+        <!-- тип ставки (теперь ниже) -->
+        <div class="bet-section">
+          <h3 class="section-title">Тип ставки</h3>
+          <div class="bet-types">
+            <button class="bet-type-btn active" data-bet="high">
+              <div class="bet-icon"><svg viewBox="0 0 24 24">
+                  <polyline points="18 15 12 9 6 15" />
+                </svg></div><span class="bet-name">Больше</span><span class="bet-mult">×1.95</span><span
+                class="bet-desc">8–12</span>
+            </button>
+            <button class="bet-type-btn" data-bet="low">
+              <div class="bet-icon"><svg viewBox="0 0 24 24">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg></div><span class="bet-name">Меньше</span><span class="bet-mult">×1.95</span><span
+                class="bet-desc">2–6</span>
+            </button>
+            <button class="bet-type-btn" data-bet="seven">
+              <div class="bet-icon"><svg viewBox="0 0 24 24">
+                  <path d="M8 6h8l-5 12" />
+                </svg></div><span class="bet-name">Семёрка</span><span class="bet-mult">×3.5</span><span
+                class="bet-desc">= 7</span>
+            </button>
+            <button class="bet-type-btn" data-bet="exact">
+              <div class="bet-icon"><svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="3" />
+                  <circle cx="12" cy="12" r="8" />
+                </svg></div><span class="bet-name">Точно</span><span class="bet-mult">×6–36</span><span
+                class="bet-desc">выбери</span>
+            </button>
+            <button class="bet-type-btn" data-bet="even">
+              <div class="bet-icon"><svg viewBox="0 0 24 24">
+                  <line x1="4" y1="12" x2="20" y2="12" />
+                  <line x1="4" y1="6" x2="20" y2="6" />
+                </svg></div><span class="bet-name">Чётное</span><span class="bet-mult">×1.9</span><span
+                class="bet-desc">2,4,6...</span>
+            </button>
+            <button class="bet-type-btn" data-bet="odd">
+              <div class="bet-icon"><svg viewBox="0 0 24 24">
+                  <line x1="4" y1="8" x2="20" y2="8" />
+                  <line x1="4" y1="16" x2="14" y2="16" />
+                </svg></div><span class="bet-name">Нечётное</span><span class="bet-mult">×1.9</span><span
+                class="bet-desc">3,5,7...</span>
+            </button>
+            <button class="bet-type-btn" data-bet="doubles">
+              <div class="bet-icon"><svg viewBox="0 0 24 24">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                </svg></div><span class="bet-name">Дубль</span><span class="bet-mult">×5.0</span><span
+                class="bet-desc">пара</span>
+            </button>
+            <button class="bet-type-btn" data-bet="range">
+              <div class="bet-icon"><svg viewBox="0 0 24 24">
+                  <line x1="4" y1="12" x2="20" y2="12" />
+                  <circle cx="8" cy="12" r="2" />
+                  <circle cx="16" cy="12" r="2" />
+                </svg></div><span class="bet-name">Диапазон</span><span class="bet-mult">×2–12</span><span
+                class="bet-desc">2–12</span>
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="tab-content" id="content-leaderboard">
-    <div class="tab-scrollable">
-      <h3 class="section-title">Таблица лидеров</h3>
-      <div class="leaderboard-list" id="leaderboard-list">
-        <div class="empty-state">
-          <p>Загрузка...</p>
+        <div class="exact-picker" id="exact-picker" style="display:none">
+          <h3 class="section-title">Выбери число</h3>
+          <div class="exact-nums" id="exact-nums"></div>
         </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- fair -->
-  <div class="tab-content" id="content-fairness">
-    <div class="tab-scrollable">
-      <h3 class="section-title">Provably Fair</h3>
-      <div class="fairness-info">
-        <div class="fair-card">
-          <h4>Как это работает</h4>
-          <p>HMAC-SHA256 из серверного сида, клиентского сида и нонса. Результат можно проверить после смены
-            серверного
-            сида.</p>
-        </div>
-        <div class="fair-card">
-          <h4>Текущие сиды</h4>
-          <div class="seed-field"><label>Server Seed Hash</label>
-            <div class="seed-value" id="server-seed-hash">—</div>
-          </div>
-          <div class="seed-field">
-            <label>Client Seed</label>
-            <div class="seed-input-row">
-              <input type="text" id="client-seed-input" class="seed-input" placeholder="Твой seed">
-              <button class="seed-btn" id="btn-update-seed"><span class="icon icon-sm"><svg viewBox="0 0 24 24">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                    <polyline points="17 21 17 13 7 13 7 21" />
-                  </svg></span></button>
-            </div>
-          </div>
-          <div class="seed-field"><label>Nonce</label>
-            <div class="seed-value" id="nonce-value">0</div>
+        <div class="range-picker" id="range-picker" style="display:none">
+          <h3 class="section-title">Диапазон</h3>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <input type="number" id="range-min" class="verify-input" value="2" min="2" max="12"
+              style="width:60px;text-align:center">
+            <span style="color:var(--t3);font-size:12px">—</span>
+            <input type="number" id="range-max" class="verify-input" value="6" min="2" max="12"
+              style="width:60px;text-align:center">
+            <span style="color:var(--gold);font-size:12px;font-weight:700" id="range-mult">×2.40</span>
           </div>
         </div>
-        <button class="rotate-btn" id="btn-rotate-seed">
-          <span class="icon icon-sm"><svg viewBox="0 0 24 24">
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-            </svg></span>
-          Сменить Server Seed
-        </button>
-        <div class="fair-card" id="old-seed-reveal" style="display:none">
-          <h4>Предыдущий Seed</h4>
-          <div class="seed-field"><label>Seed</label>
-            <div class="seed-value" id="old-server-seed">—</div>
-          </div>
-          <div class="seed-field"><label>Hash</label>
-            <div class="seed-value" id="old-server-hash">—</div>
-          </div>
-        </div>
-        <div class="fair-card">
-          <h4>Проверить игру</h4>
-          <div class="verify-form">
-            <input type="text" id="verify-server-seed" class="verify-input" placeholder="Server Seed">
-            <input type="text" id="verify-client-seed" class="verify-input" placeholder="Client Seed">
-            <input type="number" id="verify-nonce" class="verify-input" placeholder="Nonce">
-            <button class="verify-btn" id="btn-verify">Проверить</button>
-          </div>
-          <div class="verify-result" id="verify-result" style="display:none">
-            <p>Результат: <strong id="verify-dice">—</strong></p>
-            <p>Сумма: <strong id="verify-total">—</strong></p>
-            <p>Hash: <code id="verify-hash">—</code></p>
-          </div>
-        </div>
-      </div>
+
+        <div style="height: 20px;"></div> <!-- spacer -->
+      </div> <!-- end tab-scrollable -->
     </div>
 
-
-    <div class="tab-content" id="content-shop">
+    <div class="tab-content" id="content-history">
       <div class="tab-scrollable">
-        <h3 class="section-title">Магазин подарков</h3>
-        <div class="shop-grid" id="shop-list">
-          <!-- Подарки будут здесь -->
+        <h3 class="section-title">История</h3>
+        <div class="history-list" id="history-list">
+          <div class="empty-state">
+            <div class="empty-icon"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5">
+                <circle cx="12" cy="12" r="9" />
+                <polyline points="12 7 12 12 15 15" />
+              </svg></div>
+            <p>Пока пусто</p>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="tab-content" id="content-wallet">
+    <div class="tab-content" id="content-leaderboard">
       <div class="tab-scrollable">
-        <div class="deposit-section" style="margin-top: 10px;">
-          <h4 class="section-title">Пополнение (Мемо)</h4>
-
-          <div id="dep-manual-info" class="dep-manual-card hidden">
-            <div class="dep-row"><span>Адрес:</span> <code id="dep-addr-val">...</code></div>
-            <div class="dep-row"><span>Мемо/Комментарий:</span> <code id="dep-memo-val"
-                class="memo-highlight">...</code>
-            </div>
-            <p class="dep-warning">⚠️ Обязательно укажите комментарий при переводе!</p>
+        <h3 class="section-title">Таблица лидеров</h3>
+        <div class="leaderboard-list" id="leaderboard-list">
+          <div class="empty-state">
+            <p>Загрузка...</p>
           </div>
-
-          <div class="deposit-input-card">
-            <div class="dep-input-group">
-              <input type="number" id="dep-amount" placeholder="1.0" step="0.1" min="0.1">
-              <span>TON</span>
-            </div>
-            <button class="dep-go-btn" id="dep-btn-go" onclick="depositRequest()">Создать</button>
-          </div>
-          <p class="dep-hint">Минимум: <span id="min-dep-text">0.1</span> TON.</p>
-
-          <div class="deposit-status-list" id="pending-deposits"></div>
         </div>
       </div>
     </div>
 
-    <!-- подтверждение покупки -->
-    <div class="modal-overlay hidden" id="purchase-modal">
-      <div class="modal-box">
-        <div class="modal-gift-icon" id="modal-gift-icon">🎁</div>
-        <h3 class="modal-title">Подтверждение</h3>
-        <p class="modal-desc">Вы уверены, что хотите купить <strong id="modal-gift-name">...</strong> за <span
-            id="modal-gift-price">...</span> TON?</p>
-        <div class="modal-btns">
-          <button class="modal-btn cancel" onclick="closeModal('purchase-modal')">Отмена</button>
-          <button class="modal-btn confirm" id="modal-confirm-buy">Купить</button>
+    <!-- fair -->
+    <div class="tab-content" id="content-fairness">
+      <div class="tab-scrollable">
+        <h3 class="section-title">Provably Fair</h3>
+        <div class="fairness-info">
+          <div class="fair-card">
+            <h4>Как это работает</h4>
+            <p>HMAC-SHA256 из серверного сида, клиентского сида и нонса. Результат можно проверить после смены
+              серверного
+              сида.</p>
+          </div>
+          <div class="fair-card">
+            <h4>Текущие сиды</h4>
+            <div class="seed-field"><label>Server Seed Hash</label>
+              <div class="seed-value" id="server-seed-hash">—</div>
+            </div>
+            <div class="seed-field">
+              <label>Client Seed</label>
+              <div class="seed-input-row">
+                <input type="text" id="client-seed-input" class="seed-input" placeholder="Твой seed">
+                <button class="seed-btn" id="btn-update-seed"><span class="icon icon-sm"><svg viewBox="0 0 24 24">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                      <polyline points="17 21 17 13 7 13 7 21" />
+                    </svg></span></button>
+              </div>
+            </div>
+            <div class="seed-field"><label>Nonce</label>
+              <div class="seed-value" id="nonce-value">0</div>
+            </div>
+          </div>
+          <button class="rotate-btn" id="btn-rotate-seed">
+            <span class="icon icon-sm"><svg viewBox="0 0 24 24">
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg></span>
+            Сменить Server Seed
+          </button>
+          <div class="fair-card" id="old-seed-reveal" style="display:none">
+            <h4>Предыдущий Seed</h4>
+            <div class="seed-field"><label>Seed</label>
+              <div class="seed-value" id="old-server-seed">—</div>
+            </div>
+            <div class="seed-field"><label>Hash</label>
+              <div class="seed-value" id="old-server-hash">—</div>
+            </div>
+          </div>
+          <div class="fair-card">
+            <h4>Проверить игру</h4>
+            <div class="verify-form">
+              <input type="text" id="verify-server-seed" class="verify-input" placeholder="Server Seed">
+              <input type="text" id="verify-client-seed" class="verify-input" placeholder="Client Seed">
+              <input type="number" id="verify-nonce" class="verify-input" placeholder="Nonce">
+              <button class="verify-btn" id="btn-verify">Проверить</button>
+            </div>
+            <div class="verify-result" id="verify-result" style="display:none">
+              <p>Результат: <strong id="verify-dice">—</strong></p>
+              <p>Сумма: <strong id="verify-total">—</strong></p>
+              <p>Hash: <code id="verify-hash">—</code></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <div class="tab-content" id="content-shop">
+        <div class="tab-scrollable">
+          <h3 class="section-title">Магазин подарков</h3>
+          <div class="shop-grid" id="shop-list">
+            <!-- Подарки будут здесь -->
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="content-wallet">
+        <div class="tab-scrollable">
+          <div class="deposit-section" style="margin-top: 10px;">
+            <h4 class="section-title">Пополнение (Мемо)</h4>
+
+            <div id="dep-manual-info" class="dep-manual-card hidden">
+              <div class="dep-row"><span>Адрес:</span> <code id="dep-addr-val">...</code></div>
+              <div class="dep-row"><span>Мемо/Комментарий:</span> <code id="dep-memo-val"
+                  class="memo-highlight">...</code>
+              </div>
+              <p class="dep-warning">⚠️ Обязательно укажите комментарий при переводе!</p>
+            </div>
+
+            <div class="deposit-input-card">
+              <div class="dep-input-group">
+                <input type="number" id="dep-amount" placeholder="1.0" step="0.1" min="0.1">
+                <span>TON</span>
+              </div>
+              <button class="dep-go-btn" id="dep-btn-go" onclick="depositRequest()">Создать</button>
+            </div>
+            <p class="dep-hint">Минимум: <span id="min-dep-text">0.1</span> TON.</p>
+
+            <div class="deposit-status-list" id="pending-deposits"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- подтверждение покупки -->
+      <div class="modal-overlay hidden" id="purchase-modal">
+        <div class="modal-box">
+          <div class="modal-gift-icon" id="modal-gift-icon">🎁</div>
+          <h3 class="modal-title">Подтверждение</h3>
+          <p class="modal-desc">Вы уверены, что хотите купить <strong id="modal-gift-name">...</strong> за <span
+              id="modal-gift-price">...</span> TON?</p>
+          <div class="modal-btns">
+            <button class="modal-btn cancel" onclick="closeModal('purchase-modal')">Отмена</button>
+            <button class="modal-btn confirm" id="modal-confirm-buy">Купить</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- результат -->
+      <div class="result-overlay hidden" id="result-overlay">
+        <div class="result-modal">
+          <div class="result-icon-wrap" id="result-icon-wrap"></div>
+          <h2 class="result-title" id="result-title">Победа!</h2>
+          <div class="result-dice-display" id="result-dice-display"></div>
+          <p class="result-amount" id="result-amount">+100.00</p>
+          <p class="result-streak" id="result-streak"></p>
+          <button class="result-close" id="result-close">Продолжить</button>
         </div>
       </div>
     </div>
 
-    <!-- результат -->
-    <div class="result-overlay hidden" id="result-overlay">
-      <div class="result-modal">
-        <div class="result-icon-wrap" id="result-icon-wrap"></div>
-        <h2 class="result-title" id="result-title">Победа!</h2>
-        <div class="result-dice-display" id="result-dice-display"></div>
-        <p class="result-amount" id="result-amount">+100.00</p>
-        <p class="result-streak" id="result-streak"></p>
-        <button class="result-close" id="result-close">Продолжить</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 
 </html>
