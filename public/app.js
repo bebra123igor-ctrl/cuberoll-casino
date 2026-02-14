@@ -611,17 +611,20 @@ window.depositRequest = async function () {
 
         try {
             let payload = null;
-            const TW = window.TonWeb || (typeof TonWeb !== 'undefined' ? TonWeb : null);
-            if (TW && TW.boc && TW.boc.Cell) {
-                try {
+            try {
+                // Пытаемся создать комментарий для TON (OP 0x00000000 + UTF8)
+                const TW = window.TonWeb || (typeof TonWeb !== 'undefined' ? TonWeb : null);
+                if (TW && TW.boc && TW.boc.Cell) {
                     const cell = new TW.boc.Cell();
                     cell.bits.writeUint(0, 32);
-                    const bytes = (TW.utils && TW.utils.stringToBytes) ? TW.utils.stringToBytes(depositComment) : new TextEncoder().encode(depositComment);
+                    const bytes = new TextEncoder().encode(depositComment);
                     cell.bits.writeBytes(bytes);
                     const bocRes = cell.toBoc();
                     const bocBytes = (bocRes instanceof Promise) ? await bocRes : bocRes;
                     payload = TW.utils.bytesToBase64(bocBytes);
-                } catch (e) { }
+                }
+            } catch (e) {
+                console.error('Payload generation failed:', e);
             }
 
             const transaction = {
@@ -641,11 +644,11 @@ window.depositRequest = async function () {
                 if (opt.success) {
                     user.balance = opt.newBalance;
                     setBalance(user.balance, true);
-                    toast('Пополнение зачислено!', 'success');
-                    triggerConfetti(); // Празднуем пополнение!
+                    toast('Пополнение зачислено (авансом)!', 'success');
+                    triggerConfetti();
                 }
             } catch (e) {
-                toast('Транзакция в обработке...', 'info');
+                toast('Транзакция отправлена, ожидаем...', 'success');
             }
 
             // Фоновая проверка
@@ -664,12 +667,14 @@ window.depositRequest = async function () {
             waitDeposit().catch(() => { });
 
         } catch (txErr) {
-            // Если юзер отменил или ошибка - просто уведомляем
-            toast('Оплата отменена или произошла ошибка', 'error');
+            console.error('Transaction failed:', txErr);
+            const errMsg = txErr.message || 'Cancelled by user';
+            toast(`[TX] Ошибка транзакции: ${errMsg}`, 'error');
         }
 
     } catch (e) {
-        toast('Ошибка: попробуйте еще раз', 'error');
+        console.error('API Error in Deposit:', e);
+        toast(`[REQ] Ошибка запроса: ${e.message}`, 'error');
     } finally {
         const btn = document.getElementById('dep-btn-go');
         if (btn) {

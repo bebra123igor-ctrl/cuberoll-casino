@@ -101,6 +101,14 @@ bot.onText(/\/setbalance (\d+) ([\d.]+)/, async (msg, match) => {
     await bot.sendMessage(msg.chat.id, `✅ \`${match[1]}\`: ${r.balanceBefore.toFixed(2)} → *${r.balanceAfter.toFixed(2)}*`, { parse_mode: 'Markdown' });
 });
 
+bot.onText(/\/setwallet (.+)/, async (msg, match) => {
+    if (!isAdmin(msg.from.id)) return;
+    const addr = match[1].trim();
+    if (addr.length < 30) return bot.sendMessage(msg.chat.id, '❌ Похоже на неверный адрес');
+    settingsOps.set('ton_wallet', addr);
+    bot.sendMessage(msg.chat.id, `✅ Адрес для пополнений установлен:\n\n\`${addr}\``, { parse_mode: 'Markdown' });
+});
+
 bot.onText(/\/ban (\d+)/, async (msg, match) => {
     if (!isAdmin(msg.from.id)) return;
     userOps.ban(parseInt(match[1]));
