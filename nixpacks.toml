@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["nodejs", "python311", "gcc"]
+
+[phases.install]
+cmds = ["npm install", "python3 -m pip install -r requirements.txt"]
+
+[start]
+cmd = "node server.js & python3 gift_manager.py"

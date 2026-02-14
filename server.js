@@ -452,56 +452,56 @@ app.post('/api/admin/parse-gift', auth, adminOnly, async (req, res) => {
                     background: 'radial-gradient(circle, #333, #000)',
                     symbol: '🎁'
                 });
-            } catch (e) { res.status(500).json({ error: e.message }); }
+            } catch (e) { res.status(500).secure({ error: e.message }); }
         });
-    }).on("error", (e) => res.status(500).json({ error: e.message }));
+    }).on("error", (e) => res.status(500).secure({ error: e.message }));
 });
 
 app.get('/api/admin/stats', auth, adminOnly, (req, res) => {
-    res.json({
+    res.secure({
         overall: gameOps.getStats(), today: gameOps.getTodayStats(),
         userCount: userOps.getCount(), settings: settingsOps.getAll()
     });
 });
 
 app.get('/api/admin/users', auth, adminOnly, (req, res) => {
-    res.json({ users: userOps.getAll() });
+    res.secure({ users: userOps.getAll() });
 });
 
 app.get('/api/admin/games', auth, adminOnly, (req, res) => {
-    res.json({ games: gameOps.getRecent(100) });
+    res.secure({ games: gameOps.getRecent(100) });
 });
 
 app.post('/api/admin/user/:id/balance', auth, adminOnly, (req, res) => {
     const r = userOps.setBalance(parseInt(req.params.id), parseFloat(req.body.balance));
-    if (!r) return res.status(404).json({ error: 'User not found' });
-    res.json({ success: true, ...r });
+    if (!r) return res.status(404).secure({ error: 'User not found' });
+    res.secure({ success: true, ...r });
 });
 
 app.post('/api/admin/user/:id/ban', auth, adminOnly, (req, res) => {
     userOps.ban(parseInt(req.params.id));
-    res.json({ success: true });
+    res.secure({ success: true });
 });
 
 app.post('/api/admin/user/:id/unban', auth, adminOnly, (req, res) => {
     userOps.unban(parseInt(req.params.id));
-    res.json({ success: true });
+    res.secure({ success: true });
 });
 
 app.post('/api/admin/settings', auth, adminOnly, (req, res) => {
-    if (!req.body.key) return res.status(400).json({ error: 'Missing key' });
+    if (!req.body.key) return res.status(400).secure({ error: 'Missing key' });
     settingsOps.set(req.body.key, req.body.value);
-    res.json({ success: true });
+    res.secure({ success: true });
 });
 
 app.post('/api/admin/gifts', auth, adminOnly, (req, res) => {
     giftOps.create(req.body);
-    res.json({ success: true });
+    res.secure({ success: true });
 });
 
 app.delete('/api/admin/gifts/:id', auth, adminOnly, (req, res) => {
     giftOps.delete(parseInt(req.params.id));
-    res.json({ success: true });
+    res.secure({ success: true });
 });
 
 
