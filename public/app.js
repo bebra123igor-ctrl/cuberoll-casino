@@ -14,8 +14,16 @@ let tonConnectUI = null;
 let isInitializing = true;
 
 // "Шифрование" для "обычных смертных"
-const _SEC_KEY = 'cuberoll'; // Можно динамически брать, но для "смертных" и так сойдет
-const _0x_dec = (s) => JSON.parse(atob(s).split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ _SEC_KEY.charCodeAt(i % _SEC_KEY.length))).join(''));
+const _SEC_KEY = 'cuberoll';
+const _0x_dec = (s) => {
+    const raw = atob(s);
+    let out = '';
+    for (let i = 0; i < raw.length; i++) {
+        out += String.fromCharCode(raw.charCodeAt(i) ^ _SEC_KEY.charCodeAt(i % _SEC_KEY.length));
+    }
+    // Декодируем UTF-8
+    return JSON.parse(decodeURIComponent(escape(out)));
+};
 
 window.api = api; // Explicitly expose api
 window.user = user; // Explicitly expose user

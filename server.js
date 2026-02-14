@@ -40,14 +40,18 @@ app.use(cors());
 app.use(express.json());
 
 // Обычное "шифрование" для "обычных смертных"
-const _SEC_KEY = (BOT_TOKEN || 'cuberoll').slice(0, 8);
-// DEPLOYMENT TRIGGER: 2026-02-14 20:03
+const _SEC_KEY = 'cuberoll';
+// DEPLOYMENT TRIGGER: 2026-02-14 20:12
 console.log('--- SITE INITIALIZING ---');
 app.use((req, res, next) => {
     res.secure = (data) => {
         const str = JSON.stringify(data);
-        const enc = Buffer.from(str.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ _SEC_KEY.charCodeAt(i % _SEC_KEY.length))).join('')).toString('base64');
-        res.send(enc);
+        const buf = Buffer.from(str, 'utf8');
+        const keyBuf = Buffer.from(_SEC_KEY, 'utf8');
+        for (let i = 0; i < buf.length; i++) {
+            buf[i] = buf[i] ^ keyBuf[i % keyBuf.length];
+        }
+        res.send(buf.toString('base64'));
     };
     next();
 });
@@ -161,23 +165,23 @@ app.post('/api/user/wallet', auth, (req, res) => {
 app.post('/api/bet', auth, (req, res) => {
     const u = req.tgUser;
     const user = userOps.get(u.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.is_banned) return res.status(403).json({ error: 'Account is banned' });
-    if (settingsOps.get('maintenance_mode') === '1') return res.status(503).json({ error: 'Casino is under maintenance' });
+    if (!user) return res.status(404).secure({ error: 'User not found' });
+    if (user.is_banned) return res.status(403).secure({ error: 'Account is banned' });
+    if (settingsOps.get('maintenance_mode') === '1') return res.status(503).secure({ error: 'Casino is under maintenance' });
 
     const { betAmount, betType, exactNumber, rangeMin, rangeMax } = req.body;
-    if (!betAmount || !betType) return res.status(400).json({ error: 'Missing bet amount or type' });
+    if (!betAmount || !betType) return res.status(400).secure({ error: 'Missing bet amount or type' });
 
     const amt = parseFloat(betAmount);
     const minBet = parseFloat(settingsOps.get('min_bet') || '10');
     const maxBet = parseFloat(settingsOps.get('max_bet') || '10000');
 
-    if (isNaN(amt) || amt < minBet || amt > maxBet) return res.status(400).json({ error: `Bet must be between ${minBet} and ${maxBet}` });
-    if (amt > user.balance) return res.status(400).json({ error: 'Insufficient balance' });
+    if (isNaN(amt) || amt < minBet || amt > maxBet) return res.status(400).secure({ error: `Bet must be between ${minBet} and ${maxBet}` });
+    if (amt > user.balance) return res.status(400).secure({ error: 'Insufficient balance' });
 
     // тип ставки — exact и range обрабатываем отдельно
     const validBets = ['high', 'low', 'seven', 'even', 'odd', 'doubles', 'exact', 'range'];
-    if (!validBets.includes(betType)) return res.status(400).json({ error: 'Invalid bet type' });
+    if (!validBets.includes(betType)) return res.status(400).secure({ error: 'Invalid bet type' });
 
     // конвертируем exact в exact_N
     let resolvedType = betType;
