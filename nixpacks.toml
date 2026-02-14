@@ -4,7 +4,7 @@ nixPkgs = ["nodejs_20", "python311", "gcc"]
 [phases.install]
 cmds = [
     "npm install",
-    "python3 -m pip install telethon==1.34.0 aiohttp python-dotenv"
+    "python3 -m pip install -U telethon aiohttp python-dotenv"
 ]
 
 [start]

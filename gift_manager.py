@@ -54,34 +54,52 @@ async def fetch_floor_price(name):
         logger.error(f"Error fetching price for {name}: {e}")
         return 5.0
 
+# Путь к БД может отличаться на Railway
+DB_PATHS = ["cuberoll.db", "../cuberoll.db", "/app/cuberoll.db"]
+DB_PATH = "cuberoll.db"
+
+def get_db_connection():
+    for p in DB_PATHS:
+        if os.path.exists(p):
+            return sqlite3.connect(p)
+    return sqlite3.connect("cuberoll.db") # fallback
+
 async def sync_inventory(client):
     """Парсит подарки с аккаунта банка и обновляет магазин"""
     logger.info(f"Scanning for unique gifts on account...")
     try:
-        # Пытаемся найти функцию в разных местах (Payments)
-        req = None
+        from telethon import functions
+        
+        # Динамический поиск метода GetUserGifts
+        req_class = None
+        # Проверяем разные варианты именования в зависимости от версии Telethon
+        variants = ['GetUserGiftsRequest', 'GetUserGifts', 'get_user_gifts']
+        for var in variants:
+            if hasattr(functions.payments, var):
+                req_class = getattr(functions.payments, var)
+                break
+        
+        if not req_class:
+            # Логируем доступные методы для отладки
+            available = [m for m in dir(functions.payments) if not m.startswith('_')]
+            logger.error(f"КРИТИЧЕСКАЯ ОШИБКА: Метод GetUserGifts не найден. Доступные методы: {available[:10]}...")
+            return
+
+        # На некоторых версиях нужно передавать offset и limit
         try:
-            from telethon.tl.functions import payments
-            req = payments.GetUserGiftsRequest(user_id='me', limit=100)
-        except (AttributeError, ImportError):
-            # Если нет - пробуем через общий объект functions
-            from telethon import functions
-            if hasattr(functions.payments, 'GetUserGiftsRequest'):
-                req = functions.payments.GetUserGiftsRequest(user_id='me', limit=100)
-            else:
-                # Совсем крайний случай - пробуем через строковый вызов (если Telethon поддерживает)
-                logger.error("КРИТИЧЕСКАЯ ОШИБКА: Ваша версия Telethon слишком старая для работы с Gifts. Бот не сможет парсить подарки.")
-                return
+            req = req_class(user_id='me', limit=100)
+        except TypeError:
+            req = req_class(user_id='me', offset=0, limit=100)
 
         result = await client(req)
         
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Проверка существования таблицы
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gifts'")
         if not cursor.fetchone():
-            logger.warning("Table 'gifts' does not exist yet. Waiting for Node.js to initialize...")
+            logger.warning("Таблица 'gifts' еще не создана. Ждем инициализации сервера...")
             conn.close()
             return
 
@@ -92,7 +110,6 @@ async def sync_inventory(client):
                 continue
                 
             gift_info = item.gift
-            # Пробуем достать название из разных полей (title или slug)
             title = getattr(gift_info, 'title', getattr(gift_info, 'slug', f"NFT Gift #{tg_gift_id}"))
             
             logger.info(f"New gift found: {title}. Detecting price...")
@@ -115,21 +132,15 @@ async def process_transfer_queue(client):
     while True:
         conn = None
         try:
-            if not os.path.exists(DB_PATH):
-                logger.debug("Database file not found, waiting...")
-                await asyncio.sleep(5)
-                continue
-
-            conn = sqlite3.connect(DB_PATH)
+            conn = get_db_connection()
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
             # Проверка таблицы
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gift_transfers'")
             if not cursor.fetchone():
-                logger.debug("Table 'gift_transfers' not found, waiting...")
                 conn.close()
-                await asyncio.sleep(5)
+                await asyncio.sleep(10)
                 continue
 
             # Берем незавершенные переводы
