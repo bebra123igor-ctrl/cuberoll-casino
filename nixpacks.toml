@@ -1,11 +1,11 @@
 [phases.setup]
-nixPkgs = ["nodejs-20_x", "python311", "gcc"]
+nixPkgs = ["nodejs", "python311", "gcc"]
 
 [phases.install]
 cmds = [
     "npm install",
-    "python3 -m pip install -U telethon aiohttp python-dotenv"
+    "python3 -m pip install telethon aiohttp python-dotenv"
 ]
 
 [start]
-cmd = "npm start & python3 gift_manager.py"
+cmd = "npm start"

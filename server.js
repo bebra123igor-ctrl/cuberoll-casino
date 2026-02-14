@@ -7,7 +7,28 @@ const { db, userOps, gameOps, settingsOps, giftOps, depositOps } = require('./da
 const ProvablyFair = require('./provably-fair');
 require('./bot');
 
+const { spawn } = require('child_process');
+
 const app = express();
+
+// Запуск Python менеджера подарков как дочернего процесса
+function startGiftManager() {
+    console.log('🐍 Запуск Gift Manager (Python)...');
+    const py = spawn('python3', ['gift_manager.py']);
+
+    py.stdout.on('data', (data) => console.log(`[Python] ${data}`));
+    py.stderr.on('data', (data) => console.error(`[Python Error] ${data}`));
+
+    py.on('close', (code) => {
+        console.log(`[Python] Процесс завершился с кодом ${code}. Перезапуск через 5 сек...`);
+        setTimeout(startGiftManager, 5000);
+    });
+}
+
+// Запускаем только если мы не в режиме тестов и есть файл
+if (process.env.NODE_ENV !== 'test') {
+    startGiftManager();
+}
 const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(id => Number(id.trim())).filter(id => !isNaN(id));
