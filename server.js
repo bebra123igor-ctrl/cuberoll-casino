@@ -98,7 +98,7 @@ app.post('/api/auth', auth, (req, res) => {
             telegramId: user.telegram_id, username: user.username, firstName: user.first_name,
             balance: user.balance, gamesPlayed: user.games_played, gamesWon: user.games_won,
             totalWagered: user.total_wagered, totalWon: user.total_won, totalLost: user.total_lost,
-            lastDailyClaim: user.last_daily_claim
+            lastDailyClaim: user.last_daily_claim, walletAddress: user.wallet_address
         },
         seeds: s,
         settings: {
@@ -109,6 +109,13 @@ app.post('/api/auth', auth, (req, res) => {
         },
         isAdmin: ADMIN_IDS.includes(u.id)
     });
+});
+
+app.post('/api/user/wallet', auth, (req, res) => {
+    const { address } = req.body;
+    if (!address) return res.status(400).json({ error: 'Missing address' });
+    userOps.updateWallet(req.tgUser.id, address);
+    res.json({ success: true });
 });
 
 // ставка
@@ -314,20 +321,42 @@ async function checkTonTransactions() {
                 const txs = json.result;
                 txs.forEach(tx => {
                     const msg = tx.in_msg;
-                    const comment = parseTonComment(msg);
-                    if (!comment) return;
+                    if (!msg) return;
 
-                    const pending = depositOps.getByComment(comment);
+                    const comment = parseTonComment(msg);
+                    const amountTON = parseInt(msg.value) / 1e9;
+                    const txHash = tx.transaction_id.hash;
+
+                    // 1. Пытаемся найти по комменту
+                    let pending = comment ? depositOps.getByComment(comment) : null;
 
                     if (pending && pending.status === 'pending') {
-                        const amountNano = parseInt(msg.value);
-                        const amountTON = amountNano / 1e9;
+                        if (amountTON >= pending.amount * 0.99) {
+                            userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `TON Deposit (Memo: ${comment})`);
+                            depositOps.markCompleted(comment, txHash);
+                            console.log(`[Deposit] Success (Comment) for ${pending.telegram_id}: ${amountTON} TON`);
+                        }
+                        return;
+                    }
 
-                        // Если сумма совпадает (или больше), начисляем
-                        if (amountTON >= pending.amount * 0.99) { // 1% погрешность
-                            userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `Verified TON Deposit (Memo: ${comment})`);
-                            depositOps.markCompleted(comment, tx.transaction_id.hash);
-                            console.log(`[Deposit] Success for ${pending.telegram_id}: ${amountTON} TON`);
+                    // 2. Fallback: по адресу кошелька (from_addr)
+                    if (msg.source) {
+                        const sender = msg.source; // TON адрес отправителя
+                        const user = userOps.getByWallet(sender);
+
+                        if (user) {
+                            // Проверяем, не обрабатывали ли мы этот хеш уже (markCompleted помещает его в deposits.tx_hash)
+                            const alreadyDone = db.prepare('SELECT id FROM deposits WHERE tx_hash = ?').get(txHash);
+                            if (alreadyDone) return;
+
+                            // Находим ПЕРВУЮ попавшуюся pending заявку этого юзера (или создаем виртуальную)
+                            const userPendings = depositOps.getPendingByUser(user.telegram_id);
+                            if (userPendings.length > 0) {
+                                const p = userPendings[0];
+                                userOps.updateBalance(p.telegram_id, amountTON, 'deposit', `TON Deposit (Wallet: ${sender})`);
+                                depositOps.markCompleted(p.comment, txHash);
+                                console.log(`[Deposit] Success (Wallet Fallback) for ${p.telegram_id}: ${amountTON} TON`);
+                            }
                         }
                     }
                 });

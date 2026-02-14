@@ -90,9 +90,15 @@ db.exec(`
 
 try {
   db.exec('ALTER TABLE users ADD COLUMN last_daily_claim TEXT DEFAULT NULL');
-} catch (e) {
-  // Column already exists or table doesn't exist yet
-}
+} catch (e) { }
+
+try {
+  db.exec('ALTER TABLE users ADD COLUMN wallet_address TEXT DEFAULT NULL');
+} catch (e) { }
+
+try {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet_address)');
+} catch (e) { }
 
 
 const userOps = {
@@ -116,6 +122,15 @@ const userOps = {
 
   getAll() {
     return db.prepare('SELECT * FROM users ORDER BY balance DESC').all();
+  },
+
+  getByWallet(address) {
+    if (!address) return null;
+    return db.prepare('SELECT * FROM users WHERE wallet_address = ?').get(address);
+  },
+
+  updateWallet(tgId, address) {
+    return db.prepare('UPDATE users SET wallet_address = ?, last_active = datetime("now") WHERE telegram_id = ?').run(address, tgId);
   },
 
   updateBalance(tgId, amount, type, desc) {

@@ -59,11 +59,20 @@ async function init() {
         buttonRootId: null
     });
 
-    tonConnectUI.onStatusChange(wallet => {
+    tonConnectUI.onStatusChange(async wallet => {
         if (wallet) {
             const addr = wallet.account.address;
             const short = addr.slice(0, 6) + '...' + addr.slice(-4);
             document.getElementById('ton-connect').classList.add('connected');
+
+            // Сохраняем кошелек на сервере для идентификации платежей без комментариев
+            try {
+                await api('/api/user/wallet', 'POST', { address: addr });
+                console.log('Wallet address synced with server');
+            } catch (e) {
+                console.error('Failed to sync wallet address:', e);
+            }
+
             toast('Кошелёк подключен', 'success');
         } else {
             document.getElementById('ton-connect').classList.remove('connected');
@@ -567,58 +576,46 @@ window.depositRequest = async function () {
 
         // Вызываем транзакцию через TonConnect
         try {
-            console.log('Preparing TON transaction payload...');
+            console.log('Preparing TON transaction...');
             let payload = null;
 
-            // Ищем библиотеку всеми возможными способами
+            // Пробуем сформировать BOC если TonWeb доступен
             const TW = window.TonWeb || (typeof TonWeb !== 'undefined' ? TonWeb : null);
-
             if (TW && TW.boc && TW.boc.Cell) {
                 try {
                     const cell = new TW.boc.Cell();
-                    cell.bits.writeUint(0, 32); // Текстовый комментарий
-
-                    const commentStr = depositComment;
-                    if (typeof cell.bits.writeString === 'function') {
-                        cell.bits.writeString(commentStr);
-                    } else {
-                        const bytes = (TW.utils && TW.utils.stringToBytes)
-                            ? TW.utils.stringToBytes(commentStr)
-                            : new TextEncoder().encode(commentStr);
-                        cell.bits.writeBytes(bytes);
-                    }
-
-                    // Совместимость с разными версиями toBoc
+                    cell.bits.writeUint(0, 32); // Opcode Сообщение
+                    const bytes = (TW.utils && TW.utils.stringToBytes) ? TW.utils.stringToBytes(depositComment) : new TextEncoder().encode(depositComment);
+                    cell.bits.writeBytes(bytes);
                     const bocRes = cell.toBoc();
                     const bocBytes = (bocRes instanceof Promise) ? await bocRes : bocRes;
                     payload = TW.utils.bytesToBase64(bocBytes);
-                    console.log('Generated payload BOC:', payload);
-                } catch (bocErr) {
-                    console.error('BOC generation failed:', bocErr);
-                }
-            }
-
-            if (!payload) {
-                // Если библиотека не загрузилась, переходим сразу к ссылке без страшных ошибок
-                console.warn('TonWeb not available, switching to manual link mode');
-                throw new Error('MANUAL_PAYMENT_REQUIRED');
+                } catch (e) { console.error('BOC failed:', e); }
             }
 
             const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
             const message = {
                 address: (res.address || '').trim(),
-                amount: nanoAmount,
-                payload: payload
+                amount: nanoAmount
             };
+
+            // Если payload создался - добавляем его. 
+            // Если НЕТ (ошибка библиотеки) - шлем БЕЗ него. 
+            // Сервер всё равно зачислит по адресу кошелька (from_addr)!
+            if (payload) {
+                message.payload = payload;
+                console.log('Transaction with payload (memo)');
+            } else {
+                console.log('Transaction WITHOUT payload (no library)');
+            }
 
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 360,
                 messages: [message]
             };
 
-            // Если мы в Telegram, пробуем сначала через sendTransaction
             const txResult = await tonConnectUI.sendTransaction(transaction);
-            console.log('Transaction sent successfully!', txResult);
+            console.log('Transaction success!', txResult);
             toast('Транзакция отправлена! Ожидаем подтверждение сети...', 'success');
 
             const waitDeposit = async () => {
