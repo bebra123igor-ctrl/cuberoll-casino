@@ -570,26 +570,41 @@ window.depositRequest = async function () {
             console.log('Preparing TON transaction payload...');
             let payload = null;
 
-            // Пробуем сформировать BOC если TonWeb доступен
+            // Максимально надежный поиск библиотеки
             const TW = window.TonWeb || (typeof TonWeb !== 'undefined' ? TonWeb : null);
-            if (TW) {
+
+            if (TW && TW.boc && TW.boc.Cell) {
                 try {
                     const cell = new TW.boc.Cell();
                     cell.bits.writeUint(0, 32); // Opcode 0 - text message
-                    const bytes = TW.utils.stringToBytes(depositComment);
-                    cell.bits.writeBytes(bytes);
-                    const boc = cell.toBoc(); // sync in 0.0.66
-                    payload = TW.utils.bytesToBase64(boc);
+
+                    // Записываем строку комментария
+                    const commentStr = depositComment;
+                    if (typeof cell.bits.writeString === 'function') {
+                        cell.bits.writeString(commentStr);
+                    } else {
+                        const bytes = (TW.utils && TW.utils.stringToBytes)
+                            ? TW.utils.stringToBytes(commentStr)
+                            : new TextEncoder().encode(commentStr);
+                        cell.bits.writeBytes(bytes);
+                    }
+
+                    // toBoc может быть как синхронным, так и асинхронным в разных билдах
+                    const bocResult = cell.toBoc();
+                    const bocBytes = (bocResult instanceof Promise) ? await bocResult : bocResult;
+
+                    payload = TW.utils.bytesToBase64(bocBytes);
                     console.log('Generated payload BOC:', payload);
                 } catch (bocErr) {
-                    console.error('Internal BOC generation error:', bocErr);
+                    console.error('BOC generation failed:', bocErr);
                 }
+            } else {
+                console.warn('TonWeb library not found or incomplete');
             }
 
             if (!payload) {
-                // Если не удалось создать BOC через библиотеку, кидаем специальную ошибку для перехода к ссылке
-                console.warn('TonWeb payload generation failed, using deep link fallback');
-                throw new Error('FAILED_TO_GENERATE_PAYLOAD');
+                console.warn('Payload generation failed, falling back to deep link');
+                throw new Error('Не удалось сформировать данные для оплаты (библиотека TON не загружена)');
             }
 
             const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
