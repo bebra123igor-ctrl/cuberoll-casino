@@ -71,9 +71,13 @@ async function api(url, method = 'GET', body = null) {
                 e = _0x_dec(rawData);
             } catch (err) {
                 // Если не смогли расшифровать - значит сервер прислал обычную ошибку (например 502)
-                throw new Error(`Server Error: ${res.status}`);
+                const errResult = new Error(`Server Error: ${res.status}`);
+                errResult.status = res.status;
+                throw errResult;
             }
-            throw new Error(e.error || `Error ${res.status}`);
+            const errResult = new Error(e.error || `Error ${res.status}`);
+            errResult.status = res.status;
+            throw errResult;
         }
 
         return _0x_dec(rawData);
@@ -162,7 +166,8 @@ async function init() {
         }, 10000);
 
     } catch (e) {
-        toast('Ошибка входа: ' + e.message, 'error');
+        console.error('INIT ERROR:', e);
+        toast('Ошибка: ' + e.message + (e.status ? ' (S:' + e.status + ')' : ''), 'error');
     }
 }
 

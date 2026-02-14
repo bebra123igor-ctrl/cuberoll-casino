@@ -91,15 +91,25 @@ function auth(req, res, next) {
         return next();
     }
 
-    if (!data) return res.status(401).secure({ error: 'No auth data provided' });
+    if (!data) {
+        console.warn('[Auth] Access denied: No auth data provided.');
+        return res.status(401).secure({ error: 'No auth data provided' });
+    }
 
     const user = validateTgData(data);
-    if (!user) return res.status(401).secure({ error: 'Invalid auth data' });
+    if (!user) {
+        console.warn('[Auth] Access denied: Invalid auth data.');
+        return res.status(401).secure({ error: 'Invalid auth data' });
+    }
 
     // Проверка бана на уровне мидлвары для всех API запросов
     const dbUser = userOps.get(user.id);
-    if (dbUser && dbUser.is_banned) return res.status(403).secure({ error: 'Account is banned' });
+    if (dbUser && dbUser.is_banned) {
+        console.warn(`[Auth] Access denied: User ${user.id} is banned.`);
+        return res.status(403).secure({ error: 'Account is banned' });
+    }
 
+    console.log(`[Auth] User ${user.id} authenticated successfully.`);
     req.tgUser = user;
     next();
 }
