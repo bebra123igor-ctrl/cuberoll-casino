@@ -595,15 +595,38 @@
             initData = tg.initData;
         }
 
+        // "Шифрование" для "обычных смертных"
+        const _SEC_KEY = 'cuberoll';
+        const _0x_dec = (s) => {
+            try {
+                const raw = atob(s);
+                const bytes = new Uint8Array(raw.length);
+                for (let i = 0; i < raw.length; i++) {
+                    bytes[i] = raw.charCodeAt(i) ^ _SEC_KEY.charCodeAt(i % _SEC_KEY.length);
+                }
+                return JSON.parse(new TextDecoder().decode(bytes));
+            } catch (e) {
+                try { return JSON.parse(s); } catch (e2) { throw e; }
+            }
+        };
+
         async function api(url, method = 'GET', body = null) {
             const h = { 'Content-Type': 'application/json' };
             if (initData) h['X-Telegram-Init-Data'] = initData;
             else h['X-Dev-User-Id'] = '12345';
             const o = { method, headers: h };
             if (body) o.body = JSON.stringify(body);
+
             const r = await fetch(url, o);
-            if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'err'); }
-            return r.json();
+            const raw = await r.text();
+
+            if (!r.ok) {
+                let e = {};
+                try { e = _0x_dec(raw); } catch (err) { e = { error: 'Server Error ' + r.status }; }
+                throw new Error(e.error || 'err');
+            }
+
+            return _0x_dec(raw);
         }
 
         document.querySelectorAll('.tab').forEach(t => {

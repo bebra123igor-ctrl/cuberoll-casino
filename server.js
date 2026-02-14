@@ -475,7 +475,7 @@ setInterval(rollbackExpiredOptimisticDeposits, 60000); // каждые 60 сек
 
 app.post('/api/admin/parse-gift', auth, adminOnly, async (req, res) => {
     const { url } = req.body;
-    if (!url) return res.status(400).json({ error: 'URL required' });
+    if (!url) return res.status(400).secure({ error: 'URL required' });
 
     https.get(url, (resp) => {
         let html = '';
@@ -484,7 +484,7 @@ app.post('/api/admin/parse-gift', auth, adminOnly, async (req, res) => {
             try {
                 const titleMatch = html.match(/<meta property="og:title" content="([^"]+)">/);
                 const imageMatch = html.match(/<meta property="og:image" content="([^"]+)">/);
-                res.json({
+                res.secure({
                     title: titleMatch ? titleMatch[1].replace('Collectibles — ', '') : 'Gift',
                     model: imageMatch ? imageMatch[1] : '',
                     background: 'radial-gradient(circle, #333, #000)',
