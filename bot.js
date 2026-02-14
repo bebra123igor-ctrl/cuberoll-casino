@@ -4,7 +4,9 @@ const { userOps, gameOps, settingsOps } = require('./database');
 
 const TOKEN = process.env.BOT_TOKEN;
 const ADMINS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim()));
-const WEBAPP = process.env.WEBAPP_URL || 'https://your-domain.com';
+let WEBAPP = process.env.WEBAPP_URL || 'https://your-domain.com';
+if (WEBAPP && !WEBAPP.startsWith('http')) WEBAPP = 'https://' + WEBAPP;
+if (WEBAPP.endsWith('/')) WEBAPP = WEBAPP.slice(0, -1);
 
 if (!TOKEN) { console.error('нет BOT_TOKEN в .env'); process.exit(1); }
 
