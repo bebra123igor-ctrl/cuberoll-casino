@@ -106,6 +106,21 @@ async function init() {
             }, 800);
         }, 1500);
 
+        // Фоновое обновление баланса раз в 10 секунд
+        setInterval(async () => {
+            try {
+                const data = await api('/api/auth', 'POST');
+                const newUser = data.user;
+                if (user && newUser.balance > user.balance) {
+                    toast(`Баланс пополнен: +${(newUser.balance - user.balance).toFixed(2)} TON`, 'success');
+                }
+                user = newUser;
+                setBalance(user.balance, true);
+            } catch (e) {
+                console.warn('Background balance sync failed');
+            }
+        }, 10000);
+
     } catch (e) {
         toast('Ошибка входа: ' + e.message, 'error');
     }

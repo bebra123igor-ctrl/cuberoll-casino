@@ -358,13 +358,20 @@ async function checkTonTransactions() {
                             const alreadyDone = db.prepare('SELECT id FROM deposits WHERE tx_hash = ?').get(txHash);
                             if (alreadyDone) return;
 
-                            // Находим ПЕРВУЮ попавшуюся pending заявку этого юзера (или создаем виртуальную)
+                            // Ищем заявку
                             const userPendings = depositOps.getPendingByUser(user.telegram_id);
                             if (userPendings.length > 0) {
                                 const p = userPendings[0];
                                 userOps.updateBalance(p.telegram_id, amountTON, 'deposit', `TON Deposit (Wallet: ${sender})`);
                                 depositOps.markCompleted(p.comment, txHash);
-                                console.log(`[Deposit] Success (Wallet Fallback) for ${p.telegram_id}: ${amountTON} TON`);
+                                console.log(`[Deposit] Success (Wallet Match) for ${p.telegram_id}: ${amountTON} TON`);
+                            } else {
+                                // Если заявки нет, но кошелек привязан - всё равно начисляем!
+                                userOps.updateBalance(user.telegram_id, amountTON, 'deposit', `TON Deposit (Direct from wallet: ${sender})`);
+                                const vComm = 'W-' + txHash.slice(0, 8);
+                                db.prepare("INSERT INTO deposits (telegram_id, amount, status, comment, tx_hash) VALUES (?, ?, 'completed', ?, ?)")
+                                    .run(user.telegram_id, amountTON, vComm, txHash);
+                                console.log(`[Deposit] Success (Direct Wallet) for ${user.telegram_id}: ${amountTON} TON`);
                             }
                         }
                     }
