@@ -71,18 +71,8 @@ async function init() {
 
         setBalance(user.balance);
 
-        if (user.lastDailyClaim) {
-            const last = new Date(user.lastDailyClaim.includes(' ') ? user.lastDailyClaim + 'Z' : user.lastDailyClaim);
-            const now = new Date();
-            if (now - last < 24 * 60 * 60 * 1000) {
-                document.getElementById('daily-bonus').classList.add('claimed');
-                document.getElementById('daily-desc').textContent = 'Приходи завтра!';
-            }
-        }
-
         loadHistory();
         loadGifts();
-        loadPendingDeposits();
 
         // Инит обработчиков кнопок
         initEventListeners();
@@ -238,10 +228,6 @@ function initEventListeners() {
 
     const verifyBtn = document.getElementById('btn-verify');
     if (verifyBtn) verifyBtn.onclick = verifyGame;
-
-    // Deposit button specific binding
-    const depBtn = document.getElementById('dep-btn-go');
-    if (depBtn) depBtn.onclick = depositRequest;
 }
 
 window.rotateServerSeed = async function () {
@@ -463,18 +449,8 @@ window.closeModal = function (id) {
     document.getElementById(id).classList.add('hidden');
 };
 
-window.copyText = function (id) {
-    const txt = document.getElementById(id).textContent;
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(txt).then(() => {
-            toast('Скопировано!', 'success');
-        });
-    }
-}
-
 // Депозиты
 window.depositRequest = async function () {
-    console.log('Deposit requested');
     if (!tonConnectUI.connected) {
         toast('Сначала подключите кошелёк', 'info');
         await tonConnectUI.openModal();
@@ -483,28 +459,21 @@ window.depositRequest = async function () {
     if (!user) return toast('Ошибка: нет пользователя', 'error');
 
     const amountEl = document.getElementById('dep-amount');
-    const amount = amountEl ? amountEl.value : null;
+    const amountVal = amountEl ? amountEl.value : null;
 
-    if (!amount || parseFloat(amount) < 0.1) return toast('Мин. сумма 0.1 TON', 'error');
+    if (!amountVal || parseFloat(amountVal) < 0.1) return toast('Мин. сумма 0.1 TON', 'error');
 
     try {
-        const res = await api('/api/deposit/request', 'POST', { amount: parseFloat(amount) });
+        const btn = document.getElementById('dep-btn-go');
+        btn.disabled = true;
+        btn.textContent = '...';
+
+        const res = await api('/api/deposit/request', 'POST', { amount: parseFloat(amountVal) });
+
         document.getElementById('dep-addr-val').textContent = res.address;
         document.getElementById('dep-memo-val').textContent = res.comment;
         document.getElementById('dep-manual-info').classList.remove('hidden');
 
-        toast('Заявка создана. Переведите TON с комментарием!', 'success');
-        loadPendingDeposits();
-    } catch (e) {
-        console.error(e);
-        toast(e.message, 'error');
-    }
-};
-
-async function loadPendingDeposits() {
-    try {
-        const res = await api('/api/deposit/check');
-        const list = document.getElementById('pending-deposits');
         list.innerHTML = '';
 
         if (res.pending && res.pending.length > 0) {
@@ -575,5 +544,79 @@ async function loadLeaderboard() {
         `).join('');
     } catch (e) { }
 }
+
+window.depositRequest = async function () {
+    if (!tonConnectUI.connected) {
+        toast('Сначала подключите кошелёк', 'info');
+        await tonConnectUI.openModal();
+        return;
+    }
+    if (!user) return toast('Ошибка: нет пользователя', 'error');
+
+    const amountEl = document.getElementById('dep-amount');
+    const amountVal = amountEl ? amountEl.value : null;
+
+    if (!amountVal || parseFloat(amountVal) < 0.1) return toast('Мин. сумма 0.1 TON', 'error');
+
+    try {
+        const btn = document.getElementById('dep-btn-go');
+        btn.disabled = true;
+        btn.textContent = '...';
+
+        const res = await api('/api/deposit/request', 'POST', { amount: parseFloat(amountVal) });
+
+        document.getElementById('dep-addr-val').textContent = res.address;
+        document.getElementById('dep-memo-val').textContent = res.comment;
+        document.getElementById('dep-manual-info').classList.remove('hidden');
+
+        toast('Заявка создана. Оплатите в кошельке!', 'success');
+
+        // Вызываем транзакцию
+        try {
+            const transaction = {
+                validUntil: Math.floor(Date.now() / 1000) + 360,
+                messages: [
+                    {
+                        address: res.address,
+                        amount: (parseFloat(amountVal) * 1e9).toString()
+                    }
+                ]
+            };
+            await tonConnectUI.sendTransaction(transaction);
+            toast('Транзакция отправлена!', 'success');
+        } catch (txErr) {
+            console.log('TX cancelled, manual info shown');
+        }
+
+    } catch (e) {
+        toast(e.message, 'error');
+    } finally {
+        const btn = document.getElementById('dep-btn-go');
+        btn.disabled = false;
+        btn.textContent = 'ПОПОЛНИТЬ';
+    }
+};
+
+window.copyText = function (id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const txt = el.textContent || el.innerText;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(() => {
+            toast('Скопировано!', 'success');
+        });
+    } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = txt;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            toast('Скопировано!', 'success');
+        } catch (err) { }
+        document.body.removeChild(textArea);
+    }
+};
 
 document.addEventListener('DOMContentLoaded', init);
