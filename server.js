@@ -14,8 +14,8 @@ const app = express();
 // Запуск Python менеджера подарков как дочернего процесса
 function startGiftManager() {
     console.log('🐍 [System] Запуск Gift Manager (Python)...');
-    // В Docker используем python3
-    const py = spawn('python3', ['gift_manager.py']);
+    // В Docker может быть python3, на локалке python. Попробуем python.
+    const py = spawn('python', ['gift_manager.py']);
 
     py.stdout.on('data', (data) => console.log(`[GiftManager] ${data.toString().trim()}`));
     py.stderr.on('data', (data) => console.error(`[GiftManager Error] ${data.toString().trim()}`));

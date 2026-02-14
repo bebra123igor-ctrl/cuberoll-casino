@@ -97,10 +97,12 @@ async def sync_inventory(client):
                 return b''
 
         try:
-             # Динамически пробуем вызвать метод, если он есть в этой версии Telethon
-             # payments.getUserGifts#e11da17c user_id:InputUser offset:int limit:int = payments.UserGifts;
+             # Динамически пробуем вызвать метод
              try:
-                 # Пытаемся через конструктор, который точно есть в Telethon для Invoke
+                 # Пытаемся получить сущность дилера, чтобы сканировать именно ЕГО подарки
+                 # Если сессия дилера, то 'me' сработает, но для надежности можно передать ID
+                 dealer_entity = await client.get_input_entity('cuberoll_dealer')
+                 
                  from telethon.tl.tlobject import TLObject
                  class GetGiftsReq(functions.TLRequest):
                      CONSTRUCTOR_ID = 0xe11da17c
@@ -111,7 +113,7 @@ async def sync_inventory(client):
                          self.limit = limit
                      def to_dict(self): return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
                  
-                 result = await client(GetGiftsReq(user_id='me', limit=100))
+                 result = await client(GetGiftsReq(user_id=dealer_entity, limit=100))
              except Exception as call_err:
                  logger.error(f"Raw call failed: {call_err}")
                  return
@@ -127,7 +129,7 @@ async def sync_inventory(client):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Принудительное создание таблиц если Node затупил
+        # Принудительное создание таблиц
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS gifts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,43 +138,69 @@ async def sync_inventory(client):
             )
         """)
 
+        # Помощник для парсинга t.me/nft (из вашего GiftParser)
+        async def parse_nft_meta(slug, gift_id):
+            url = f"https://t.me/nft/{slug}-{gift_id}"
+            try:
+                import re
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, timeout=10) as resp:
+                        if resp.status != 200: return {}
+                        text = await resp.text()
+                        m = re.search(r'og:description["\s]+content="([^"]*)"', text)
+                        if not m: return {}
+                        desc = m.group(1).replace("&#10;", "\n")
+                        meta = {}
+                        for line in desc.split("\n"):
+                            if "Model:" in line: meta["model"] = line.split("Model:")[1].strip()
+                            if "Backdrop:" in line: meta["backdrop"] = line.split("Backdrop:")[1].strip()
+                            if "Symbol:" in line: meta["symbol"] = line.split("Symbol:")[1].strip()
+                        return meta
+            except: return {}
+
         for item in result.gifts:
             tg_gift_id = str(item.id)
             
-            # 1. Проверяем, не добавлен ли уже этот ID
             cursor.execute("SELECT id FROM gifts WHERE gift_id = ?", (tg_gift_id,))
             if cursor.fetchone():
                 continue
                 
             gift_obj = item.gift
-            # Ищем название: сначала в slug (обычно это название коллекции), потом в title
             title = "NFT Gift"
-            if hasattr(gift_obj, 'slug'):
-                title = gift_obj.slug.replace('_', ' ').title()
+            slug = getattr(gift_obj, 'slug', '')
+            
+            if slug:
+                title = slug.replace('_', ' ').title()
             
             if hasattr(item, 'message') and item.message:
                 title = item.message
             
-            # 2. УМНЫЙ ХАК: Если юзер добавил подарок вручную через панель,
-            # у него в базе будет такое же имя, но gift_id = NULL.
-            # Мы "подхватываем" такой подарок и прописываем ему ID.
+            # УМНЫЙ ХАК: привязка ручных подарков
             cursor.execute("SELECT id FROM gifts WHERE title = ? AND gift_id IS NULL", (title,))
             manual_match = cursor.fetchone()
+            
+            # Парсим мета-данные (модель, символы) для красоты в магазине
+            meta = await parse_nft_meta(slug, tg_gift_id) if slug else {}
+            
+            model_url = meta.get("model", "https://i.imgur.com/8YvYyZp.png")
+            bg_style = meta.get("backdrop", "radial-gradient(circle, #333, #000)")
+            symbol = meta.get("symbol", "🎁")
+
             if manual_match:
-                logger.info(f"Linking manual gift '{title}' with Telegram ID {tg_gift_id}")
-                cursor.execute("UPDATE gifts SET gift_id = ?, is_active = 1 WHERE id = ?", (tg_gift_id, manual_match[0]))
+                logger.info(f"Linking manual gift '{title}' with ID {tg_gift_id}")
+                cursor.execute("""
+                    UPDATE gifts SET gift_id = ?, is_active = 1, model = ?, background = ?, symbol = ? 
+                    WHERE id = ?
+                """, (tg_gift_id, model_url, bg_style, symbol, manual_match[0]))
                 continue
 
             logger.info(f"New gift found: {title}. Detecting price...")
             price = await fetch_floor_price(title)
             
-            # Пытаемся достать картинку из атрибутов если есть (заглушка для примера)
-            model_url = "https://i.imgur.com/8YvYyZp.png"
-            
             cursor.execute("""
                 INSERT INTO gifts (title, price, gift_id, is_active, model, background, symbol)
                 VALUES (?, ?, ?, 1, ?, ?, ?)
-            """, (title, price, tg_gift_id, model_url, 'radial-gradient(circle, #333, #000)', '🎁'))
+            """, (title, price, tg_gift_id, model_url, bg_style, symbol))
             logger.info(f"Added to store: {title} for {price} TON")
             
         conn.commit()
