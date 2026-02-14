@@ -436,6 +436,7 @@ async function confirmPurchase(id) {
         setBalance(user.balance, true);
         toast('Покупка успешна!', 'success');
         closeModal('purchase-modal');
+        loadGifts(); // Обновляем список, чтобы купленный товар пропал
     } catch (e) {
         toast(e.message || 'Ошибка покупки', 'error');
     } finally {

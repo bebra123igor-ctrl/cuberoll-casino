@@ -238,6 +238,7 @@ app.post('/api/gifts/buy', auth, (req, res) => {
     if (user.balance < gift.price) return res.status(400).json({ error: 'Insufficient balance' });
 
     userOps.updateBalance(req.tgUser.id, -gift.price, 'gift_buy', `Bought ${gift.title}`);
+    giftOps.delete(giftId); // Это помечает is_active = 0
     const updated = userOps.get(req.tgUser.id);
     res.json({ success: true, newBalance: updated.balance });
 });

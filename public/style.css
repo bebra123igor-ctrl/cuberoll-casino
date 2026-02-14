@@ -1708,6 +1708,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 10px;
+  border-radius: 12px 12px 0 0;
 }
 
 .gift-img {
