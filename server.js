@@ -111,29 +111,6 @@ app.post('/api/auth', auth, (req, res) => {
     });
 });
 
-app.post('/api/daily/claim', auth, (req, res) => {
-    const user = userOps.get(req.tgUser.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const now = new Date();
-    if (user.last_daily_claim) {
-        const last = new Date(user.last_daily_claim + 'Z');
-        const diff = now - last;
-        if (diff < 24 * 60 * 60 * 1000) {
-            const remains = 24 * 60 * 60 * 1000 - diff;
-            const hours = Math.floor(remains / (60 * 60 * 1000));
-            const mins = Math.floor((remains % (60 * 60 * 1000)) / (60 * 1000));
-            return res.status(400).json({ error: `Next claim in ${hours}h ${mins}m` });
-        }
-    }
-
-    const amount = 0.5;
-    userOps.claimDaily(req.tgUser.id, amount);
-    userOps.updateBalance(req.tgUser.id, 0, 'daily_bonus', 'Daily Bonus');
-    const updated = userOps.get(req.tgUser.id);
-    res.json({ success: true, newBalance: updated.balance, lastDailyClaim: updated.last_daily_claim });
-});
-
 // ставка
 app.post('/api/bet', auth, (req, res) => {
     const u = req.tgUser;

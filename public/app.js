@@ -284,7 +284,11 @@ window.verifyGame = async function () {
 
 window.roll = async function () {
     if (rolling) return;
-    if (!tonConnectUI.connected) return toast('Сначала подключите кошелёк', 'error');
+    if (!tonConnectUI.connected) {
+        toast('Сначала подключите кошелёк', 'info');
+        await tonConnectUI.openModal();
+        return;
+    }
 
     const amt = parseFloat(document.getElementById('bet-amount').value);
     if (isNaN(amt) || amt < 0.1) return toast('Мин. ставка 0.1 TON', 'error');
@@ -310,6 +314,7 @@ window.roll = async function () {
         // анимация
         animateDice(res.result.dice);
 
+        // Показ результата СТРОГО после анимации
         setTimeout(() => {
             user.balance = res.result.newBalance;
             setBalance(user.balance, true);
@@ -323,39 +328,49 @@ window.roll = async function () {
                 document.getElementById('nonce-value').textContent = res.fairness.nonce;
             }
 
-        }, 1200);
+        }, 1500); // 1.5s - sync with CSS transition + buffer
 
     } catch (e) {
         toast(e.message, 'error');
         rolling = false;
         document.getElementById('open-bet-modal-btn').disabled = false;
-        // Re-open modal if error occurred so user can fix? Or just stay on main.
     }
 };
 
 function animateDice(vals) {
     const d1 = document.getElementById('die1');
     const d2 = document.getElementById('die2');
-    d1.classList.add('rolling');
-    d2.classList.add('rolling');
 
-    setTimeout(() => {
-        d1.classList.remove('rolling');
-        d2.classList.remove('rolling');
-        setDiceFace(d1, vals[0]);
-        setDiceFace(d2, vals[1]);
-    }, 1000);
+    // Сбрасываем предыдущее вращение (add some random for 'strange' effect)
+    d1.style.transition = 'none';
+    d2.style.transition = 'none';
+    d1.style.transform = `rotateX(${Math.random() * 360}deg) rotateY(${Math.random() * 360}deg)`;
+    d2.style.transform = `rotateX(${Math.random() * 360}deg) rotateY(${Math.random() * 360}deg)`;
+
+    void d1.offsetWidth; // force reflow
+
+    d1.style.transition = 'transform 1.2s cubic-bezier(0.15, 0.6, 0.3, 1)';
+    d2.style.transition = 'transform 1.2s cubic-bezier(0.15, 0.6, 0.3, 1)';
+
+    setDiceFace(d1, vals[0]);
+    setDiceFace(d2, vals[1]);
 }
 
 function setDiceFace(el, val) {
+    // Correct rotations based on index.html mapping
     const rotations = {
-        1: 'rotateX(0deg) rotateY(0deg)',
-        2: 'rotateX(0deg) rotateY(180deg)',
-        3: 'rotateX(0deg) rotateY(-90deg)',
-        4: 'rotateX(0deg) rotateY(90deg)',
-        5: 'rotateX(-90deg) rotateY(0deg)',
-        6: 'rotateX(90deg) rotateY(0deg)'
+        1: 'rotateX(0deg) rotateY(0deg)',     // front
+        2: 'rotateX(-90deg) rotateY(0deg)',   // top
+        3: 'rotateX(0deg) rotateY(-90deg)',   // right
+        4: 'rotateX(0deg) rotateY(90deg)',    // left
+        5: 'rotateX(90deg) rotateY(0deg)',    // bottom
+        6: 'rotateX(0deg) rotateY(180deg)'    // back
     };
+
+    // Add small random offset for "real feel"
+    const offX = (Math.random() - 0.5) * 4;
+    const offY = (Math.random() - 0.5) * 4;
+
     el.style.transform = rotations[val] || 'rotateX(0deg)';
 }
 
@@ -448,23 +463,14 @@ window.closeModal = function (id) {
     document.getElementById(id).classList.add('hidden');
 };
 
-window.claimDaily = async function () {
-    if (rolling) return;
-    const btn = document.getElementById('daily-bonus');
-    if (btn.classList.contains('claimed')) return toast('Вы уже получили бонус сегодня', 'info');
-
-    try {
-        const res = await api('/api/daily/claim', 'POST');
-        user.balance = res.newBalance;
-        setBalance(user.balance, true);
-        toast('Бонус получен: +0.5 TON!', 'success');
-
-        btn.classList.add('claimed');
-        document.getElementById('daily-desc').textContent = 'Приходи завтра!';
-    } catch (e) {
-        toast(e.message, 'error');
+window.copyText = function (id) {
+    const txt = document.getElementById(id).textContent;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(txt).then(() => {
+            toast('Скопировано!', 'success');
+        });
     }
-};
+}
 
 // Депозиты
 window.depositRequest = async function () {
@@ -486,12 +492,6 @@ window.depositRequest = async function () {
         document.getElementById('dep-addr-val').textContent = res.address;
         document.getElementById('dep-memo-val').textContent = res.comment;
         document.getElementById('dep-manual-info').classList.remove('hidden');
-
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(res.address).then(() => {
-                toast('Адрес скопирован!', 'info');
-            });
-        }
 
         toast('Заявка создана. Переведите TON с комментарием!', 'success');
         loadPendingDeposits();

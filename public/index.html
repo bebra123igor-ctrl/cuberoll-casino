@@ -135,28 +135,6 @@
     <div class="tab-content active" id="content-game">
       <div class="tab-scrollable">
 
-        <!-- дейли бонус -->
-        <div class="daily-bonus" id="daily-bonus" onclick="claimDaily()">
-          <div class="daily-left">
-            <div class="daily-icon">
-              <svg viewBox="0 0 24 24">
-                <path d="M20 12v10H4V12" />
-                <path d="M2 7h20v5H2z" />
-                <path d="M12 22V7" />
-                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
-                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-              </svg>
-            </div>
-            <div class="daily-text">
-              <span class="daily-label" id="daily-label">Дейли бонус</span>
-              <span class="daily-desc" id="daily-desc">Забери бесплатные TON</span>
-            </div>
-          </div>
-          <span class="daily-amount" id="daily-amount">+500</span>
-        </div>
-
-
-
         <!-- кубики -->
         <div class="dice-arena">
           <div class="dice-table">
@@ -336,26 +314,47 @@
 
     <div class="tab-content" id="content-wallet">
       <div class="tab-scrollable">
-        <div class="deposit-section" style="margin-top: 10px;">
-          <h4 class="section-title">Пополнение (Мемо)</h4>
+        <div class="wallet-content">
+          <div class="deposit-hero">
+            <div class="hero-icon">💎</div>
+            <h2>Пополнение баланса</h2>
+            <p>Переведите TON на адрес ниже, обязательно указав комментарий</p>
+          </div>
+
+          <div class="deposit-input-card premium-dep">
+            <div class="dep-label">Сумма пополнения</div>
+            <div class="dep-input-container">
+              <div class="dep-input-group">
+                <input type="number" id="dep-amount" placeholder="0.00" step="0.1" min="0.1">
+                <span>TON</span>
+              </div>
+              <button class="dep-go-btn main-action" id="dep-btn-go">ПОПОЛНИТЬ</button>
+            </div>
+            <p class="dep-hint">Минимум: 0.1 TON</p>
+          </div>
 
           <div id="dep-manual-info" class="dep-manual-card hidden">
-            <div class="dep-row"><span>Адрес:</span> <code id="dep-addr-val">...</code></div>
-            <div class="dep-row"><span>Мемо/Комментарий:</span> <code id="dep-memo-val"
-                class="memo-highlight">...</code>
+            <div class="dep-info-title">Реквизиты для оплаты</div>
+            <div class="dep-row">
+              <label>Адрес (Address)</label>
+              <div class="copy-box" onclick="copyText('dep-addr-val')">
+                <code id="dep-addr-val">...</code>
+                <span class="copy-icon">📋</span>
+              </div>
             </div>
-            <p class="dep-warning">⚠️ Обязательно укажите комментарий при переводе!</p>
+            <div class="dep-row">
+              <label>Комментарий (Memo/Comment)</label>
+              <div class="copy-box highlight" onclick="copyText('dep-memo-val')">
+                <code id="dep-memo-val">...</code>
+                <span class="copy-icon">📋</span>
+              </div>
+            </div>
+            <div class="dep-warning">
+              ⚠️ БЕЗ КОММЕНТАРИЯ СРЕДСТВА НЕ БУДУТ ЗАЧИСЛЕНЫ!
+            </div>
           </div>
 
-          <div class="deposit-input-card">
-            <div class="dep-input-group">
-              <input type="number" id="dep-amount" placeholder="1.0" step="0.1" min="0.1">
-              <span>TON</span>
-            </div>
-            <button class="dep-go-btn" id="dep-btn-go" onclick="depositRequest()">Создать</button>
-          </div>
-          <p class="dep-hint">Минимум: <span id="min-dep-text">0.1</span> TON.</p>
-
+          <div class="section-title">Активные заявки</div>
           <div class="deposit-status-list" id="pending-deposits"></div>
         </div>
       </div>

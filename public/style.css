@@ -2415,8 +2415,8 @@ body {
 }
 
 /* Update Roll Button specific for open modal */
-#open-bet-modal-btn {
-  /* reuse .roll-button styles inherently, no extra needed unless adjustments */
+#open-bet-modal-btn:active {
+  transform: scale(0.96);
 }
 
 /* Bet Modal Specifics */
@@ -2474,8 +2474,163 @@ body {
 
 /* Adjust grid for modal if needed */
 .bet-modal-box .bet-grid {
+  display: grid;
   grid-template-columns: repeat(3, 1fr);
+  gap: 12px 8px;
+  /* row-gap: 12px, col-gap: 8px */
+  margin-bottom: 20px;
+}
+
+/* Wallet / Deposit Premium Styles */
+.wallet-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.deposit-hero {
+  text-align: center;
+  padding: 20px 0;
+  background: linear-gradient(180deg, var(--accent-dim) 0%, transparent 100%);
+  border-radius: var(--r);
+  margin-bottom: 8px;
+}
+
+.hero-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.deposit-hero h2 {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: var(--t1);
+}
+
+.deposit-hero p {
+  font-size: 13px;
+  color: var(--t3);
+  line-height: 1.5;
+  max-width: 240px;
+  margin: 0 auto;
+}
+
+.premium-dep {
+  background: var(--surface);
+  border: 1px solid var(--accent-g);
+  padding: 20px;
+  border-radius: var(--r);
+  box-shadow: 0 10px 30px rgba(0, 136, 204, 0.1);
+}
+
+.dep-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--t4);
+  margin-bottom: 10px;
+}
+
+.dep-input-container {
+  display: flex;
+  gap: 10px;
+}
+
+.dep-go-btn.main-action {
+  background: var(--accent);
+  box-shadow: 0 4px 15px var(--accent-g);
+  min-width: 120px;
+}
+
+.dep-manual-card {
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dep-info-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
+  display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.dep-row label {
+  display: block;
+  font-size: 11px;
+  color: var(--t4);
+  margin-bottom: 6px;
+}
+
+.copy-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copy-box:active {
+  background: var(--border);
+}
+
+.copy-box.highlight {
+  border-color: var(--gold2);
+}
+
+.copy-box code {
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--t2);
+  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.copy-icon {
+  font-size: 16px;
+  opacity: 0.5;
+}
+
+.dep-warning {
+  background: rgba(229, 57, 53, 0.1);
+  border: 1px solid rgba(229, 57, 53, 0.2);
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--red);
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+
+/* Fix dice transition for better sync */
+.dice3d {
+  transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .bet-modal-box .roll-button {
