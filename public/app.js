@@ -627,13 +627,19 @@ window.depositRequest = async function () {
                 console.error('Payload generation failed:', e);
             }
 
+            const message = {
+                address: res.address.trim(),
+                amount: (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString(),
+            };
+
+            // Добавляем payload только если он создался (чтобы не было ошибки валидации "invalid payload: null")
+            if (payload) {
+                message.payload = payload;
+            }
+
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 360,
-                messages: [{
-                    address: res.address.trim(),
-                    amount: (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString(),
-                    payload: payload
-                }]
+                messages: [message]
             };
 
             await tonConnectUI.sendTransaction(transaction);
