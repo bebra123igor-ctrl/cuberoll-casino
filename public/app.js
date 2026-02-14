@@ -59,10 +59,19 @@ async function init() {
         const data = await api('/api/auth', 'POST');
         user = data.user;
         curSeeds = data.seeds;
+
+        // Показываем инфо юзера
+        document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
+        document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
+        document.getElementById('user-initial').textContent = (user.firstName || user.username || 'P')[0].toUpperCase();
+
         setBalance(user.balance);
         loadHistory();
         loadGifts();
         loadPendingDeposits();
+
+        // Инит обработчиков кнопок
+        initEventListeners();
 
         // прячем лоадер
         setTimeout(() => {
@@ -100,29 +109,39 @@ function setBalance(val, anim = false) {
 window.switchTab = function (tab) {
     document.querySelectorAll('.tab-content, .nav-tab').forEach(el => el.classList.remove('active'));
     document.getElementById('content-' + tab).classList.add('active');
-    document.querySelector(`[onclick="switchTab('${tab}')"]`)?.classList.add('active');
+    document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
     if (tab === 'history') loadHistory();
     if (tab === 'shop') loadGifts();
+    if (tab === 'leaderboard') loadLeaderboard();
 };
 
 // Игра
 window.getBetType = (t) => {
     betType = t;
-    document.querySelectorAll('.bet-opt').forEach(b => b.classList.remove('active'));
-    document.getElementById('bet-' + t).classList.add('active');
+    document.querySelectorAll('.bet-type-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-bet="${t}"]`)?.classList.add('active');
+
+    // Показ пикеров
+    document.getElementById('exact-picker').style.display = (t === 'exact') ? 'block' : 'none';
+    document.getElementById('range-picker').style.display = (t === 'range') ? 'block' : 'none';
+
     updatePayoutUI();
 };
 
 function updatePayoutUI() {
     let mult = 0;
-    if (betType === 'high' || betType === 'low') mult = 2.0;
-    if (betType === 'exact') mult = 6.0;
+    if (betType === 'high' || betType === 'low' || betType === 'even' || betType === 'odd') mult = 1.95;
+    if (betType === 'seven') mult = 3.5;
+    if (betType === 'doubles') mult = 5.0;
+    if (betType === 'exact') mult = 11.0;
     if (betType === 'range') {
-        const span = rangeMax - rangeMin + 1;
-        mult = (11 / span).toFixed(2);
+        const min = parseInt(document.getElementById('range-min').value) || 2;
+        const max = parseInt(document.getElementById('range-max').value) || 12;
+        const span = max - min + 1;
+        mult = (12 / span).toFixed(2);
     }
     const amt = parseFloat(document.getElementById('bet-amount').value) || 0;
-    document.getElementById('potential-win').textContent = (amt * mult).toFixed(2) + ' TON';
+    document.getElementById('potential-amount').textContent = (amt * mult).toFixed(2);
 }
 
 window.onBetInput = updatePayoutUI;
@@ -157,6 +176,38 @@ function buildExactPicker() {
     }
 }
 
+function initEventListeners() {
+    // Вкладки
+    document.querySelectorAll('.nav-tab').forEach(btn => {
+        btn.onclick = () => switchTab(btn.dataset.tab);
+    });
+
+    // Типы ставок
+    document.querySelectorAll('.bet-type-btn').forEach(btn => {
+        btn.onclick = () => getBetType(btn.getAttribute('data-bet'));
+    });
+
+    // Суммы
+    document.getElementById('btn-half').onclick = () => adjustBet('half');
+    document.getElementById('btn-double').onclick = () => adjustBet('double');
+    document.querySelectorAll('.quick-bet').forEach(btn => {
+        btn.onclick = () => {
+            const val = btn.getAttribute('data-amount');
+            if (val === 'max') document.getElementById('bet-amount').value = user.balance.toFixed(1);
+            else document.getElementById('bet-amount').value = parseFloat(val).toFixed(1);
+            document.querySelectorAll('.quick-bet').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            updatePayoutUI();
+        };
+    });
+
+    // Кнопка ROLL
+    document.getElementById('roll-btn').onclick = roll;
+
+    // Инпуты
+    document.getElementById('bet-amount').oninput = updatePayoutUI;
+}
+
 window.roll = async function () {
     if (rolling) return;
     const amt = parseFloat(document.getElementById('bet-amount').value);
@@ -168,11 +219,14 @@ window.roll = async function () {
     if (window.haptic) haptic.impactOccurred('medium');
 
     try {
-        const payload = { amount: amt, type: betType };
-        if (betType === 'exact') payload.exact = exactNum;
-        if (betType === 'range') { payload.rangeMin = rangeMin; payload.rangeMax = rangeMax; }
+        const payload = { betAmount: amt, betType: betType };
+        if (betType === 'exact') payload.exactNumber = exactNum;
+        if (betType === 'range') {
+            payload.rangeMin = document.getElementById('range-min').value;
+            payload.rangeMax = document.getElementById('range-max').value;
+        }
 
-        const res = await api('/api/play/dice', 'POST', payload);
+        const res = await api('/api/bet', 'POST', payload);
 
         // анимация
         animateDice(res.result.dice);
@@ -377,6 +431,23 @@ async function loadHistory() {
                 <div class="hist-res ${g.won ? 'win' : 'loss'}">${g.won ? '+' : ''}${g.payout.toFixed(2)}</div>
             </div>
         `).join('') : '<div class="empty-state">Нет игр</div>';
+    } catch (e) { }
+}
+
+async function loadLeaderboard() {
+    try {
+        const res = await api('/api/leaderboard');
+        const list = document.getElementById('leaderboard-list');
+        list.innerHTML = res.players.map((p, i) => `
+            <div class="leaderboard-item ${i < 3 ? 'top-3' : ''}">
+                <div class="leaderboard-rank">${i + 1}</div>
+                <div class="leaderboard-info">
+                    <div class="leaderboard-name">${p.username}</div>
+                    <div class="leaderboard-stats">${p.gamesPlayed} игр • ${p.gamesWon} побед</div>
+                </div>
+                <div class="leaderboard-balance">${p.balance.toFixed(2)} TON</div>
+            </div>
+        `).join('');
     } catch (e) { }
 }
 
