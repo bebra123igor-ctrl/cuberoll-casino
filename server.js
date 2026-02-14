@@ -509,8 +509,8 @@ app.delete('/api/admin/gifts/:id', auth, adminOnly, (req, res) => {
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-app.listen(PORT, () => {
-    console.log(`CubeRoll server on :${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`CubeRoll server on 0.0.0.0:${PORT}`);
 });
 
 module.exports = app;

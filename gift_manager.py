@@ -225,7 +225,7 @@ async def main():
                 await sync_inventory(client)
             except Exception as e:
                 logger.error(f"Ошибка в цикле синхронизации: {e}")
-            await asyncio.sleep(600)
+            await asyncio.sleep(60)
 
     try:
         await asyncio.gather(
