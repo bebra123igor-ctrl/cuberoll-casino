@@ -249,9 +249,14 @@ window.rotateServerSeed = async function () {
 
             // Прокрутка вниз, чтобы увидеть результат
             setTimeout(() => {
+                revealBlock.scrollIntoView({ behavior: 'smooth', block: 'end' });
                 const container = revealBlock.closest('.tab-scrollable');
-                if (container) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-            }, 100);
+                if (container) {
+                    container.scrollTop = container.scrollHeight;
+                } else {
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                }
+            }, 120);
         }
         toast('Server Seed обновлён', 'success');
     } catch (e) { toast(e.message, 'error'); }
@@ -553,6 +558,11 @@ window.depositRequest = async function () {
             throw new Error('Адрес кошелька для приема платежа не настроен в .env! (TON_WALLET)');
         }
 
+        const depositComment = (res.comment || '').trim();
+        if (!depositComment) {
+            throw new Error('Сервер не вернул комментарий депозита. Попробуйте снова.');
+        }
+
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
         // Вызываем транзакцию через TonConnect
@@ -562,33 +572,58 @@ window.depositRequest = async function () {
             if (typeof TonWeb !== 'undefined') {
                 const cell = new TonWeb.boc.Cell();
                 cell.bits.writeUint(0, 32);
-                cell.bits.writeString(res.comment);
+                cell.bits.writeString(depositComment);
                 const boc = await cell.toBoc();
                 payload = TonWeb.utils.bytesToBase64(boc);
                 console.log('Generated payload BOC:', payload);
             }
 
+            const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
+            const message = {
+                address: res.address,
+                amount: nanoAmount
+            };
+
+            if (!payload) {
+                throw new Error('Не удалось сформировать комментарий для TonConnect оплаты');
+            }
+            message.payload = payload;
+
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 360,
-                messages: [
-                    {
-                        address: res.address,
-                        amount: (parseFloat(amountVal) * 1e9).toString(),
-                        payload: payload
-                    }
-                ]
+                messages: [message]
             };
 
             // Если мы в Telegram, пробуем сначала через sendTransaction
-            await tonConnectUI.sendTransaction(transaction);
-            console.log('Transaction sent successfully!');
-            toast('Транзакция отправлена!', 'success');
+            const txResult = await tonConnectUI.sendTransaction(transaction);
+            console.log('Transaction sent successfully!', txResult);
+            toast('Транзакция отправлена! Ожидаем подтверждение сети...', 'success');
+
+            const waitDeposit = async () => {
+                for (let i = 0; i < 15; i++) {
+                    await new Promise((r) => setTimeout(r, 4000));
+                    const check = await api('/api/deposit/check');
+                    const hasPending = Array.isArray(check.pending) && check.pending.some((d) => d.comment === depositComment);
+                    if (!hasPending) {
+                        const authState = await api('/api/auth', 'POST');
+                        user = authState.user;
+                        setBalance(user.balance, true);
+                        toast('Пополнение подтверждено и зачислено!', 'success');
+                        return;
+                    }
+                }
+                toast('Платёж отправлен. Начисление может занять до 1-2 минут.', 'info');
+            };
+
+            waitDeposit().catch((err) => {
+                console.error('Deposit status check failed:', err);
+            });
         } catch (txErr) {
             console.error('TonConnect TX Error:', txErr);
 
             // Резервный вариант: Deep Link (прямая ссылка для оплаты)
-            const nanoAmount = (parseFloat(amountVal) * 1e9).toString();
-            const deepLink = `ton://transfer/${res.address}?amount=${nanoAmount}&text=${encodeURIComponent(res.comment)}`;
+            const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
+            const deepLink = `ton://transfer/${res.address}?amount=${nanoAmount}&text=${encodeURIComponent(depositComment)}`;
             console.log('Generated deep link:', deepLink);
 
             // Показываем кнопку-ссылку, если авто-платеж не сработал
@@ -639,4 +674,3 @@ window.copyText = function (id) {
 };
 
 document.addEventListener('DOMContentLoaded', init);
-
