@@ -649,10 +649,6 @@ body {
   min-height: 100vh;
 }
 
-.app.hidden {
-  display: none;
-}
-
 /* header */
 .header {
   display: flex;
@@ -1854,7 +1850,10 @@ body {
   color: var(--t2);
 }
 
-/* ═══ результат ═══ */
+.hidden {
+  display: none !important;
+}
+
 .result-overlay {
   position: fixed;
   inset: 0;
