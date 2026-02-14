@@ -373,6 +373,14 @@ app.delete('/api/admin/gifts/:id', auth, adminOnly, (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/api/admin/add-balance', auth, (req, res) => {
+    const amount = parseFloat(req.body.amount || 100);
+    const userId = req.tgUser.id;
+    userOps.updateBalance(userId, amount, 'admin_add', 'Dev Button');
+    const updatedUser = userOps.get(userId);
+    res.json({ success: true, newBalance: updatedUser.balance });
+});
+
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 

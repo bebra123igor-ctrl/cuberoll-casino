@@ -705,6 +705,7 @@ body {
   color: var(--t4);
   cursor: pointer;
   transition: all .2s;
+  outline: none;
 }
 
 .nav-tab.active {
@@ -725,18 +726,17 @@ body {
 
 .tab-content {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
   display: none;
-  padding: 16px;
+  flex-direction: column;
+  overflow: hidden;
+  /* Important: Tab content itself is a flex container */
   animation: tabFade .3s ease-out;
-  scroll-behavior: smooth;
 }
 
 @keyframes tabFade {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
 
   to {
@@ -747,32 +747,37 @@ body {
 
 .tab-content.active {
   display: flex;
-  flex-direction: column;
-  min-height: 0;
-  /* Important for flex-child scrolling */
+}
+
+/* Scrollable wrapper inside tab */
+.tab-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  -webkit-overflow-scrolling: touch;
 }
 
 #content-game {
-  overflow: hidden;
-  display: flex !important;
+  padding-bottom: env(safe-area-inset-bottom, 12px);
+}
+
+/* Dice arena should be flexible but not scrollable unless on tiny screens */
+.dice-arena {
+  flex-shrink: 0;
+  margin: 10px 0;
+  min-height: 140px;
+  display: flex;
   flex-direction: column;
-  padding-bottom: env(safe-area-inset-bottom, 16px);
+  justify-content: center;
 }
 
-#content-game>* {
-  animation: slideUp .4s ease-out both;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.roll-section-fixed {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  z-index: 10;
 }
 
 #content-game .daily-bonus {

@@ -2,7 +2,8 @@
 
 const API = '';
 let tg = null, initData = '';
-let user = null, settings = {}, curSeeds = {};
+var user = null; // var makes it window.user
+let settings = {}, curSeeds = {};
 let betType = 'high';
 let exactNum = 7;
 let rangeMin = 2, rangeMax = 6;
@@ -10,6 +11,9 @@ let rolling = false;
 let streak = 0;
 let dailyClaimed = false;
 let tonConnectUI = null;
+
+window.api = api; // Explicitly expose api
+window.user = user; // Explicitly expose user
 
 // тг
 function initTg() {
