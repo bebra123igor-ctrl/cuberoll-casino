@@ -450,54 +450,6 @@ window.closeModal = function (id) {
     document.getElementById(id).classList.add('hidden');
 };
 
-// Депозиты
-window.depositRequest = async function () {
-    if (!tonConnectUI.connected) {
-        toast('Сначала подключите кошелёк', 'info');
-        await tonConnectUI.openModal();
-        return;
-    }
-    if (!user) return toast('Ошибка: нет пользователя', 'error');
-
-    const amountEl = document.getElementById('dep-amount');
-    const amountVal = amountEl ? amountEl.value : null;
-
-    if (!amountVal || parseFloat(amountVal) < 0.1) return toast('Мин. сумма 0.1 TON', 'error');
-
-    try {
-        const btn = document.getElementById('dep-btn-go');
-        btn.disabled = true;
-        btn.textContent = '...';
-
-        const res = await api('/api/deposit/request', 'POST', { amount: parseFloat(amountVal) });
-
-        document.getElementById('dep-addr-val').textContent = res.address;
-        document.getElementById('dep-memo-val').textContent = res.comment;
-        document.getElementById('dep-manual-info').classList.remove('hidden');
-
-        list.innerHTML = '';
-
-        if (res.pending && res.pending.length > 0) {
-            res.pending.forEach(d => {
-                const el = document.createElement('div');
-                el.className = 'dep-item';
-                el.innerHTML = `
-                    <div class="dep-item-info">
-                        <strong>${d.amount} TON</strong><br>
-                        <small>${d.comment}</small>
-                    </div>
-                    <div class="dep-status ${d.status}">${d.status === 'pending' ? 'Ожидание...' : 'Ок!'}</div>
-                `;
-                list.appendChild(el);
-                if (d.status === 'completed') {
-                    // Если нашли завершенный, обновляем баланс
-                    refreshBalance();
-                }
-            });
-        }
-    } catch (e) { }
-}
-
 async function refreshBalance() {
     try {
         const data = await api('/api/auth', 'POST');
@@ -546,6 +498,7 @@ async function loadLeaderboard() {
     } catch (e) { }
 }
 
+// Депозиты
 window.depositRequest = async function () {
     if (!tonConnectUI.connected) {
         toast('Сначала подключите кошелёк', 'info');
@@ -572,24 +525,37 @@ window.depositRequest = async function () {
 
         toast('Заявка создана. Оплатите в кошельке!', 'success');
 
-        // Вызываем транзакцию
+        // Вызываем транзакцию через TonConnect
         try {
+            let payload = null;
+            if (typeof TonWeb !== 'undefined') {
+                const cell = new TonWeb.boc.Cell();
+                cell.bits.writeUint(0, 32); // Header for text comment
+                cell.bits.writeString(res.comment);
+                const boc = await cell.toBoc();
+                payload = TonWeb.utils.bytesToBase64(boc);
+                console.log('Generated payload BOC:', payload);
+            }
+
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 360,
                 messages: [
                     {
                         address: res.address,
-                        amount: (parseFloat(amountVal) * 1e9).toString()
+                        amount: (parseFloat(amountVal) * 1e9).toString(),
+                        payload: payload
                     }
                 ]
             };
             await tonConnectUI.sendTransaction(transaction);
             toast('Транзакция отправлена!', 'success');
         } catch (txErr) {
-            console.log('TX cancelled, manual info shown');
+            console.error('TX Error:', txErr);
+            toast('Ошибка транзакции. Оплатите вручную.', 'info');
         }
 
     } catch (e) {
+        console.error('Request Error:', e);
         toast(e.message, 'error');
     } finally {
         const btn = document.getElementById('dep-btn-go');
@@ -621,3 +587,4 @@ window.copyText = function (id) {
 };
 
 document.addEventListener('DOMContentLoaded', init);
+
