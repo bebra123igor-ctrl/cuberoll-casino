@@ -68,34 +68,29 @@ db.exec(`
     model TEXT,
     background TEXT,
     symbol TEXT,
-    is_active INTEGER DEFAULT 1
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS deposits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    telegram_id INTEGER,
+    amount REAL,
+    status TEXT DEFAULT 'pending',
+    comment TEXT UNIQUE,
+    tx_hash TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (telegram_id) REFERENCES users(telegram_id)
   );
 
   CREATE INDEX IF NOT EXISTS idx_games_tgid ON games(telegram_id);
-  CREATE INDEX IF NOT EXISTS idx_games_date ON games(created_at);
-  CREATE INDEX IF NOT EXISTS idx_tx_tgid ON transactions(telegram_id);
+  CREATE INDEX IF NOT EXISTS idx_trans_tgid ON transactions(telegram_id);
 `);
 
-// дефолтные настройки (вставляем только если нет)
-const defaults = {
-  min_bet: '0.1',
-  max_bet: '10',
-  starting_balance: '0',
-  house_edge: '5',
-  maintenance_mode: '0',
-  ton_wallet: 'UQBE...YOUR_WALLET',
-  min_deposit: '0.1'
-};
-const ins = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
-for (const [k, v] of Object.entries(defaults)) ins.run(k, v);
-
-
-// --- юзеры ---
 
 const userOps = {
   getOrCreate(tgId, username, firstName, lastName) {
-    const startBal = parseFloat(db.prepare('SELECT value FROM settings WHERE key = ?').get('starting_balance')?.value || '1000');
-
+    const startBal = 0; // Начинаем с 0 TON
     const existing = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
     if (existing) {
       db.prepare('UPDATE users SET username = ?, first_name = ?, last_name = ?, last_active = datetime(\'now\') WHERE telegram_id = ?')
@@ -149,31 +144,25 @@ const userOps = {
         games_played = games_played + 1,
         games_won = games_won + ?
       WHERE telegram_id = ?
-    `).run(wagered, isWin ? profit : 0, isWin ? 0 : Math.abs(profit), isWin ? 1 : 0, tgId);
-  },
-
-  getTopPlayers(limit = 10) {
-    return db.prepare('SELECT * FROM users ORDER BY balance DESC LIMIT ?').all(limit);
+    `).run(wagered, isWin ? profit : 0, isWin ? 0 : wagered, isWin ? 1 : 0, tgId);
   },
 
   getCount() {
     return db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+  },
+
+  getTopPlayers(limit = 100) {
+    return db.prepare('SELECT * FROM users ORDER BY balance DESC LIMIT ?').all(limit);
   }
 };
 
-
-// --- игры ---
-
 const gameOps = {
   create(data) {
-    return db.prepare(`
+    const stmt = db.prepare(`
       INSERT INTO games (telegram_id, bet_amount, game_type, player_choice, dice_result, dice_total, multiplier, payout, profit, server_seed, client_seed, nonce, hash, won)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      data.telegramId, data.betAmount, data.gameType, data.playerChoice,
-      data.diceResult, data.diceTotal, data.multiplier, data.payout,
-      data.profit, data.serverSeed, data.clientSeed, data.nonce, data.hash, data.won ? 1 : 0
-    );
+    `);
+    return stmt.run(data.telegramId, data.betAmount, data.gameType, data.playerChoice, data.diceResult, data.diceTotal, data.multiplier, data.payout, data.profit, data.serverSeed, data.clientSeed, data.nonce, data.hash, data.won ? 1 : 0);
   },
 
   getByUser(tgId, limit = 50) {
@@ -228,6 +217,16 @@ const settingsOps = {
   }
 };
 
+// Seed defaults
+const defs = {
+  min_bet: '0.1', max_bet: '100', house_edge: '5', starting_balance: '0',
+  maintenance_mode: '0', min_deposit: '0.1',
+  ton_wallet: 'UQBy7B0yPz6g5J0... (ADMIN: SET THIS IN PANEL)'
+};
+Object.entries(defs).forEach(([k, v]) => {
+  if (!settingsOps.get(k)) settingsOps.set(k, v);
+});
+
 const giftOps = {
   getAll() {
     return db.prepare('SELECT * FROM gifts WHERE is_active = 1').all();
@@ -244,4 +243,23 @@ const giftOps = {
   }
 };
 
-module.exports = { db, userOps, gameOps, settingsOps, giftOps };
+const depositOps = {
+  createPending(tgId, amount, comment) {
+    return db.prepare('INSERT INTO deposits (telegram_id, amount, comment) VALUES (?, ?, ?)')
+      .run(tgId, amount, comment);
+  },
+  getByComment(comment) {
+    return db.prepare('SELECT * FROM deposits WHERE comment = ?').get(comment);
+  },
+  markCompleted(comment, hash) {
+    const dep = this.getByComment(comment);
+    if (!dep || dep.status !== 'pending') return null;
+    db.prepare('UPDATE deposits SET status = "completed", tx_hash = ? WHERE comment = ?').run(hash, comment);
+    return dep;
+  },
+  getPendingByUser(tgId) {
+    return db.prepare('SELECT * FROM deposits WHERE telegram_id = ? AND status = "pending"').all(tgId);
+  }
+};
+
+module.exports = { db, userOps, gameOps, settingsOps, giftOps, depositOps };

@@ -241,19 +241,90 @@ app.post('/api/gifts/buy', auth, (req, res) => {
     res.json({ success: true, newBalance: updated.balance });
 });
 
-app.post('/api/deposit', auth, (req, res) => {
-    const { amount, hash } = req.body;
-    if (!amount || !hash) return res.status(400).json({ error: 'Missing data' });
-
+app.post('/api/deposit/request', auth, (req, res) => {
+    const { amount } = req.body;
     const amt = parseFloat(amount);
-    userOps.updateBalance(req.tgUser.id, amt, 'deposit', `TON Deposit ${amount} (hash: ${hash})`);
+    if (isNaN(amt) || amt < 0.1) return res.status(400).json({ error: 'Min 0.1 TON' });
 
-    const updated = userOps.get(req.tgUser.id);
-    res.json({ success: true, balance: updated.balance });
+    const comment = 'CR-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    depositOps.createPending(req.tgUser.id, amt, comment);
+
+    res.json({ comment, address: process.env.TON_WALLET || 'UQBy7B0yPz6g5J0... (set in .env)' });
 });
+
+app.get('/api/deposit/check', auth, (req, res) => {
+    const pending = depositOps.getPendingByUser(req.tgUser.id);
+    res.json({ pending });
+});
+
+// Фоновая проверка транзакций TON
+const https = require('https');
+const CASINO_ADDR = process.env.TON_WALLET;
+
+async function checkTonTransactions() {
+    const settings = settingsOps.getAll();
+    const addr = settings.ton_wallet || process.env.TON_WALLET;
+    if (!addr || addr.includes('your-')) return;
+
+    https.get(`https://toncenter.com/api/v2/getTransactions?address=${addr}&limit=20`, (resp) => {
+        let data = '';
+        resp.on('data', (c) => data += c);
+        resp.on('end', () => {
+            try {
+                const json = JSON.parse(data);
+                if (!json.ok) return;
+
+                const txs = json.result;
+                txs.forEach(tx => {
+                    const msg = tx.in_msg;
+                    if (!msg || !msg.message) return;
+
+                    const comment = msg.message; // это мемо
+                    const pending = depositOps.getByComment(comment);
+
+                    if (pending && pending.status === 'pending') {
+                        const amountNano = parseInt(msg.value);
+                        const amountTON = amountNano / 1e9;
+
+                        // Если сумма совпадает (или больше), начисляем
+                        if (amountTON >= pending.amount * 0.99) { // 1% погрешность
+                            userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `Verified TON Deposit (Memo: ${comment})`);
+                            depositOps.markCompleted(comment, tx.transaction_id.hash);
+                            console.log(`[Deposit] Success for ${pending.telegram_id}: ${amountTON} TON`);
+                        }
+                    }
+                });
+            } catch (e) { }
+        });
+    }).on("error", (err) => { });
+}
+
+setInterval(checkTonTransactions, 20000); // каждые 20 сек
 
 
 // --- админка ---
+
+app.post('/api/admin/parse-gift', auth, adminOnly, async (req, res) => {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL required' });
+
+    https.get(url, (resp) => {
+        let html = '';
+        resp.on('data', (c) => html += c);
+        resp.on('end', () => {
+            try {
+                const titleMatch = html.match(/<meta property="og:title" content="([^"]+)">/);
+                const imageMatch = html.match(/<meta property="og:image" content="([^"]+)">/);
+                res.json({
+                    title: titleMatch ? titleMatch[1].replace('Collectibles — ', '') : 'Gift',
+                    model: imageMatch ? imageMatch[1] : '',
+                    background: 'radial-gradient(circle, #333, #000)',
+                    symbol: '🎁'
+                });
+            } catch (e) { res.status(500).json({ error: e.message }); }
+        });
+    }).on("error", (e) => res.status(500).json({ error: e.message }));
+});
 
 app.get('/api/admin/stats', auth, adminOnly, (req, res) => {
     res.json({

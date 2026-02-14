@@ -686,7 +686,7 @@
                 if (!d.gifts?.length) { t.innerHTML = '<p style="text-align:center;color:var(--t4);padding:20px">Нет подарков</p>'; return; }
                 t.innerHTML = d.gifts.map(g => `<div class="row">
           <div class="cid" style="width:40px">${g.id}</div>
-          <div class="cname">${g.title} — <span style="color:var(--gold)">${g.price} C</span></div>
+          <div class="cname">${g.title} — <span style="color:var(--gold)">${g.price} TON</span></div>
           <div class="cact">
             <button class="btn btn-sm btn-d" onclick="deleteGift(${g.id})">🗑️</button>
           </div>
@@ -698,16 +698,25 @@
         async function parseLink() {
             const url = document.getElementById('gift-link').value;
             if (!url) return alert('Введите ссылку');
-            // эмуляция парсинга
-            parsedData = {
-                model: 'https://cdn-icons-png.flaticon.com/512/2619/2619280.png',
-                background: 'radial-gradient(circle, #222, #000)',
-                symbol: '💎'
-            };
-            document.getElementById('gift-preview-box').style.display = 'flex';
-            document.getElementById('gift-parsed-icon').style.background = parsedData.background;
-            document.getElementById('gift-parsed-icon').innerHTML = `<img src="${parsedData.model}" style="width:100%"><div style="position:absolute;bottom:0;right:0;font-size:10px">${parsedData.symbol}</div>`;
-            document.getElementById('btn-save-gift').style.display = 'block';
+
+            const btn = event.target;
+            btn.textContent = 'Парсим...';
+            btn.disabled = true;
+
+            try {
+                const res = await api('/api/admin/parse-gift', 'POST', { url });
+                parsedData = res;
+                document.getElementById('gift-preview-box').style.display = 'flex';
+                document.getElementById('gift-parsed-icon').style.background = parsedData.background;
+                document.getElementById('gift-parsed-icon').innerHTML = `<img src="${parsedData.model}" style="width:100%"><div style="position:absolute;bottom:0;right:0;font-size:10px">${parsedData.symbol}</div>`;
+                document.getElementById('gift-title').value = parsedData.title;
+                document.getElementById('btn-save-gift').style.display = 'block';
+            } catch (e) {
+                alert('Ошибка парсинга: ' + e.message);
+            } finally {
+                btn.textContent = 'Спарсить инфо';
+                btn.disabled = false;
+            }
         }
 
         async function saveGift() {

@@ -77,12 +77,10 @@
         </div>
         <button class="wallet-btn" id="ton-connect" onclick="connectWallet()">
           <span class="icon icon-sm">
-            <svg viewBox="0 0 540 540">
-              <path d="M270 0c149.117 0 270 120.883 270 270S419.117 540 270 540 0 419.117 0 270 120.883 0 270 0z"
-                fill="white" />
-              <path
-                d="M393.212 153.284H146.788c-26.152 0-38.623 15.652-30.134 38.304l97.025 212.871c8.489 22.652 23.491 22.652 31.98 0l21.246-46.012c4.244-9.196 11.232-9.196 15.476 0l21.246 46.012c8.489 22.652 23.491 22.652 31.98 0l97.025-212.871c8.489-22.652-3.985-38.304-30.137-38.304z"
-                fill="#0088cc" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4" />
+              <path d="M4 6v12c0 1.1.9 2 2 2h14v-4" />
+              <path d="M18 12c-1.1 0-2 .9-2 2s.9 2 2 2h4v-4h-4z" />
             </svg>
           </span>
         </button>
@@ -418,39 +416,45 @@
 
     <div class="tab-content" id="content-shop">
       <h3 class="section-title">Магазин подарков</h3>
-      <div id="shop-list" class="shop-list">
-        <div class="premium-empty">
-          <div class="empty-glow"></div>
-          <div class="empty-icon-wrap">
-            <svg viewBox="0 0 24 24">
-              <path d="M20 12v10H4V12" />
-              <path d="M2 7h20v5H2z" />
-              <path d="M12 22V7" />
-              <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
-              <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-            </svg>
-          </div>
-          <h3>Подарков нет</h3>
-          <p>Администратор еще не добавил товары.<br>Загляни позже!</p>
-        </div>
+      <div class="shop-grid" id="shop-list">
+        <!-- Подарки будут здесь -->
       </div>
     </div>
 
     <div class="tab-content" id="content-wallet">
       <div class="deposit-section" style="margin-top: 10px;">
-        <h4 class="section-title">Пополнение баланса</h4>
+        <h4 class="section-title">Пополнение (Мемо)</h4>
+
+        <div id="dep-manual-info" class="dep-manual-card hidden">
+          <div class="dep-row"><span>Адрес:</span> <code id="dep-addr-val">...</code></div>
+          <div class="dep-row"><span>Мемо/Комментарий:</span> <code id="dep-memo-val" class="memo-highlight">...</code>
+          </div>
+          <p class="dep-warning">⚠️ Обязательно укажите комментарий при переводе!</p>
+        </div>
+
         <div class="deposit-input-card">
           <div class="dep-input-group">
-            <input type="number" id="dep-amount" placeholder="0.1" step="0.1" min="0.1">
+            <input type="number" id="dep-amount" placeholder="1.0" step="0.1" min="0.1">
             <span>TON</span>
           </div>
-          <button class="dep-go-btn" onclick="depositCustom()">Пополнить</button>
+          <button class="dep-go-btn" id="dep-btn-go" onclick="depositRequest()">Создать</button>
         </div>
         <p class="dep-hint">Минимум: <span id="min-dep-text">0.1</span> TON.</p>
-        <div class="deposit-grid">
-          <button class="deposit-opt" onclick="deposit(1)">1 TON</button>
-          <button class="deposit-opt" onclick="deposit(5)">5 TON</button>
-          <button class="deposit-opt" onclick="deposit(10)">10 TON</button>
+
+        <div class="deposit-status-list" id="pending-deposits"></div>
+      </div>
+    </div>
+
+    <!-- подтверждение покупки -->
+    <div class="modal-overlay hidden" id="purchase-modal">
+      <div class="modal-box">
+        <div class="modal-gift-icon" id="modal-gift-icon">🎁</div>
+        <h3 class="modal-title">Подтверждение</h3>
+        <p class="modal-desc">Вы уверены, что хотите купить <strong id="modal-gift-name">...</strong> за <span
+            id="modal-gift-price">...</span> TON?</p>
+        <div class="modal-btns">
+          <button class="modal-btn cancel" onclick="closeModal('purchase-modal')">Отмена</button>
+          <button class="modal-btn confirm" id="modal-confirm-buy">Купить</button>
         </div>
       </div>
     </div>
