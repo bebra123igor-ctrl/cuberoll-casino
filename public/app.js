@@ -210,6 +210,8 @@ function initEventListeners() {
 
 window.roll = async function () {
     if (rolling) return;
+    if (!tonConnectUI.connected) return toast('Сначала подключите кошелёк', 'error');
+
     const amt = parseFloat(document.getElementById('bet-amount').value);
     if (isNaN(amt) || amt < 0.1) return toast('Мин. ставка 0.1 TON', 'error');
     if (amt > user.balance) return toast('Недостаточно баланса', 'error');
@@ -331,6 +333,11 @@ window.openBuyModal = function (id, name, price) {
 
 async function confirmPurchase(id) {
     try {
+        const gift = (await api('/api/gifts')).gifts.find(g => g.id === id);
+        if (gift && user.balance < gift.price) {
+            return toast('Недостаточно TON для покупки', 'error');
+        }
+
         const btn = document.getElementById('modal-confirm-buy');
         btn.disabled = true;
         btn.textContent = '...';
@@ -355,8 +362,11 @@ window.closeModal = function (id) {
 
 // Депозиты
 window.depositRequest = async function () {
+    if (!tonConnectUI.connected) return toast('Ошибка: добавьте кошелёк', 'error');
+
     const amount = document.getElementById('dep-amount').value;
     if (!user) return toast('Сначала войдите', 'error');
+    if (!amount || parseFloat(amount) < 0.1) return toast('Мин. сумма 0.1 TON', 'error');
 
     try {
         const res = await api('/api/deposit/request', 'POST', { amount });
