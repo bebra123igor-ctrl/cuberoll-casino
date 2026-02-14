@@ -272,7 +272,23 @@ app.post('/api/deposit/request', auth, (req, res) => {
 
 app.get('/api/deposit/check', auth, (req, res) => {
     const pending = depositOps.getPendingByUser(req.tgUser.id);
-    res.json({ pending });
+    const optimistic = depositOps.getOptimisticByUser(req.tgUser.id);
+    res.json({ pending, optimistic });
+});
+
+app.post('/api/deposit/optimistic', auth, (req, res) => {
+    const { comment } = req.body;
+    if (!comment) return res.status(400).json({ error: 'Comment required' });
+
+    const dep = depositOps.getByComment(comment);
+    if (!dep || dep.telegram_id !== req.tgUser.id) return res.status(404).json({ error: 'Deposit not found' });
+    if (dep.status !== 'pending') return res.status(400).json({ error: 'Deposit is not pending' });
+
+    // Зачисляем "авансом"
+    userOps.updateBalance(req.tgUser.id, dep.amount, 'deposit_optimistic', `Optimistic Credit (Memo: ${comment})`);
+    depositOps.markOptimistic(comment);
+
+    res.json({ success: true, newBalance: userOps.get(req.tgUser.id).balance });
 });
 
 // Фоновая проверка транзакций TON
@@ -339,11 +355,14 @@ async function checkTonTransactions() {
                     // 1. Пытаемся найти по комменту
                     let pending = comment ? depositOps.getByComment(comment) : null;
 
-                    if (pending && pending.status === 'pending') {
+                    if (pending && (pending.status === 'pending' || pending.status === 'optimistic')) {
                         if (amountTON >= pending.amount * 0.99) {
-                            userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `TON Deposit (Memo: ${comment})`);
+                            // Если он был pending, начисляем. Если optimistic - баланс уже там, просто завершаем.
+                            if (pending.status === 'pending') {
+                                userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `TON Deposit (Memo: ${comment})`);
+                            }
                             depositOps.markCompleted(comment, txHash);
-                            console.log(`[Deposit] Success (Comment) for ${pending.telegram_id}: ${amountTON} TON`);
+                            console.log(`[Deposit] Finalized for ${pending.telegram_id}: ${amountTON} TON (Status was: ${pending.status})`);
                         }
                         return;
                     }
@@ -382,6 +401,17 @@ async function checkTonTransactions() {
 }
 
 setInterval(checkTonTransactions, 20000); // каждые 20 сек
+
+// Откат фейковых подтверждений (если через 5 мин денег нет в сети)
+function rollbackExpiredOptimisticDeposits() {
+    const expired = depositOps.getExpiredOptimistic(5);
+    expired.forEach(dep => {
+        console.log(`[Rollback] Reverting optimistic deposit for ${dep.telegram_id}: ${dep.amount} TON (Comment: ${dep.comment})`);
+        userOps.updateBalance(dep.telegram_id, -dep.amount, 'deposit_rollback', `Rollback failed optimistic deposit (Memo: ${dep.comment})`);
+        db.prepare("UPDATE deposits SET status = 'failed' WHERE id = ?").run(dep.id);
+    });
+}
+setInterval(rollbackExpiredOptimisticDeposits, 30000); // каждые 30 сек
 
 
 // --- админка ---

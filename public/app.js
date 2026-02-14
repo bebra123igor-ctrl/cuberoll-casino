@@ -631,22 +631,36 @@ window.depositRequest = async function () {
 
             const txResult = await tonConnectUI.sendTransaction(transaction);
             console.log('Transaction success!', txResult);
-            toast('Транзакция отправлена! Ожидаем подтверждение сети...', 'success');
+
+            // Оптимистичное зачисление
+            try {
+                const opt = await api('/api/deposit/optimistic', 'POST', { comment: depositComment });
+                if (opt.success) {
+                    user.balance = opt.newBalance;
+                    setBalance(user.balance, true);
+                    toast('Мгновенное зачисление успешно! Ожидаем блокчейн...', 'success');
+                }
+            } catch (e) {
+                console.error('Optimistic credit failed:', e);
+                toast('Транзакция отправлена! Ожидаем подтверждение сети...', 'success');
+            }
 
             const waitDeposit = async () => {
                 for (let i = 0; i < 15; i++) {
                     await new Promise((r) => setTimeout(r, 4000));
                     const check = await api('/api/deposit/check');
-                    const hasPending = Array.isArray(check.pending) && check.pending.some((d) => d.comment === depositComment);
-                    if (!hasPending) {
+
+                    // Проверяем, есть ли всё еще ЭТА заявка в pending или optimistic
+                    const hasActive = [...(check.pending || []), ...(check.optimistic || [])].some(d => d.comment === depositComment);
+
+                    if (!hasActive) {
                         const authState = await api('/api/auth', 'POST');
                         user = authState.user;
                         setBalance(user.balance, true);
-                        toast('Пополнение подтверждено и зачислено!', 'success');
+                        toast('Депозит окончательно подтвержден блокчейном!', 'success');
                         return;
                     }
                 }
-                toast('Платёж отправлен. Начисление может занять до 1-2 минут.', 'info');
             };
 
             waitDeposit().catch((err) => {

@@ -279,12 +279,23 @@ const depositOps = {
   },
   markCompleted(comment, hash) {
     const dep = this.getByComment(comment);
-    if (!dep || dep.status !== 'pending') return null;
+    if (!dep) return null;
+    // Можно завершить если статус pending ИЛИ optimistic
+    if (dep.status !== 'pending' && dep.status !== 'optimistic') return null;
     db.prepare("UPDATE deposits SET status = 'completed', tx_hash = ? WHERE comment = ?").run(hash, comment);
     return dep;
   },
+  markOptimistic(comment) {
+    db.prepare("UPDATE deposits SET status = 'optimistic', created_at = datetime('now') WHERE comment = ?").run(comment);
+  },
   getPendingByUser(tgId) {
     return db.prepare("SELECT * FROM deposits WHERE telegram_id = ? AND status = 'pending'").all(tgId);
+  },
+  getOptimisticByUser(tgId) {
+    return db.prepare("SELECT * FROM deposits WHERE telegram_id = ? AND status = 'optimistic'").all(tgId);
+  },
+  getExpiredOptimistic(minutes = 5) {
+    return db.prepare("SELECT * FROM deposits WHERE status = 'optimistic' AND datetime(created_at, '+' || ? || ' minutes') < datetime('now')").all(minutes);
   }
 };
 
