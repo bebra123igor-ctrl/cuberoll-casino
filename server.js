@@ -40,6 +40,8 @@ app.use(express.json());
 
 // Обычное "шифрование" для "обычных смертных"
 const _SEC_KEY = (BOT_TOKEN || 'cuberoll').slice(0, 8);
+// DEPLOYMENT TRIGGER: 2026-02-14 20:03
+console.log('--- SITE INITIALIZING ---');
 app.use((req, res, next) => {
     res.secure = (data) => {
         const str = JSON.stringify(data);
