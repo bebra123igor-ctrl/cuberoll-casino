@@ -16,13 +16,18 @@ let isInitializing = true;
 // "Шифрование" для "обычных смертных"
 const _SEC_KEY = 'cuberoll';
 const _0x_dec = (s) => {
-    const raw = atob(s);
-    let out = '';
-    for (let i = 0; i < raw.length; i++) {
-        out += String.fromCharCode(raw.charCodeAt(i) ^ _SEC_KEY.charCodeAt(i % _SEC_KEY.length));
+    try {
+        const raw = atob(s);
+        const bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) {
+            bytes[i] = raw.charCodeAt(i) ^ _SEC_KEY.charCodeAt(i % _SEC_KEY.length);
+        }
+        return JSON.parse(new TextDecoder().decode(bytes));
+    } catch (e) {
+        console.error('Decryption failed:', e, s);
+        // Если это уже JSON, пытаемся вернуть как есть (на случай если сервер прислал не маскированное)
+        try { return JSON.parse(s); } catch (e2) { throw e; }
     }
-    // Декодируем UTF-8
-    return JSON.parse(decodeURIComponent(escape(out)));
 };
 
 window.api = api; // Explicitly expose api
@@ -49,20 +54,31 @@ async function api(url, method = 'GET', body = null) {
         const res = await fetch(API + url, opts);
 
         if (res.status === 403) {
-            showBanScreen();
-            throw new Error('Banned');
-        }
-
-        if (!res.ok) {
             const raw = await res.text();
-            let e = {};
-            try { e = _0x_dec(raw); } catch (err) { e = { error: 'err' }; }
-            throw new Error(e.error || 'err');
+            try {
+                const e = _0x_dec(raw);
+                if (e.error === 'Account is banned') {
+                    showBanScreen();
+                    throw new Error('Banned');
+                }
+            } catch (err) { }
         }
 
         const rawData = await res.text();
+        if (!res.ok) {
+            let e = {};
+            try {
+                e = _0x_dec(rawData);
+            } catch (err) {
+                // Если не смогли расшифровать - значит сервер прислал обычную ошибку (например 502)
+                throw new Error(`Server Error: ${res.status}`);
+            }
+            throw new Error(e.error || `Error ${res.status}`);
+        }
+
         return _0x_dec(rawData);
     } catch (err) {
+        console.error('API Error:', err);
         throw err;
     }
 }
