@@ -9,6 +9,9 @@ if (WEBAPP && !WEBAPP.startsWith('http')) WEBAPP = 'https://' + WEBAPP;
 if (WEBAPP.endsWith('/')) WEBAPP = WEBAPP.slice(0, -1);
 
 if (!TOKEN) { console.error('нет BOT_TOKEN в .env'); process.exit(1); }
+if (WEBAPP.includes('your-domain.com')) {
+    console.warn('⚠️ ПРЕДУПРЕЖДЕНИЕ: WEBAPP_URL не настроен! Ссылка в боте не будет работать.');
+}
 
 const bot = new TelegramBot(TOKEN, { polling: true });
 
@@ -23,17 +26,23 @@ const WELCOME_IMG = 'https://i.imgur.com/8YvYyZp.png'; // Твоя картин�
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const u = msg.from;
-    userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '');
 
-    await bot.sendPhoto(chatId, WELCOME_IMG, {
-        caption: `👑 *CubeRoll Casino*\n\nПривет, ${u.first_name}!\n\nИграй в кости и выигрывай TON. Самый честный софт на блокчейне.\n\nЖми кнопку ниже, чтобы начать!`,
-        parse_mode: 'Markdown',
-        reply_markup: {
-            inline_keyboard: [
-                [{ text: '🚀 ЗАПУСТИТЬ ИГРУ', web_app: { url: WEBAPP } }]
-            ]
-        }
-    });
+    try {
+        userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '');
+    } catch (e) { }
+
+    const caption = `👑 *CubeRoll Casino*\n\nПривет, ${u.first_name || 'игрок'}!\n\nИграй в кости и выигрывай TON. Самый честный софт на блокчейне.\n\nЖми кнопку ниже, чтобы начать!`;
+    const markup = {
+        inline_keyboard: [
+            [{ text: '🚀 ЗАПУСТИТЬ ИГРУ', web_app: { url: WEBAPP } }]
+        ]
+    };
+
+    try {
+        await bot.sendPhoto(chatId, WELCOME_IMG, { caption, parse_mode: 'Markdown', reply_markup: markup });
+    } catch (e) {
+        await bot.sendMessage(chatId, caption, { parse_mode: 'Markdown', reply_markup: markup });
+    }
 });
 
 bot.on('callback_query', async (q) => {
@@ -115,4 +124,4 @@ bot.onText(/\/broadcast (.+)/, async (msg, match) => {
     bot.sendMessage(msg.chat.id, `📢 Отправлено: ${ok}, ошибок: ${fail}`);
 });
 
-console.log('bot started');
+// bot initialized

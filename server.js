@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
-const { userOps, gameOps, settingsOps, giftOps, depositOps } = require('./database');
+const { db, userOps, gameOps, settingsOps, giftOps, depositOps } = require('./database');
 const ProvablyFair = require('./provably-fair');
 require('./bot');
 
@@ -16,6 +16,18 @@ app.get('/admin', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'a
 
 app.use(cors());
 app.use(express.json());
+
+// Обычное "шифрование" для "обычных смертных"
+const _SEC_KEY = (BOT_TOKEN || 'cuberoll').slice(0, 8);
+app.use((req, res, next) => {
+    res.secure = (data) => {
+        const str = JSON.stringify(data);
+        const enc = Buffer.from(str.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ _SEC_KEY.charCodeAt(i % _SEC_KEY.length))).join('')).toString('base64');
+        res.send(enc);
+    };
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // валидация данных от тг вебапп (hmac проверка)
@@ -37,7 +49,6 @@ function validateTgData(initData) {
         if (check !== hash) return null;
         return JSON.parse(params.get('user') || '{}');
     } catch (e) {
-        console.error('auth err:', e);
         return null;
     }
 }
@@ -52,10 +63,14 @@ function auth(req, res, next) {
         return next();
     }
 
-    if (!data) return res.status(401).json({ error: 'No auth data provided' });
+    if (!data) return res.status(401).secure({ error: 'No auth data provided' });
 
     const user = validateTgData(data);
-    if (!user) return res.status(401).json({ error: 'Invalid auth data' });
+    if (!user) return res.status(401).secure({ error: 'Invalid auth data' });
+
+    // Проверка бана на уровне мидлвары для всех API запросов
+    const dbUser = userOps.get(user.id);
+    if (dbUser && dbUser.is_banned) return res.status(403).secure({ error: 'Account is banned' });
 
     req.tgUser = user;
     next();
@@ -63,7 +78,7 @@ function auth(req, res, next) {
 
 function adminOnly(req, res, next) {
     if (!req.tgUser || !ADMIN_IDS.includes(req.tgUser.id))
-        return res.status(403).json({ error: 'Access denied' });
+        return res.status(403).secure({ error: 'Access denied' });
     next();
 }
 
@@ -90,10 +105,10 @@ function getSeed(tgId) {
 app.post('/api/auth', auth, (req, res) => {
     const u = req.tgUser;
     const user = userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '');
-    if (user.is_banned) return res.status(403).json({ error: 'Account is banned' });
+    if (user.is_banned) return res.status(403).secure({ error: 'Account is banned' });
 
     const s = getSeed(u.id);
-    res.json({
+    res.secure({
         user: {
             telegramId: user.telegram_id, username: user.username, firstName: user.first_name,
             balance: user.balance, gamesPlayed: user.games_played, gamesWon: user.games_won,
@@ -113,9 +128,9 @@ app.post('/api/auth', auth, (req, res) => {
 
 app.post('/api/user/wallet', auth, (req, res) => {
     const { address } = req.body;
-    if (!address) return res.status(400).json({ error: 'Missing address' });
+    if (!address) return res.status(400).secure({ error: 'Missing address' });
     userOps.updateWallet(req.tgUser.id, address);
-    res.json({ success: true });
+    res.secure({ success: true });
 });
 
 // ставка
@@ -150,7 +165,7 @@ app.post('/api/bet', auth, (req, res) => {
     }
     if (betType === 'range') {
         const rMin = parseInt(rangeMin), rMax = parseInt(rangeMax);
-        if (isNaN(rMin) || isNaN(rMax) || rMin < 2 || rMax > 12 || rMin >= rMax) return res.status(400).json({ error: 'Invalid range' });
+        if (isNaN(rMin) || isNaN(rMax) || rMin < 2 || rMax > 12 || rMin >= rMax) return res.status(400).secure({ error: 'Invalid range' });
         rangeBounds = { min: rMin, max: rMax };
         resolvedType = 'range';
     }
@@ -175,8 +190,12 @@ app.post('/api/bet', auth, (req, res) => {
     });
 
     const updated = userOps.get(u.id);
-    res.json({
-        result: { dice: dice.dice, total: dice.total, won: result.won, multiplier: result.multiplier, payout: result.payout, profit: result.profit, newBalance: updated.balance },
+    res.secure({
+        result: {
+            dice: dice.dice, total: dice.total, won: result.won,
+            multiplier: result.multiplier, payout: result.payout, profit: result.profit,
+            newBalance: updated.balance, betAmount: amt
+        },
         fairness: { serverSeedHash: s.hash, clientSeed: s.clientSeed, nonce: s.nonce }
     });
 });
@@ -192,33 +211,33 @@ app.post('/api/seeds/rotate', auth, (req, res) => {
     s.nonce = 0;
     if (req.body.clientSeed) s.clientSeed = req.body.clientSeed;
 
-    res.json({ oldServerSeed: oldSeed, oldServerSeedHash: oldHash, newServerSeedHash: s.hash, clientSeed: s.clientSeed, nonce: s.nonce });
+    res.secure({ oldServerSeed: oldSeed, oldServerSeedHash: oldHash, newServerSeedHash: s.hash, clientSeed: s.clientSeed, nonce: s.nonce });
 });
 
 // обновление клиент сида
 app.post('/api/seeds/client', auth, (req, res) => {
     const { clientSeed } = req.body;
-    if (!clientSeed || clientSeed.length < 1) return res.status(400).json({ error: 'Invalid client seed' });
+    if (!clientSeed || clientSeed.length < 1) return res.status(400).secure({ error: 'Invalid client seed' });
     const s = getSeed(req.tgUser.id);
     s.clientSeed = clientSeed;
-    res.json({ clientSeed: s.clientSeed });
+    res.secure({ clientSeed: s.clientSeed });
 });
 
 app.get('/api/history', auth, (req, res) => {
-    res.json({ games: gameOps.getByUser(req.tgUser.id, 50) });
+    res.secure({ games: gameOps.getByUser(req.tgUser.id, 50) });
 });
 
 // верификация (публичный эндпоинт)
 app.post('/api/verify', (req, res) => {
     const { serverSeed, clientSeed, nonce } = req.body;
-    if (!serverSeed || !clientSeed || nonce === undefined) return res.status(400).json({ error: 'Missing parameters' });
+    if (!serverSeed || !clientSeed || nonce === undefined) return res.status(400).secure({ error: 'Missing parameters' });
     const r = ProvablyFair.verify(serverSeed, clientSeed, parseInt(nonce));
-    res.json({ dice: r.dice, total: r.total, serverSeedHash: ProvablyFair.hashServerSeed(serverSeed) });
+    res.secure({ dice: r.dice, total: r.total, serverSeedHash: ProvablyFair.hashServerSeed(serverSeed) });
 });
 
 app.get('/api/leaderboard', auth, (req, res) => {
     const top = userOps.getTopPlayers(20);
-    res.json({
+    res.secure({
         players: top.map(p => ({
             username: p.username || p.first_name || `User ${p.telegram_id}`,
             balance: p.balance, gamesPlayed: p.games_played, gamesWon: p.games_won
@@ -228,67 +247,71 @@ app.get('/api/leaderboard', auth, (req, res) => {
 
 // подарки
 app.get('/api/gifts', auth, (req, res) => {
-    res.json({ gifts: giftOps.getAll() });
+    res.secure({ gifts: giftOps.getAll() });
 });
 
 app.get('/api/gifts/:id', auth, (req, res) => {
     const g = giftOps.get(parseInt(req.params.id));
-    if (!g) return res.status(404).json({ error: 'Not found' });
-    res.json(g);
+    if (!g) return res.status(404).secure({ error: 'Not found' });
+    res.secure(g);
 });
 
 app.post('/api/gifts/buy', auth, (req, res) => {
     const { giftId } = req.body;
     const user = userOps.get(req.tgUser.id);
     const gift = giftOps.get(giftId);
-    if (!gift) return res.status(404).json({ error: 'Gift not found' });
-    if (user.balance < gift.price) return res.status(400).json({ error: 'Insufficient balance' });
+    if (!gift) return res.status(404).secure({ error: 'Gift not found' });
+    if (user.balance < gift.price) return res.status(400).secure({ error: 'Insufficient balance' });
 
     userOps.updateBalance(req.tgUser.id, -gift.price, 'gift_buy', `Bought ${gift.title}`);
+
+    // Очередь на передачу юзерботом
+    giftOps.createTransfer(giftId, req.tgUser.id);
+
     giftOps.delete(giftId); // Это помечает is_active = 0
     const updated = userOps.get(req.tgUser.id);
-    res.json({ success: true, newBalance: updated.balance });
+    res.secure({ success: true, newBalance: updated.balance });
 });
 
 app.post('/api/deposit/request', auth, (req, res) => {
     const { amount } = req.body;
     const amt = parseFloat(amount);
-    if (isNaN(amt) || amt < 0.1) return res.status(400).json({ error: 'Min 0.1 TON' });
+    if (isNaN(amt) || amt < 0.1) return res.status(400).secure({ error: 'Min 0.1 TON' });
 
     const comment = 'CR-' + Math.random().toString(36).substring(2, 10).toUpperCase();
     try {
         depositOps.createPending(req.tgUser.id, amt, comment);
     } catch (e) {
-        return res.status(500).json({ error: 'Could not create request' });
+        return res.status(500).secure({ error: 'Could not create request' });
     }
 
     let wallet = process.env.TON_WALLET || settingsOps.get('ton_wallet');
     // Если в .env или базе заглушка, возвращаем ошибку
     if (!wallet || wallet.includes('...') || wallet === 'UQ...') {
-        return res.status(500).json({ error: 'Admin wallet address is not configured yet.' });
+        return res.status(500).secure({ error: 'Admin wallet address is not configured yet.' });
     }
-    res.json({ comment, address: wallet });
+    res.secure({ comment, address: wallet });
 });
 
 app.get('/api/deposit/check', auth, (req, res) => {
     const pending = depositOps.getPendingByUser(req.tgUser.id);
     const optimistic = depositOps.getOptimisticByUser(req.tgUser.id);
-    res.json({ pending, optimistic });
+    res.secure({ pending, optimistic });
 });
 
 app.post('/api/deposit/optimistic', auth, (req, res) => {
     const { comment } = req.body;
-    if (!comment) return res.status(400).json({ error: 'Comment required' });
+    if (!comment) return res.status(400).secure({ error: 'Comment required' });
 
     const dep = depositOps.getByComment(comment);
-    if (!dep || dep.telegram_id !== req.tgUser.id) return res.status(404).json({ error: 'Deposit not found' });
-    if (dep.status !== 'pending') return res.status(400).json({ error: 'Deposit is not pending' });
+    if (!dep || dep.telegram_id !== req.tgUser.id) return res.status(404).secure({ error: 'Deposit not found' });
+    if (dep.status !== 'pending') return res.status(400).secure({ error: 'Deposit is not pending' });
 
     // Зачисляем "авансом"
     userOps.updateBalance(req.tgUser.id, dep.amount, 'deposit_optimistic', `Optimistic Credit (Memo: ${comment})`);
     depositOps.markOptimistic(comment);
 
-    res.json({ success: true, newBalance: userOps.get(req.tgUser.id).balance });
+    res.secure({ success: true, newBalance: userOps.get(req.tgUser.id).balance });
 });
 
 // Фоновая проверка транзакций TON
@@ -362,7 +385,6 @@ async function checkTonTransactions() {
                                 userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `TON Deposit (Memo: ${comment})`);
                             }
                             depositOps.markCompleted(comment, txHash);
-                            console.log(`[Deposit] Finalized for ${pending.telegram_id}: ${amountTON} TON (Status was: ${pending.status})`);
                         }
                         return;
                     }
@@ -383,14 +405,12 @@ async function checkTonTransactions() {
                                 const p = userPendings[0];
                                 userOps.updateBalance(p.telegram_id, amountTON, 'deposit', `TON Deposit (Wallet: ${sender})`);
                                 depositOps.markCompleted(p.comment, txHash);
-                                console.log(`[Deposit] Success (Wallet Match) for ${p.telegram_id}: ${amountTON} TON`);
                             } else {
                                 // Если заявки нет, но кошелек привязан - всё равно начисляем!
                                 userOps.updateBalance(user.telegram_id, amountTON, 'deposit', `TON Deposit (Direct from wallet: ${sender})`);
                                 const vComm = 'W-' + txHash.slice(0, 8);
                                 db.prepare("INSERT INTO deposits (telegram_id, amount, status, comment, tx_hash) VALUES (?, ?, 'completed', ?, ?)")
                                     .run(user.telegram_id, amountTON, vComm, txHash);
-                                console.log(`[Deposit] Success (Direct Wallet) for ${user.telegram_id}: ${amountTON} TON`);
                             }
                         }
                     }
@@ -406,7 +426,6 @@ setInterval(checkTonTransactions, 20000); // каждые 20 сек
 function rollbackExpiredOptimisticDeposits() {
     const expired = depositOps.getExpiredOptimistic(5);
     expired.forEach(dep => {
-        console.log(`[Rollback] Reverting optimistic deposit for ${dep.telegram_id}: ${dep.amount} TON (Comment: ${dep.comment})`);
         userOps.updateBalance(dep.telegram_id, -dep.amount, 'deposit_rollback', `Rollback failed optimistic deposit (Memo: ${dep.comment})`);
         db.prepare("UPDATE deposits SET status = 'failed' WHERE id = ?").run(dep.id);
     });

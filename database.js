@@ -69,6 +69,8 @@ db.exec(`
     model TEXT,
     background TEXT,
     symbol TEXT,
+    gift_id TEXT UNIQUE, -- Telegram Unique Gift ID
+    nft_address TEXT,    -- NFT Address for floor price check
     is_active INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
   );
@@ -100,6 +102,27 @@ try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet_address)');
 } catch (e) { }
 
+try {
+  db.exec('ALTER TABLE gifts ADD COLUMN gift_id TEXT UNIQUE');
+} catch (e) { }
+
+try {
+  db.exec('ALTER TABLE gifts ADD COLUMN nft_address TEXT');
+} catch (e) { }
+
+// Таблица для очереди передачи подарков
+db.exec(`
+  CREATE TABLE IF NOT EXISTS gift_transfers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gift_id INTEGER,
+    receiver_id INTEGER,
+    status TEXT DEFAULT 'pending', -- pending, sent, failed
+    error TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (gift_id) REFERENCES gifts(id),
+    FOREIGN KEY (receiver_id) REFERENCES users(telegram_id)
+  );
+`);
 
 const userOps = {
   getOrCreate(tgId, username, firstName, lastName) {
@@ -266,6 +289,27 @@ const giftOps = {
   },
   delete(id) {
     db.prepare('UPDATE gifts SET is_active = 0 WHERE id = ?').run(id);
+  },
+
+  createTransfer(giftId, receiverId) {
+    return db.prepare('INSERT INTO gift_transfers (gift_id, receiver_id) VALUES (?, ?)').run(giftId, receiverId);
+  },
+
+  getPendingTransfers() {
+    return db.prepare(`
+      SELECT t.*, g.gift_id as tg_gift_id, g.title 
+      FROM gift_transfers t 
+      JOIN gifts g ON t.gift_id = g.id 
+      WHERE t.status = 'pending'
+    `).all();
+  },
+
+  markTransferSent(id) {
+    db.prepare("UPDATE gift_transfers SET status = 'sent' WHERE id = ?").run(id);
+  },
+
+  markTransferFailed(id, error) {
+    db.prepare("UPDATE gift_transfers SET status = 'failed', error = ? WHERE id = ?").run(error, id);
   }
 };
 

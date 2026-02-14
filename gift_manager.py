@@ -1,0 +1,194 @@
+import os
+import sqlite3
+import asyncio
+import logging
+import random
+import aiohttp
+from telethon import TelegramClient, functions, types
+from dotenv import load_dotenv
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("gift_manager.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+load_dotenv()
+
+# Конфигурация из .env
+API_ID = os.getenv("TG_API_ID")
+API_HASH = os.getenv("TG_API_HASH")
+BANK_ID = 8291579358
+DB_PATH = "cuberoll.db"
+
+# Парсер цен (логика из PriceDetector)
+async def fetch_floor_price(name):
+    url = "https://portal-market.com/api/collections"
+    params = {"search": name, "limit": 5}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "application/json"
+    }
+    try:
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.get(url, params=params, timeout=10) as response:
+                if response.status != 200:
+                    return 5.0 # Дефолтная цена если не найдено
+                data = await response.json()
+                collections = data.get("collections", [])
+                if not collections:
+                    return 5.0
+                
+                # Ищем максимально похожее название
+                best = collections[0]
+                raw_price = float(best.get("floor_price", 5000000000))
+                # Конвертация из нано-тонов если нужно
+                price = raw_price / 1e9 if raw_price > 1e6 else raw_price
+                return round(price * 1.1, 2) # Наценка 10%
+    except Exception as e:
+        logger.error(f"Error fetching price for {name}: {e}")
+        return 5.0
+
+async def sync_inventory(client):
+    """Парсит подарки с аккаунта банка и обновляет магазин"""
+    logger.info(f"Scanning for unique gifts on account...")
+    try:
+        # Запрос списка подарков (GetUserGifts MTProto)
+        # Если аккаунт юзербота - это и есть банк, используем 'me'
+        result = await client(functions.payments.GetUserGiftsRequest(
+            user_id='me',
+            limit=100
+        ))
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        for item in result.gifts:
+            # Нам нужны только те, что еще не проданы (не переданы)
+            tg_gift_id = str(item.id)
+            
+            # Проверяем, есть ли такой подарок в БД
+            cursor.execute("SELECT id FROM gifts WHERE gift_id = ?", (tg_gift_id,))
+            if cursor.fetchone():
+                continue
+                
+            # Собираем инфо о подарке
+            gift_info = item.gift
+            title = getattr(gift_info, 'title', f"NFT Gift #{tg_gift_id}")
+            
+            # Определяем цену через парсер
+            logger.info(f"New gift found: {title}. Detecting price...")
+            price = await fetch_floor_price(title)
+            
+            # Добавляем в магазин
+            cursor.execute("""
+                INSERT INTO gifts (title, price, gift_id, is_active)
+                VALUES (?, ?, ?, 1)
+            """, (title, price, tg_gift_id))
+            logger.info(f"Added to store: {title} for {price} TON")
+            
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.error(f"Inventory sync failed: {e}")
+
+async def process_transfer_queue(client):
+    """Следит за новыми покупками в БД и отправляет подарки"""
+    logger.info("Starting transfer queue monitor...")
+    while True:
+        conn = None
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            # Берем незавершенные переводы
+            cursor.execute("""
+                SELECT t.id, t.receiver_id, g.gift_id, g.title, g.id as db_gift_id
+                FROM gift_transfers t
+                JOIN gifts g ON t.gift_id = g.id
+                WHERE t.status = 'pending'
+            """)
+            
+            pending = cursor.fetchall()
+            for row in pending:
+                t_id = row['id']
+                receiver_id = row['receiver_id']
+                tg_gift_id = row['gift_id']
+                gift_name = row['title']
+                
+                logger.info(f"Processing purchase: {gift_name} for user {receiver_id}")
+                
+                try:
+                    # Отправка подарка через Telegram API
+                    # Используем метод SendGiftRequest если он доступен
+                    await client(functions.payments.SendGiftRequest(
+                        user_id=receiver_id,
+                        gift_id=int(tg_gift_id)
+                    ))
+                    
+                    cursor.execute("UPDATE gift_transfers SET status = 'sent' WHERE id = ?", (t_id,))
+                    logger.info(f"Successfully sent {gift_name} to {receiver_id}")
+                    
+                except Exception as e:
+                    error_msg = str(e)
+                    logger.error(f"Failed to send gift: {error_msg}")
+                    cursor.execute("UPDATE gift_transfers SET status = 'failed', error = ? WHERE id = ?", (error_msg, t_id))
+            
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Database error in monitor: {e}")
+        finally:
+            if conn:
+                conn.close()
+        
+        await asyncio.sleep(5)
+
+async def main():
+    if not API_ID or not API_HASH:
+        logger.error("TG_API_ID or TG_API_HASH not found in .env. Please configure them.")
+        return
+
+    session_string = os.getenv("TG_SESSION_STRING")
+    
+    logger.info("Initializing Userbot...")
+    
+    from telethon.sessions import StringSession
+    
+    # Если есть строка сессии - используем её (для Railway/Heroku)
+    # Если нет - используем файл (для локальных тестов)
+    if session_string:
+        client = TelegramClient(StringSession(session_string), int(API_ID), API_HASH)
+    else:
+        if not os.path.exists('sessions'):
+            os.makedirs('sessions')
+        client = TelegramClient('sessions/bank_session', int(API_ID), API_HASH)
+    
+    try:
+        await client.start()
+        logger.info("Userbot started successfully!")
+    except Exception as e:
+        logger.error(f"Failed to start client: {e}")
+        return
+
+    # Цикл синхронизации
+    async def periodic_sync():
+        while True:
+            await sync_inventory(client)
+            await asyncio.sleep(600)
+
+    await asyncio.gather(
+        process_transfer_queue(client),
+        periodic_sync()
+    )
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Shutting down...")

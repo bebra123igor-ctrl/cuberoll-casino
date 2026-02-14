@@ -11,6 +11,11 @@ let rolling = false;
 let streak = 0;
 let dailyClaimed = false;
 let tonConnectUI = null;
+let isInitializing = true;
+
+// "Шифрование" для "обычных смертных"
+const _SEC_KEY = 'cuberoll'; // Можно динамически брать, но для "смертных" и так сойдет
+const _0x_dec = (s) => JSON.parse(atob(s).split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ _SEC_KEY.charCodeAt(i % _SEC_KEY.length))).join(''));
 
 window.api = api; // Explicitly expose api
 window.user = user; // Explicitly expose user
@@ -27,7 +32,6 @@ function initTg() {
 }
 
 async function api(url, method = 'GET', body = null) {
-    console.log(`[API Request] ${method} ${url}`, body);
     const h = { 'Content-Type': 'application/json' };
     if (initData) h['X-Telegram-Init-Data'] = initData;
     else h['X-Dev-User-Id'] = '12345';
@@ -35,17 +39,30 @@ async function api(url, method = 'GET', body = null) {
     if (body) opts.body = JSON.stringify(body);
     try {
         const res = await fetch(API + url, opts);
-        console.log(`[API Response] ${url} status: ${res.status}`);
+
+        if (res.status === 403) {
+            showBanScreen();
+            throw new Error('Banned');
+        }
+
         if (!res.ok) {
-            const e = await res.json().catch(() => ({}));
-            console.error(`[API Error] ${url}:`, e);
+            const raw = await res.text();
+            let e = {};
+            try { e = _0x_dec(raw); } catch (err) { e = { error: 'err' }; }
             throw new Error(e.error || 'err');
         }
-        return res.json();
+
+        const rawData = await res.text();
+        return _0x_dec(rawData);
     } catch (err) {
-        console.error(`[API Fetch Error] ${url}:`, err);
         throw err;
     }
+}
+
+function showBanScreen() {
+    document.getElementById('ban-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('loading-screen').style.display = 'none';
 }
 
 // инит
@@ -62,21 +79,20 @@ async function init() {
     tonConnectUI.onStatusChange(async wallet => {
         if (wallet) {
             const addr = wallet.account.address;
-            const short = addr.slice(0, 6) + '...' + addr.slice(-4);
             document.getElementById('ton-connect').classList.add('connected');
 
             // Сохраняем кошелек на сервере для идентификации платежей без комментариев
             try {
                 await api('/api/user/wallet', 'POST', { address: addr });
-                console.log('Wallet address synced with server');
-            } catch (e) {
-                console.error('Failed to sync wallet address:', e);
-            }
+            } catch (e) { }
 
-            toast('Кошелёк подключен', 'success');
+            if (!isInitializing) {
+                toast('Кошелёк подключен', 'success');
+            }
         } else {
             document.getElementById('ton-connect').classList.remove('connected');
         }
+        isInitializing = false;
     });
 
     try {
@@ -117,7 +133,7 @@ async function init() {
                 user = newUser;
                 setBalance(user.balance, true);
             } catch (e) {
-                console.warn('Background balance sync failed');
+                console.warn('Background sync failed');
             }
         }, 10000);
 
@@ -171,7 +187,10 @@ function updatePayoutUI() {
     if (betType === 'high' || betType === 'low' || betType === 'even' || betType === 'odd') mult = 1.95;
     if (betType === 'seven') mult = 3.5;
     if (betType === 'doubles') mult = 5.0;
-    if (betType === 'exact') mult = 11.0;
+    if (betType === 'exact') {
+        const mults = { 2: 35, 3: 17, 4: 11, 5: 8.5, 6: 7, 7: 5.8, 8: 7, 9: 8.5, 10: 11, 11: 17, 12: 35 };
+        mult = mults[exactNum] || 0;
+    }
     const amt = parseFloat(document.getElementById('bet-amount').value) || 0;
     document.getElementById('potential-amount').textContent = (amt * mult).toFixed(2);
 }
@@ -242,14 +261,14 @@ function initEventListeners() {
         updatePayoutUI();
     };
 
-    // Кнопка подтверждения ставки (داخل модалки)
+    // Кнопка подтверждения ставки (внутри модалки)
     const confirmBtn = document.getElementById('roll-btn-confirm');
     if (confirmBtn) confirmBtn.onclick = roll;
 
     // Инпуты
     document.getElementById('bet-amount').oninput = updatePayoutUI;
 
-    // Seeds & Verify (Repairing broken functionality)
+    // Seeds & Verify
     const rotateBtn = document.getElementById('btn-rotate-seed');
     if (rotateBtn) rotateBtn.onclick = rotateServerSeed;
 
@@ -271,15 +290,8 @@ window.rotateServerSeed = async function () {
             document.getElementById('old-server-seed').textContent = res.oldServerSeed;
             document.getElementById('old-server-hash').textContent = res.oldServerSeedHash;
 
-            // Прокрутка вниз, чтобы увидеть результат
             setTimeout(() => {
                 revealBlock.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                const container = revealBlock.closest('.tab-scrollable');
-                if (container) {
-                    container.scrollTop = container.scrollHeight;
-                } else {
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                }
             }, 120);
         }
         toast('Server Seed обновлён', 'success');
@@ -322,11 +334,10 @@ window.roll = async function () {
     if (isNaN(amt) || amt < 0.1) return toast('Мин. ставка 0.1 TON', 'error');
     if (amt > user.balance) return toast('Недостаточно баланса', 'error');
 
-    // Close modal to show animation
     document.getElementById('bet-modal').classList.add('hidden');
 
     rolling = true;
-    document.getElementById('open-bet-modal-btn').disabled = true; // Disable main button
+    document.getElementById('open-bet-modal-btn').disabled = true;
     if (window.haptic) haptic.impactOccurred('medium');
 
     try {
@@ -335,10 +346,8 @@ window.roll = async function () {
 
         const res = await api('/api/bet', 'POST', payload);
 
-        // анимация
         animateDice(res.result.dice);
 
-        // Показ результата СТРОГО после анимации
         setTimeout(() => {
             user.balance = res.result.newBalance;
             setBalance(user.balance, true);
@@ -346,13 +355,12 @@ window.roll = async function () {
             rolling = false;
             document.getElementById('open-bet-modal-btn').disabled = false;
 
-            // Update seeds display
             if (res.fairness) {
                 document.getElementById('server-seed-hash').textContent = res.fairness.serverSeedHash;
                 document.getElementById('nonce-value').textContent = res.fairness.nonce;
             }
 
-        }, 1500); // 1.5s - sync with CSS transition + buffer
+        }, 1500);
 
     } catch (e) {
         toast(e.message, 'error');
@@ -365,13 +373,12 @@ function animateDice(vals) {
     const d1 = document.getElementById('die1');
     const d2 = document.getElementById('die2');
 
-    // Сбрасываем предыдущее вращение (add some random for 'strange' effect)
     d1.style.transition = 'none';
     d2.style.transition = 'none';
     d1.style.transform = `rotateX(${Math.random() * 360}deg) rotateY(${Math.random() * 360}deg)`;
     d2.style.transform = `rotateX(${Math.random() * 360}deg) rotateY(${Math.random() * 360}deg)`;
 
-    void d1.offsetWidth; // force reflow
+    void d1.offsetWidth;
 
     d1.style.transition = 'transform 1.2s cubic-bezier(0.15, 0.6, 0.3, 1)';
     d2.style.transition = 'transform 1.2s cubic-bezier(0.15, 0.6, 0.3, 1)';
@@ -381,20 +388,14 @@ function animateDice(vals) {
 }
 
 function setDiceFace(el, val) {
-    // Correct rotations based on index.html mapping
     const rotations = {
-        1: 'rotateX(0deg) rotateY(0deg)',     // front
-        2: 'rotateX(-90deg) rotateY(0deg)',   // top
-        3: 'rotateX(0deg) rotateY(-90deg)',   // right
-        4: 'rotateX(0deg) rotateY(90deg)',    // left
-        5: 'rotateX(90deg) rotateY(0deg)',    // bottom
-        6: 'rotateX(0deg) rotateY(180deg)'    // back
+        1: 'rotateX(0deg) rotateY(0deg)',
+        2: 'rotateX(-90deg) rotateY(0deg)',
+        3: 'rotateX(0deg) rotateY(-90deg)',
+        4: 'rotateX(0deg) rotateY(90deg)',
+        5: 'rotateX(90deg) rotateY(0deg)',
+        6: 'rotateX(0deg) rotateY(180deg)'
     };
-
-    // Add small random offset for "real feel"
-    const offX = (Math.random() - 0.5) * 4;
-    const offY = (Math.random() - 0.5) * 4;
-
     el.style.transform = rotations[val] || 'rotateX(0deg)';
 }
 
@@ -405,9 +406,14 @@ function showResult(res) {
     const diceDisp = document.getElementById('result-dice-display');
 
     ov.classList.remove('hidden');
-    title.textContent = res.won ? 'Победа!' : 'Проигрыш';
+    title.textContent = res.won ? 'ПОБЕДА' : 'ПРОИГРЫШ';
     title.className = 'result-title ' + (res.won ? 'win' : 'loss');
-    amt.textContent = (res.won ? '+' : '-') + res.payout.toFixed(2) + ' TON';
+
+    if (res.won) {
+        amt.textContent = '+' + res.payout.toFixed(2) + ' TON';
+    } else {
+        amt.textContent = '-' + res.betAmount.toFixed(2) + ' TON';
+    }
     amt.className = 'result-amount ' + (res.won ? 'win' : 'loss');
 
     diceDisp.innerHTML = res.dice.map(v => `<div class="result-die-box">${v}</div>`).join('');
@@ -417,7 +423,6 @@ function showResult(res) {
     document.getElementById('result-close').onclick = () => ov.classList.add('hidden');
 }
 
-// Подарки
 async function loadGifts() {
     try {
         const res = await api('/api/gifts');
@@ -442,13 +447,10 @@ async function loadGifts() {
                     <button class="gift-buy-btn" data-id="${g.id}" data-name="${g.title.replace(/'/g, "\\'")}" data-price="${g.price}">Купить</button>
                 </div>
             `;
-            const buyBtn = card.querySelector('.gift-buy-btn');
-            buyBtn.onclick = () => window.openBuyModal(g.id, g.title, g.price);
+            card.querySelector('.gift-buy-btn').onclick = () => window.openBuyModal(g.id, g.title, g.price);
             list.appendChild(card);
         });
-    } catch (e) {
-        console.error('loadGifts error:', e);
-    }
+    } catch (e) { }
 }
 window.loadGifts = loadGifts;
 
@@ -456,7 +458,6 @@ let currentBuyId = null;
 let currentBuyPrice = 0;
 
 window.openBuyModal = function (id, name, price) {
-    console.log('Opening buy modal for:', id, name, price);
     currentBuyId = id;
     currentBuyPrice = parseFloat(price);
     document.getElementById('modal-gift-name').textContent = name;
@@ -468,28 +469,20 @@ window.openBuyModal = function (id, name, price) {
 };
 
 async function confirmPurchase(id) {
-    console.log('Confirming purchase for ID:', id);
-    if (user.balance < currentBuyPrice) {
-        console.warn('Insufficient balance:', user.balance, '<', currentBuyPrice);
-        return toast('Недостаточно TON для покупки', 'error');
-    }
+    if (user.balance < currentBuyPrice) return toast('Недостаточно TON', 'error');
 
     try {
         const btn = document.getElementById('modal-confirm-buy');
         btn.disabled = true;
         btn.textContent = '...';
 
-        console.log('Sending purchase request to server...');
         const res = await api('/api/gifts/buy', 'POST', { giftId: id });
-        console.log('Purchase response:', res);
-
         user.balance = res.newBalance;
         setBalance(user.balance, true);
         toast('Покупка успешна!', 'success');
         closeModal('purchase-modal');
         loadGifts();
     } catch (e) {
-        console.error('Purchase error:', e);
         toast(e.message || 'Ошибка покупки', 'error');
     } finally {
         const btn = document.getElementById('modal-confirm-buy');
@@ -522,15 +515,25 @@ async function loadHistory() {
     try {
         const res = await api('/api/history');
         const list = document.getElementById('history-list');
-        list.innerHTML = res.games.length ? res.games.map(g => `
-            <div class="history-item">
-                <div class="hist-left">
-                    <div class="hist-type">${g.player_choice.toUpperCase()}</div>
-                    <div class="hist-time">${new Date(g.created_at).toLocaleTimeString()}</div>
+        list.innerHTML = res.games.length ? res.games.map(g => {
+            const date = new Date(g.created_at);
+            const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const amountStr = g.won ? `+${g.payout.toFixed(2)}` : `-${g.bet_amount.toFixed(2)}`;
+            const statusLabel = g.won ? 'WIN' : 'LOSS';
+
+            return `
+                <div class="history-item animated-history">
+                    <div class="hist-left">
+                        <div class="hist-badge ${g.won ? 'badge-win' : 'badge-loss'}">${statusLabel}</div>
+                        <div class="hist-meta">
+                            <span class="hist-type">${g.player_choice.replace('exact_', 'TARGET: ').toUpperCase()}</span>
+                            <span class="hist-time">${timeStr}</span>
+                        </div>
+                    </div>
+                    <div class="hist-res ${g.won ? 'win' : 'loss'}">${amountStr} TON</div>
                 </div>
-                <div class="hist-res ${g.won ? 'win' : 'loss'}">${g.won ? '+' : ''}${g.payout.toFixed(2)}</div>
-            </div>
-        `).join('') : '<div class="empty-state">Нет игр</div>';
+            `;
+        }).join('') : '<div class="empty-state">История пуста</div>';
     } catch (e) { }
 }
 
@@ -551,11 +554,8 @@ async function loadLeaderboard() {
     } catch (e) { }
 }
 
-// Депозиты
 window.depositRequest = async function () {
-    console.log('Deposit request triggered');
     if (!tonConnectUI.connected) {
-        console.warn('Wallet not connected');
         toast('Сначала подключите кошелёк', 'info');
         await tonConnectUI.openModal();
         return;
@@ -564,143 +564,100 @@ window.depositRequest = async function () {
     const amountEl = document.getElementById('dep-amount');
     const amountVal = amountEl ? amountEl.value : null;
 
-    if (!amountVal || parseFloat(amountVal) < 0.1) {
-        console.warn('Invalid amount:', amountVal);
-        return toast('Мин. сумма 0.1 TON', 'error');
-    }
+    if (!amountVal || parseFloat(amountVal) < 0.1) return toast('Мин. сумма 0.1 TON', 'error');
 
     try {
         const btn = document.getElementById('dep-btn-go');
         btn.disabled = true;
         btn.textContent = '...';
 
-        console.log('Requesting deposit from server for amount:', amountVal);
         const res = await api('/api/deposit/request', 'POST', { amount: parseFloat(amountVal) });
-        console.log('Server deposit response:', res);
 
         if (!res.address || res.address.includes('...')) {
-            throw new Error('Адрес кошелька для приема платежа не настроен в .env! (TON_WALLET)');
+            throw new Error('Адрес не настроен. Попробуйте позже.');
         }
 
         const depositComment = (res.comment || '').trim();
-        if (!depositComment) {
-            throw new Error('Сервер не вернул комментарий депозита. Попробуйте снова.');
-        }
-
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
-        // Вызываем транзакцию через TonConnect
         try {
-            console.log('Preparing TON transaction...');
             let payload = null;
-
-            // Пробуем сформировать BOC если TonWeb доступен
             const TW = window.TonWeb || (typeof TonWeb !== 'undefined' ? TonWeb : null);
             if (TW && TW.boc && TW.boc.Cell) {
                 try {
                     const cell = new TW.boc.Cell();
-                    cell.bits.writeUint(0, 32); // Opcode Сообщение
+                    cell.bits.writeUint(0, 32);
                     const bytes = (TW.utils && TW.utils.stringToBytes) ? TW.utils.stringToBytes(depositComment) : new TextEncoder().encode(depositComment);
                     cell.bits.writeBytes(bytes);
                     const bocRes = cell.toBoc();
                     const bocBytes = (bocRes instanceof Promise) ? await bocRes : bocRes;
                     payload = TW.utils.bytesToBase64(bocBytes);
-                } catch (e) { console.error('BOC failed:', e); }
-            }
-
-            const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
-            const message = {
-                address: (res.address || '').trim(),
-                amount: nanoAmount
-            };
-
-            // Если payload создался - добавляем его. 
-            // Если НЕТ (ошибка библиотеки) - шлем БЕЗ него. 
-            // Сервер всё равно зачислит по адресу кошелька (from_addr)!
-            if (payload) {
-                message.payload = payload;
-                console.log('Transaction with payload (memo)');
-            } else {
-                console.log('Transaction WITHOUT payload (no library)');
+                } catch (e) { }
             }
 
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 360,
-                messages: [message]
+                messages: [{
+                    address: res.address.trim(),
+                    amount: (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString(),
+                    payload: payload
+                }]
             };
 
-            const txResult = await tonConnectUI.sendTransaction(transaction);
-            console.log('Transaction success!', txResult);
+            await tonConnectUI.sendTransaction(transaction);
 
-            // Оптимистичное зачисление
             try {
                 const opt = await api('/api/deposit/optimistic', 'POST', { comment: depositComment });
                 if (opt.success) {
                     user.balance = opt.newBalance;
                     setBalance(user.balance, true);
-                    toast('Мгновенное зачисление успешно! Ожидаем блокчейн...', 'success');
+                    toast('Пополнение зачислено!', 'success');
                 }
             } catch (e) {
-                console.error('Optimistic credit failed:', e);
-                toast('Транзакция отправлена! Ожидаем подтверждение сети...', 'success');
+                toast('Транзакция отправлена. Ожидаем сеть...', 'success');
             }
 
             const waitDeposit = async () => {
                 for (let i = 0; i < 15; i++) {
                     await new Promise((r) => setTimeout(r, 4000));
                     const check = await api('/api/deposit/check');
-
-                    // Проверяем, есть ли всё еще ЭТА заявка в pending или optimistic
                     const hasActive = [...(check.pending || []), ...(check.optimistic || [])].some(d => d.comment === depositComment);
-
                     if (!hasActive) {
                         const authState = await api('/api/auth', 'POST');
                         user = authState.user;
                         setBalance(user.balance, true);
-                        toast('Депозит окончательно подтвержден блокчейном!', 'success');
                         return;
                     }
                 }
             };
+            waitDeposit().catch(() => { });
 
-            waitDeposit().catch((err) => {
-                console.error('Deposit status check failed:', err);
-            });
         } catch (txErr) {
-            console.error('TonConnect TX Error:', txErr);
-
-            // Резервный вариант: Deep Link (прямая ссылка для оплаты)
             const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
             const deepLink = `ton://transfer/${res.address}?amount=${nanoAmount}&text=${encodeURIComponent(depositComment)}`;
-            console.log('Generated deep link:', deepLink);
 
-            // Показываем кнопку-ссылку, если авто-платеж не сработал
             const modal = document.createElement('div');
             modal.className = 'modal-overlay';
-
-            let errorDesc = (txErr && txErr.message === 'MANUAL_PAYMENT_REQUIRED')
-                ? 'Для подтверждения оплаты с комментарием используйте кнопку ниже.'
-                : `Ошибка: ${txErr && txErr.message ? txErr.message : 'неизвестная ошибка'}. Попробуйте оплатить по прямой ссылке.`;
-
             modal.innerHTML = `
                 <div class="modal-box">
                     <h3 class="modal-title">Ручная оплата</h3>
-                    <p class="modal-desc">${errorDesc}</p>
+                    <p class="modal-desc">Если авто-оплата не сработала, используйте кнопку ниже.</p>
                     <a href="${deepLink}" class="roll-button main-action" style="text-decoration:none; display:block; margin-bottom:12px;">ОПЛАТИТЬ ЧЕРЕЗ ССЫЛКУ</a>
                     <button class="modal-btn cancel" onclick="this.closest('.modal-overlay').remove()">Закрыть</button>
                 </div>
             `;
             document.body.appendChild(modal);
-            toast('Используйте ссылку для оплаты', 'info');
+            toast('Попробуйте еще раз или оплатите по ссылке', 'info');
         }
 
     } catch (e) {
-        console.error('Deposit request failed:', e);
-        toast(e.message, 'error');
+        toast('Ошибка: попробуйте еще раз', 'error');
     } finally {
         const btn = document.getElementById('dep-btn-go');
-        btn.disabled = false;
-        btn.textContent = 'ПОПОЛНИТЬ';
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'ПОПОЛНИТЬ';
+        }
     }
 };
 
@@ -708,21 +665,8 @@ window.copyText = function (id) {
     const el = document.getElementById(id);
     if (!el) return;
     const txt = el.textContent || el.innerText;
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(txt).then(() => {
-            toast('Скопировано!', 'success');
-        });
-    } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = txt;
-        document.body.appendChild(textArea);
-        textArea.select();
-        try {
-            document.execCommand('copy');
-            toast('Скопировано!', 'success');
-        } catch (err) { }
-        document.body.removeChild(textArea);
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(txt).then(() => toast('Скопировано!', 'success'));
     }
 };
 
