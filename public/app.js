@@ -554,12 +554,11 @@ window.depositRequest = async function () {
         }
 
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
-
         // Вызываем транзакцию через TonConnect
         try {
             console.log('Preparing TON transaction payload...');
             let payload = null;
-            if (typeof TonWeb !== 'undefined') {
+            if (typeof TonWeb !== 'undefined' && res.comment) {
                 const cell = new TonWeb.boc.Cell();
                 cell.bits.writeUint(0, 32);
                 cell.bits.writeString(res.comment);
@@ -568,15 +567,19 @@ window.depositRequest = async function () {
                 console.log('Generated payload BOC:', payload);
             }
 
+            const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
+            const message = {
+                address: res.address,
+                amount: nanoAmount
+            };
+
+            if (payload) {
+                message.payload = payload;
+            }
+
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 360,
-                messages: [
-                    {
-                        address: res.address,
-                        amount: (parseFloat(amountVal) * 1e9).toString(),
-                        payload: payload
-                    }
-                ]
+                messages: [message]
             };
 
             // Если мы в Telegram, пробуем сначала через sendTransaction
@@ -587,7 +590,7 @@ window.depositRequest = async function () {
             console.error('TonConnect TX Error:', txErr);
 
             // Резервный вариант: Deep Link (прямая ссылка для оплаты)
-            const nanoAmount = (parseFloat(amountVal) * 1e9).toString();
+            const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
             const deepLink = `ton://transfer/${res.address}?amount=${nanoAmount}&text=${encodeURIComponent(res.comment)}`;
             console.log('Generated deep link:', deepLink);
 
@@ -639,4 +642,3 @@ window.copyText = function (id) {
 };
 
 document.addEventListener('DOMContentLoaded', init);
-
