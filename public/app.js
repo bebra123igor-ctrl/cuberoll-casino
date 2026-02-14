@@ -553,18 +553,26 @@ window.depositRequest = async function () {
             throw new Error('Адрес кошелька для приема платежа не настроен в .env! (TON_WALLET)');
         }
 
+        const depositComment = (res.comment || '').trim();
+        if (!depositComment) {
+            throw new Error('Сервер не вернул комментарий депозита. Попробуйте снова.');
+        }
+
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
+
         // Вызываем транзакцию через TonConnect
         try {
             console.log('Preparing TON transaction payload...');
             let payload = null;
-            if (typeof TonWeb !== 'undefined' && res.comment) {
+            if (typeof TonWeb !== 'undefined') {
                 const cell = new TonWeb.boc.Cell();
                 cell.bits.writeUint(0, 32);
-                cell.bits.writeString(res.comment);
+                cell.bits.writeBytes(TonWeb.utils.stringToBytes(depositComment));
                 const boc = await cell.toBoc();
                 payload = TonWeb.utils.bytesToBase64(boc);
                 console.log('Generated payload BOC:', payload);
+            } else {
+                throw new Error('TonWeb не загружен: не удалось сформировать комментарий для оплаты');
             }
 
             const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
@@ -591,7 +599,7 @@ window.depositRequest = async function () {
 
             // Резервный вариант: Deep Link (прямая ссылка для оплаты)
             const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
-            const deepLink = `ton://transfer/${res.address}?amount=${nanoAmount}&text=${encodeURIComponent(res.comment)}`;
+            const deepLink = `ton://transfer/${res.address}?amount=${nanoAmount}&text=${encodeURIComponent(depositComment)}`;
             console.log('Generated deep link:', deepLink);
 
             // Показываем кнопку-ссылку, если авто-платеж не сработал
