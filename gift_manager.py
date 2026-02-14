@@ -151,41 +151,48 @@ async def process_transfer_queue(client):
 
 async def main():
     if not API_ID or not API_HASH:
-        logger.error("TG_API_ID or TG_API_HASH not found in .env. Please configure them.")
+        logger.error("КРИТИЧЕСКАЯ ОШИБКА: TG_API_ID или TG_API_HASH не установлены в переменных Railway!")
         return
 
     session_string = os.getenv("TG_SESSION_STRING")
+    if not session_string:
+         logger.error("КРИТИЧЕСКАЯ ОШИБКА: TG_SESSION_STRING не установлен! Бот не сможет войти.")
+         return
     
-    logger.info("Initializing Userbot...")
+    logger.info("Initializing Userbot with StringSession...")
     
     from telethon.sessions import StringSession
     
-    # Если есть строка сессии - используем её (для Railway/Heroku)
-    # Если нет - используем файл (для локальных тестов)
-    if session_string:
+    try:
         client = TelegramClient(StringSession(session_string), int(API_ID), API_HASH)
-    else:
-        if not os.path.exists('sessions'):
-            os.makedirs('sessions')
-        client = TelegramClient('sessions/bank_session', int(API_ID), API_HASH)
+    except Exception as e:
+        logger.error(f"Ошибка инициализации клиента: {e}")
+        return
     
     try:
         await client.start()
-        logger.info("Userbot started successfully!")
+        me = await client.get_me()
+        logger.info(f"Юзербот успешно запущен! Аккаунт: {me.first_name} (ID: {me.id})")
     except Exception as e:
-        logger.error(f"Failed to start client: {e}")
+        logger.error(f"Не удалось запустить клиент: {e}")
         return
 
     # Цикл синхронизации
     async def periodic_sync():
         while True:
-            await sync_inventory(client)
+            try:
+                await sync_inventory(client)
+            except Exception as e:
+                logger.error(f"Ошибка в цикле синхронизации: {e}")
             await asyncio.sleep(600)
 
-    await asyncio.gather(
-        process_transfer_queue(client),
-        periodic_sync()
-    )
+    try:
+        await asyncio.gather(
+            process_transfer_queue(client),
+            periodic_sync()
+        )
+    except Exception as e:
+        logger.error(f"Ошибка в основном цикле: {e}")
 
 if __name__ == "__main__":
     try:
