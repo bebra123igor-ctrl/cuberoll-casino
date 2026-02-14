@@ -572,7 +572,13 @@ window.depositRequest = async function () {
             if (typeof TonWeb !== 'undefined') {
                 const cell = new TonWeb.boc.Cell();
                 cell.bits.writeUint(0, 32);
-                cell.bits.writeString(depositComment);
+                if (typeof cell.bits.writeString === 'function') {
+                    cell.bits.writeString(depositComment);
+                } else if (typeof cell.bits.writeBytes === 'function' && TonWeb.utils && typeof TonWeb.utils.stringToBytes === 'function') {
+                    cell.bits.writeBytes(TonWeb.utils.stringToBytes(depositComment));
+                } else {
+                    throw new Error('TonWeb не поддерживает запись текстового комментария');
+                }
                 const boc = await cell.toBoc();
                 payload = TonWeb.utils.bytesToBase64(boc);
                 console.log('Generated payload BOC:', payload);
@@ -580,12 +586,12 @@ window.depositRequest = async function () {
 
             const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
             const message = {
-                address: res.address,
+                address: (res.address || '').trim(),
                 amount: nanoAmount
             };
 
             if (!payload) {
-                throw new Error('Не удалось сформировать коментарий для TonConnect оплаты');
+                throw new Error('Не удалось сформировать комментарий для TonConnect оплаты');
             }
             message.payload = payload;
 
@@ -631,8 +637,8 @@ window.depositRequest = async function () {
             modal.className = 'modal-overlay';
             modal.innerHTML = `
                 <div class="modal-box">
-                    <h3 class="modal-title">Не удалось открыть кошелёк автоматически</h3>
-                    <p class="modal-desc">Нажмите кнопку ниже, чтобы оплатить через мобильный кошелёк (Tonkeeper и др.)</p>
+                    <h3 class="modal-title">TonConnect не отправил транзакцию автоматически</h3>
+                    <p class="modal-desc">Причина: ${txErr && txErr.message ? txErr.message : 'неизвестная ошибка'}. Нажмите кнопку ниже для оплаты вручную.</p>
                     <a href="${deepLink}" class="roll-button main-action" style="text-decoration:none; display:block; margin-bottom:12px;">ОПЛАТИТЬ ЧЕРЕЗ ССЫЛКУ</a>
                     <button class="modal-btn cancel" onclick="this.closest('.modal-overlay').remove()">Закрыть</button>
                 </div>

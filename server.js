@@ -270,12 +270,38 @@ app.get('/api/deposit/check', auth, (req, res) => {
 
 // Фоновая проверка транзакций TON
 const https = require('https');
-const CASINO_ADDR = process.env.TON_WALLET;
+
+function parseTonComment(msg) {
+    if (!msg) return null;
+
+    if (typeof msg.message === 'string' && msg.message.trim()) {
+        return msg.message.trim();
+    }
+
+    if (msg.msg_data && typeof msg.msg_data.text === 'string' && msg.msg_data.text.trim()) {
+        return msg.msg_data.text.trim();
+    }
+
+    if (msg.msg_data && msg.msg_data['@type'] === 'msg.dataRaw' && typeof msg.msg_data.body === 'string') {
+        try {
+            const body = Buffer.from(msg.msg_data.body, 'base64');
+            if (body.length <= 4) return null;
+            const opcode = body.readUInt32BE(0);
+            if (opcode !== 0) return null;
+            const text = body.subarray(4).toString('utf8').replace(/\0+$/, '').trim();
+            return text || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    return null;
+}
 
 async function checkTonTransactions() {
     const settings = settingsOps.getAll();
     const addr = settings.ton_wallet || process.env.TON_WALLET;
-    if (!addr || addr.includes('your-')) return;
+    if (!addr || addr.includes('your-') || addr.includes('UQ...')) return;
 
     https.get(`https://toncenter.com/api/v2/getTransactions?address=${addr}&limit=20`, (resp) => {
         let data = '';
@@ -288,9 +314,9 @@ async function checkTonTransactions() {
                 const txs = json.result;
                 txs.forEach(tx => {
                     const msg = tx.in_msg;
-                    if (!msg || !msg.message) return;
+                    const comment = parseTonComment(msg);
+                    if (!comment) return;
 
-                    const comment = msg.message; // это мемо
                     const pending = depositOps.getByComment(comment);
 
                     if (pending && pending.status === 'pending') {
