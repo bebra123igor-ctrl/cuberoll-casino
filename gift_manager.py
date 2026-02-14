@@ -85,14 +85,23 @@ async def sync_inventory(client):
                 # Сериализация вручную если нужно, но Telethon 1.x обычно умеет через Raw
                 return b'' 
 
-        # Попытка через Raw-вызов самого Telethon
+        # Попытка через Raw-вызов
         try:
              # Динамический вызов через Invoke
-             result = await client(functions.payments.GetUserGiftsRequest(user_id='me', limit=100))
-        except:
-             logger.info("Метод не найден в TL, используем Raw API...")
-             # Если совсем плохо - просто пропускаем этот этап пока версия не обновится
-             # но в 99% случаев поможет просто RawInvoke
+             # 0xe11da17c - payments.getUserGifts в новых слоях
+             class GetUserGiftsRaw(functions.TLRequest):
+                 CONSTRUCTOR_ID = 0xe11da17c
+                 SUBCLASS_OF_ID = 0x14ada4f2
+                 def __init__(self, user_id, offset=0, limit=100):
+                     self.user_id = user_id
+                     self.offset = offset
+                     self.limit = limit
+                 def to_dict(self):
+                     return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
+
+             result = await client(GetUserGiftsRaw(user_id='me', limit=100))
+        except Exception as e:
+             logger.error(f"Не удалось получить список подарков: {e}")
              return
 
         conn = get_db_connection()
@@ -108,23 +117,41 @@ async def sync_inventory(client):
 
         for item in result.gifts:
             tg_gift_id = str(item.id)
+            
+            # 1. Проверяем, не добавлен ли уже этот ID
             cursor.execute("SELECT id FROM gifts WHERE gift_id = ?", (tg_gift_id,))
             if cursor.fetchone():
                 continue
                 
-            gift_info = item.gift
-            # Ищем название в атрибутах подарка
+            gift_obj = item.gift
+            # Ищем название: сначала в slug (обычно это название коллекции), потом в title
             title = "NFT Gift"
-            if hasattr(gift_info, 'title'): title = gift_info.title
-            elif hasattr(gift_info, 'slug'): title = gift_info.slug
+            if hasattr(gift_obj, 'slug'):
+                title = gift_obj.slug.replace('_', ' ').title()
             
+            if hasattr(item, 'message') and item.message:
+                title = item.message
+            
+            # 2. УМНЫЙ ХАК: Если юзер добавил подарок вручную через панель,
+            # у него в базе будет такое же имя, но gift_id = NULL.
+            # Мы "подхватываем" такой подарок и прописываем ему ID.
+            cursor.execute("SELECT id FROM gifts WHERE title = ? AND gift_id IS NULL", (title,))
+            manual_match = cursor.fetchone()
+            if manual_match:
+                logger.info(f"Linking manual gift '{title}' with Telegram ID {tg_gift_id}")
+                cursor.execute("UPDATE gifts SET gift_id = ?, is_active = 1 WHERE id = ?", (tg_gift_id, manual_match[0]))
+                continue
+
             logger.info(f"New gift found: {title}. Detecting price...")
             price = await fetch_floor_price(title)
             
+            # Пытаемся достать картинку из атрибутов если есть (заглушка для примера)
+            model_url = "https://i.imgur.com/8YvYyZp.png"
+            
             cursor.execute("""
-                INSERT INTO gifts (title, price, gift_id, is_active)
-                VALUES (?, ?, ?, 1)
-            """, (title, price, tg_gift_id))
+                INSERT INTO gifts (title, price, gift_id, is_active, model, background, symbol)
+                VALUES (?, ?, ?, 1, ?, ?, ?)
+            """, (title, price, tg_gift_id, model_url, 'radial-gradient(circle, #333, #000)', '🎁'))
             logger.info(f"Added to store: {title} for {price} TON")
             
         conn.commit()
@@ -166,14 +193,19 @@ async def process_transfer_queue(client):
                 
                 logger.info(f"Processing purchase: {gift_name} for user {receiver_id}")
                 
+                if not tg_gift_id:
+                    err = "Gift has no Telegram ID (added manually?). Skipping auto-send."
+                    logger.warning(f"Error for {gift_name}: {err}")
+                    cursor.execute("UPDATE gift_transfers SET status = 'failed', error = ? WHERE id = ?", (err, t_id))
+                    continue
+
                 try:
                     # Используем Raw API (Invoke), так как Telethon может быть старой версии
-                    # 0xc220d9f4 - ID для payments.sendGift (может меняться, но это актуальный для слоя 180+)
-                    # Если ID не подходит, используем динамический поиск
+                    # 0xc220d9f4 - ID для payments.sendGift
                     try:
                         from telethon.tl.functions.payments import SendGiftRequest
                         await client(SendGiftRequest(
-                            user_id=receiver_id,
+                            user_id=int(receiver_id),
                             gift_id=int(tg_gift_id)
                         ))
                     except (ImportError, AttributeError):
@@ -182,12 +214,13 @@ async def process_transfer_queue(client):
                             CONSTRUCTOR_ID = 0xc220d9f4
                             SUBCLASS_OF_ID = 0xf5b3296
                             def __init__(self, user_id, gift_id):
+                                # Важно: user_id должен быть InputUser, но Telethon часто ест инты
                                 self.user_id = user_id
                                 self.gift_id = gift_id
                             def to_dict(self):
                                 return {'user_id': self.user_id, 'gift_id': self.gift_id}
                         
-                        await client(SendGiftRaw(user_id=receiver_id, gift_id=int(tg_gift_id)))
+                        await client(SendGiftRaw(user_id=int(receiver_id), gift_id=int(tg_gift_id)))
                     
                     cursor.execute("UPDATE gift_transfers SET status = 'sent' WHERE id = ?", (t_id,))
                     logger.info(f"Successfully sent {gift_name} to {receiver_id}")
