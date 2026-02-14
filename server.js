@@ -13,15 +13,16 @@ const app = express();
 
 // Запуск Python менеджера подарков как дочернего процесса
 function startGiftManager() {
-    console.log('🐍 Запуск Gift Manager (Python)...');
+    console.log('🐍 [System] Запуск Gift Manager (Python)...');
+    // В Docker используем python3
     const py = spawn('python3', ['gift_manager.py']);
 
-    py.stdout.on('data', (data) => console.log(`[Python] ${data}`));
-    py.stderr.on('data', (data) => console.error(`[Python Error] ${data}`));
+    py.stdout.on('data', (data) => console.log(`[GiftManager] ${data.toString().trim()}`));
+    py.stderr.on('data', (data) => console.error(`[GiftManager Error] ${data.toString().trim()}`));
 
     py.on('close', (code) => {
-        console.log(`[Python] Процесс завершился с кодом ${code}. Перезапуск через 5 сек...`);
-        setTimeout(startGiftManager, 5000);
+        console.log(`[GiftManager] Процесс завершился с кодом ${code}. Перезапуск через 10 сек...`);
+        setTimeout(startGiftManager, 10000);
     });
 }
 
