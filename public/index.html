@@ -210,118 +210,25 @@
           </div>
         </div>
 
-        <!-- сумма и кнопка броска (теперь выше) -->
-        <div class="bet-amount-section">
-          <h3 class="section-title">Сумма</h3>
-          <div class="bet-input-container">
-            <button class="bet-adjust" id="btn-half">/2</button>
-            <div class="bet-input-wrapper">
-              <input type="number" id="bet-amount" class="bet-input" value="1.0" min="0.1" max="100" step="0.1">
-              <span class="bet-input-unit">TON</span>
-            </div>
-            <button class="bet-adjust" id="btn-double">×2</button>
-          </div>
-          <div class="quick-bets">
-            <button class="quick-bet" data-amount="1">1</button>
-            <button class="quick-bet" data-amount="5">5</button>
-            <button class="quick-bet active" data-amount="10">10</button>
-            <button class="quick-bet" data-amount="20">20</button>
-            <button class="quick-bet" data-amount="max">MAX</button>
-          </div>
-        </div>
+
 
         <div class="roll-section">
           <div class="streak-multiplier" id="streak-mult">×1.1</div>
-          <button class="roll-button" id="roll-btn">
+          <button class="roll-button" id="open-bet-modal-btn">
             <span class="icon"><svg viewBox="0 0 24 24">
                 <rect x="3" y="3" width="18" height="18" rx="3" />
                 <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none" />
                 <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" stroke="none" />
               </svg></span>
-            <span class="roll-text">БРОСИТЬ КОСТИ</span>
+            <span class="roll-text">СДЕЛАТЬ СТАВКУ</span>
           </button>
         </div>
         <div class="potential-win">
           Возможный выигрыш: <strong id="potential-amount">1.95</strong>
         </div>
 
-        <!-- тип ставки (теперь ниже) -->
-        <div class="bet-section">
-          <h3 class="section-title">Тип ставки</h3>
-          <div class="bet-types">
-            <button class="bet-type-btn active" data-bet="high">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <polyline points="18 15 12 9 6 15" />
-                </svg></div><span class="bet-name">Больше</span><span class="bet-mult">×1.95</span><span
-                class="bet-desc">8–12</span>
-            </button>
-            <button class="bet-type-btn" data-bet="low">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <polyline points="6 9 12 15 18 9" />
-                </svg></div><span class="bet-name">Меньше</span><span class="bet-mult">×1.95</span><span
-                class="bet-desc">2–6</span>
-            </button>
-            <button class="bet-type-btn" data-bet="seven">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <path d="M8 6h8l-5 12" />
-                </svg></div><span class="bet-name">Семёрка</span><span class="bet-mult">×3.5</span><span
-                class="bet-desc">= 7</span>
-            </button>
-            <button class="bet-type-btn" data-bet="exact">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="3" />
-                  <circle cx="12" cy="12" r="8" />
-                </svg></div><span class="bet-name">Точно</span><span class="bet-mult">×6–36</span><span
-                class="bet-desc">выбери</span>
-            </button>
-            <button class="bet-type-btn" data-bet="even">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <line x1="4" y1="12" x2="20" y2="12" />
-                  <line x1="4" y1="6" x2="20" y2="6" />
-                </svg></div><span class="bet-name">Чётное</span><span class="bet-mult">×1.9</span><span
-                class="bet-desc">2,4,6...</span>
-            </button>
-            <button class="bet-type-btn" data-bet="odd">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <line x1="4" y1="8" x2="20" y2="8" />
-                  <line x1="4" y1="16" x2="14" y2="16" />
-                </svg></div><span class="bet-name">Нечётное</span><span class="bet-mult">×1.9</span><span
-                class="bet-desc">3,5,7...</span>
-            </button>
-            <button class="bet-type-btn" data-bet="doubles">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                  <rect x="14" y="14" width="7" height="7" rx="1.5" />
-                </svg></div><span class="bet-name">Дубль</span><span class="bet-mult">×5.0</span><span
-                class="bet-desc">пара</span>
-            </button>
-            <button class="bet-type-btn" data-bet="range">
-              <div class="bet-icon"><svg viewBox="0 0 24 24">
-                  <line x1="4" y1="12" x2="20" y2="12" />
-                  <circle cx="8" cy="12" r="2" />
-                  <circle cx="16" cy="12" r="2" />
-                </svg></div><span class="bet-name">Диапазон</span><span class="bet-mult">×2–12</span><span
-                class="bet-desc">2–12</span>
-            </button>
-          </div>
-        </div>
 
-        <div class="exact-picker" id="exact-picker" style="display:none">
-          <h3 class="section-title">Выбери число</h3>
-          <div class="exact-nums" id="exact-nums"></div>
-        </div>
 
-        <div class="range-picker" id="range-picker" style="display:none">
-          <h3 class="section-title">Диапазон</h3>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-            <input type="number" id="range-min" class="verify-input" value="2" min="2" max="12"
-              style="width:60px;text-align:center">
-            <span style="color:var(--t3);font-size:12px">—</span>
-            <input type="number" id="range-max" class="verify-input" value="6" min="2" max="12"
-              style="width:60px;text-align:center">
-            <span style="color:var(--gold);font-size:12px;font-weight:700" id="range-mult">×2.40</span>
-          </div>
-        </div>
 
         <div style="height: 20px;"></div> <!-- spacer -->
       </div> <!-- end tab-scrollable -->
@@ -415,72 +322,151 @@
           </div>
         </div>
       </div>
+    </div>
 
 
-      <div class="tab-content" id="content-shop">
-        <div class="tab-scrollable">
-          <h3 class="section-title">Магазин подарков</h3>
-          <div class="shop-grid" id="shop-list">
-            <!-- Подарки будут здесь -->
-          </div>
-        </div>
-      </div>
-
-      <div class="tab-content" id="content-wallet">
-        <div class="tab-scrollable">
-          <div class="deposit-section" style="margin-top: 10px;">
-            <h4 class="section-title">Пополнение (Мемо)</h4>
-
-            <div id="dep-manual-info" class="dep-manual-card hidden">
-              <div class="dep-row"><span>Адрес:</span> <code id="dep-addr-val">...</code></div>
-              <div class="dep-row"><span>Мемо/Комментарий:</span> <code id="dep-memo-val"
-                  class="memo-highlight">...</code>
-              </div>
-              <p class="dep-warning">⚠️ Обязательно укажите комментарий при переводе!</p>
-            </div>
-
-            <div class="deposit-input-card">
-              <div class="dep-input-group">
-                <input type="number" id="dep-amount" placeholder="1.0" step="0.1" min="0.1">
-                <span>TON</span>
-              </div>
-              <button class="dep-go-btn" id="dep-btn-go" onclick="depositRequest()">Создать</button>
-            </div>
-            <p class="dep-hint">Минимум: <span id="min-dep-text">0.1</span> TON.</p>
-
-            <div class="deposit-status-list" id="pending-deposits"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- подтверждение покупки -->
-      <div class="modal-overlay hidden" id="purchase-modal">
-        <div class="modal-box">
-          <div class="modal-gift-icon" id="modal-gift-icon">🎁</div>
-          <h3 class="modal-title">Подтверждение</h3>
-          <p class="modal-desc">Вы уверены, что хотите купить <strong id="modal-gift-name">...</strong> за <span
-              id="modal-gift-price">...</span> TON?</p>
-          <div class="modal-btns">
-            <button class="modal-btn cancel" onclick="closeModal('purchase-modal')">Отмена</button>
-            <button class="modal-btn confirm" id="modal-confirm-buy">Купить</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- результат -->
-      <div class="result-overlay hidden" id="result-overlay">
-        <div class="result-modal">
-          <div class="result-icon-wrap" id="result-icon-wrap"></div>
-          <h2 class="result-title" id="result-title">Победа!</h2>
-          <div class="result-dice-display" id="result-dice-display"></div>
-          <p class="result-amount" id="result-amount">+100.00</p>
-          <p class="result-streak" id="result-streak"></p>
-          <button class="result-close" id="result-close">Продолжить</button>
+    <div class="tab-content" id="content-shop">
+      <div class="tab-scrollable">
+        <h3 class="section-title">Магазин подарков</h3>
+        <div class="shop-grid" id="shop-list">
+          <!-- Подарки будут здесь -->
         </div>
       </div>
     </div>
 
-    <script src="app.js"></script>
+    <div class="tab-content" id="content-wallet">
+      <div class="tab-scrollable">
+        <div class="deposit-section" style="margin-top: 10px;">
+          <h4 class="section-title">Пополнение (Мемо)</h4>
+
+          <div id="dep-manual-info" class="dep-manual-card hidden">
+            <div class="dep-row"><span>Адрес:</span> <code id="dep-addr-val">...</code></div>
+            <div class="dep-row"><span>Мемо/Комментарий:</span> <code id="dep-memo-val"
+                class="memo-highlight">...</code>
+            </div>
+            <p class="dep-warning">⚠️ Обязательно укажите комментарий при переводе!</p>
+          </div>
+
+          <div class="deposit-input-card">
+            <div class="dep-input-group">
+              <input type="number" id="dep-amount" placeholder="1.0" step="0.1" min="0.1">
+              <span>TON</span>
+            </div>
+            <button class="dep-go-btn" id="dep-btn-go" onclick="depositRequest()">Создать</button>
+          </div>
+          <p class="dep-hint">Минимум: <span id="min-dep-text">0.1</span> TON.</p>
+
+          <div class="deposit-status-list" id="pending-deposits"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- подтверждение покупки -->
+    <div class="modal-overlay hidden" id="purchase-modal">
+      <div class="modal-box">
+        <div class="modal-gift-icon" id="modal-gift-icon">🎁</div>
+        <h3 class="modal-title">Подтверждение</h3>
+        <p class="modal-desc">Вы уверены, что хотите купить <strong id="modal-gift-name">...</strong> за <span
+            id="modal-gift-price">...</span> TON?</p>
+        <div class="modal-btns">
+          <button class="modal-btn cancel" onclick="closeModal('purchase-modal')">Отмена</button>
+          <button class="modal-btn confirm" id="modal-confirm-buy">Купить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- результат -->
+    <div class="result-overlay hidden" id="result-overlay">
+      <div class="result-modal">
+        <div class="result-icon-wrap" id="result-icon-wrap"></div>
+        <h2 class="result-title" id="result-title">Победа!</h2>
+        <div class="result-dice-display" id="result-dice-display"></div>
+        <p class="result-amount" id="result-amount">+100.00</p>
+        <p class="result-streak" id="result-streak"></p>
+        <button class="result-close" id="result-close">Продолжить</button>
+      </div>
+    </div>
+
+    <!-- Модальное окно ставки -->
+    <div class="modal-overlay hidden" id="bet-modal">
+      <div class="modal-box bet-modal-box">
+        <div class="modal-header">
+          <h3>Сделать ставку</h3>
+          <button class="close-modal-btn" onclick="closeModal('bet-modal')">×</button>
+        </div>
+
+        <div class="bet-amount-section-modal">
+          <label>Сумма ставки</label>
+          <div class="bet-input-container">
+            <button class="bet-adjust" id="btn-half">/2</button>
+            <div class="bet-input-wrapper">
+              <input type="number" id="bet-amount" class="bet-input" value="1.0" min="0.1" max="100" step="0.1">
+              <span class="bet-input-unit">TON</span>
+            </div>
+            <button class="bet-adjust" id="btn-double">×2</button>
+          </div>
+          <div class="quick-bets">
+            <button class="quick-bet" data-amount="1">1</button>
+            <button class="quick-bet" data-amount="5">5</button>
+            <button class="quick-bet active" data-amount="10">10</button>
+            <button class="quick-bet" data-amount="20">20</button>
+            <button class="quick-bet" data-amount="max">MAX</button>
+          </div>
+        </div>
+
+        <div class="bet-type-section-modal">
+          <label>Исход</label>
+          <div class="bet-grid">
+            <button class="bet-type-btn active" data-bet="high">
+              <span class="bet-name">Больше (8-12)</span><span class="bet-mult">x1.95</span>
+            </button>
+            <button class="bet-type-btn" data-bet="low">
+              <span class="bet-name">Меньше (2-6)</span><span class="bet-mult">x1.95</span>
+            </button>
+            <button class="bet-type-btn" data-bet="even">
+              <span class="bet-name">Чётное</span><span class="bet-mult">x1.95</span>
+            </button>
+            <button class="bet-type-btn" data-bet="odd">
+              <span class="bet-name">Нечёт</span><span class="bet-mult">x1.95</span>
+            </button>
+            <button class="bet-type-btn" data-bet="seven">
+              <span class="bet-name">Семёрка (7)</span><span class="bet-mult">x5.8</span>
+            </button>
+            <button class="bet-type-btn" data-bet="doubles">
+              <span class="bet-name">Дубль</span><span class="bet-mult">x5.0</span>
+            </button>
+            <button class="bet-type-btn" data-bet="exact">
+              <span class="bet-name">Точное</span><span class="bet-mult">x11</span>
+            </button>
+            <button class="bet-type-btn" data-bet="range">
+              <span class="bet-name">Диапазон</span><span class="bet-mult">x2-12</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="exact-picker" id="exact-picker" style="display:none; margin-bottom:12px;">
+          <div class="exact-nums" id="exact-nums"></div>
+        </div>
+
+        <div class="range-picker" id="range-picker" style="display:none; margin-bottom:12px;">
+          <div style="display:flex;gap:8px;align-items:center;justify-content:center;">
+            <input type="number" id="range-min" class="verify-input" value="2" min="2" max="12"
+              style="width:60px;text-align:center">
+            <span>—</span>
+            <input type="number" id="range-max" class="verify-input" value="6" min="2" max="12"
+              style="width:60px;text-align:center">
+            <span id="range-mult" style="font-weight:bold;color:var(--gold)">x2.40</span>
+          </div>
+        </div>
+
+        <button class="roll-button main-action" id="roll-btn-confirm">
+          БРОСИТЬ КОСТИ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 
 </html>

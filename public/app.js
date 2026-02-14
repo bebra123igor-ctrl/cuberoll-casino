@@ -186,12 +186,12 @@ function initEventListeners() {
         btn.onclick = () => switchTab(btn.dataset.tab);
     });
 
-    // Типы ставок
+    // Типы ставок (в модалке)
     document.querySelectorAll('.bet-type-btn').forEach(btn => {
         btn.onclick = () => getBetType(btn.getAttribute('data-bet'));
     });
 
-    // Суммы
+    // Суммы (в модалке)
     document.getElementById('btn-half').onclick = () => adjustBet('half');
     document.getElementById('btn-double').onclick = () => adjustBet('double');
     document.querySelectorAll('.quick-bet').forEach(btn => {
@@ -205,12 +205,68 @@ function initEventListeners() {
         };
     });
 
-    // Кнопка ROLL
-    document.getElementById('roll-btn').onclick = roll;
+    // Кнопки открытия/закрытия модалки
+    const openBtn = document.getElementById('open-bet-modal-btn');
+    if (openBtn) openBtn.onclick = () => {
+        document.getElementById('bet-modal').classList.remove('hidden');
+        updatePayoutUI();
+    };
+
+    // Кнопка подтверждения ставки (داخل модалки)
+    const confirmBtn = document.getElementById('roll-btn-confirm');
+    if (confirmBtn) confirmBtn.onclick = roll;
 
     // Инпуты
     document.getElementById('bet-amount').oninput = updatePayoutUI;
+
+    // Seeds & Verify (Repairing broken functionality)
+    const rotateBtn = document.getElementById('btn-rotate-seed');
+    if (rotateBtn) rotateBtn.onclick = rotateServerSeed;
+
+    const updateSeedBtn = document.getElementById('btn-update-seed');
+    if (updateSeedBtn) updateSeedBtn.onclick = updateClientSeed;
+
+    const verifyBtn = document.getElementById('btn-verify');
+    if (verifyBtn) verifyBtn.onclick = verifyGame;
 }
+
+window.rotateServerSeed = async function () {
+    try {
+        const res = await api('/api/seeds/rotate', 'POST');
+        document.getElementById('server-seed-hash').textContent = res.newServerSeedHash;
+        document.getElementById('nonce-value').textContent = res.nonce;
+        if (res.oldServerSeed) {
+            document.getElementById('old-seed-reveal').style.display = 'block';
+            document.getElementById('old-server-seed').textContent = res.oldServerSeed;
+            document.getElementById('old-server-hash').textContent = res.oldServerSeedHash;
+        }
+        toast('Server Seed обновлён', 'success');
+    } catch (e) { toast(e.message, 'error'); }
+};
+
+window.updateClientSeed = async function () {
+    const val = document.getElementById('client-seed-input').value;
+    if (!val) return toast('Введите сид', 'error');
+    try {
+        await api('/api/seeds/client', 'POST', { clientSeed: val });
+        toast('Client Seed обновлён', 'success');
+    } catch (e) { toast(e.message, 'error'); }
+};
+
+window.verifyGame = async function () {
+    const ss = document.getElementById('verify-server-seed').value;
+    const cs = document.getElementById('verify-client-seed').value;
+    const n = document.getElementById('verify-nonce').value;
+    if (!ss || !cs || !n) return toast('Заполните все поля', 'error');
+
+    try {
+        const res = await api('/api/verify', 'POST', { serverSeed: ss, clientSeed: cs, nonce: n });
+        document.getElementById('verify-result').style.display = 'block';
+        document.getElementById('verify-dice').textContent = res.dice.join(' - ');
+        document.getElementById('verify-total').textContent = res.total;
+        document.getElementById('verify-hash').textContent = res.serverSeedHash.substring(0, 16) + '...';
+    } catch (e) { toast(e.message, 'error'); }
+};
 
 window.roll = async function () {
     if (rolling) return;
@@ -220,8 +276,11 @@ window.roll = async function () {
     if (isNaN(amt) || amt < 0.1) return toast('Мин. ставка 0.1 TON', 'error');
     if (amt > user.balance) return toast('Недостаточно баланса', 'error');
 
+    // Close modal to show animation
+    document.getElementById('bet-modal').classList.add('hidden');
+
     rolling = true;
-    document.getElementById('roll-btn').disabled = true;
+    document.getElementById('open-bet-modal-btn').disabled = true; // Disable main button
     if (window.haptic) haptic.impactOccurred('medium');
 
     try {
@@ -242,13 +301,21 @@ window.roll = async function () {
             setBalance(user.balance, true);
             showResult(res.result);
             rolling = false;
-            document.getElementById('roll-btn').disabled = false;
+            document.getElementById('open-bet-modal-btn').disabled = false;
+
+            // Update seeds display
+            if (res.fairness) {
+                document.getElementById('server-seed-hash').textContent = res.fairness.serverSeedHash;
+                document.getElementById('nonce-value').textContent = res.fairness.nonce;
+            }
+
         }, 1200);
 
     } catch (e) {
         toast(e.message, 'error');
         rolling = false;
-        document.getElementById('roll-btn').disabled = false;
+        document.getElementById('open-bet-modal-btn').disabled = false;
+        // Re-open modal if error occurred so user can fix? Or just stay on main.
     }
 };
 

@@ -2413,3 +2413,70 @@ body {
   border-color: var(--green-g);
   color: var(--green);
 }
+/* Update Roll Button specific for open modal */
+#open-bet-modal-btn {
+    /* reuse .roll-button styles inherently, no extra needed unless adjustments */
+}
+
+/* Bet Modal Specifics */
+.bet-modal-box {
+    max-width: 400px;
+    padding: 20px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 90vh; /* Ensure it fits on screen */
+    overflow-y: auto; /* Scrollable if content is tall */
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.close-modal-btn {
+    background: transparent;
+    border: none;
+    color: var(--t3);
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 5px;
+}
+
+.bet-amount-section-modal,
+.bet-type-section-modal {
+    margin-bottom: 10px;
+}
+
+.bet-amount-section-modal label,
+.bet-type-section-modal label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--t4);
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+/* Adjust grid for modal if needed */
+.bet-modal-box .bet-grid {
+    grid-template-columns: repeat(2, 1fr); /* 2 cols looks good */
+    gap: 8px;
+}
+
+.bet-modal-box .roll-button {
+    margin-top: 10px;
+    width: 100%;
+}
+
