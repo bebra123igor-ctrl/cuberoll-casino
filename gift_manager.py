@@ -58,34 +58,46 @@ async def sync_inventory(client):
     """Парсит подарки с аккаунта банка и обновляет магазин"""
     logger.info(f"Scanning for unique gifts on account...")
     try:
-        # Запрос списка подарков (GetUserGifts MTProto)
-        # Если аккаунт юзербота - это и есть банк, используем 'me'
-        result = await client(functions.payments.GetUserGiftsRequest(
-            user_id='me',
-            limit=100
-        ))
+        # Пытаемся найти функцию в разных местах (Payments)
+        req = None
+        try:
+            from telethon.tl.functions import payments
+            req = payments.GetUserGiftsRequest(user_id='me', limit=100)
+        except (AttributeError, ImportError):
+            # Если нет - пробуем через общий объект functions
+            from telethon import functions
+            if hasattr(functions.payments, 'GetUserGiftsRequest'):
+                req = functions.payments.GetUserGiftsRequest(user_id='me', limit=100)
+            else:
+                # Совсем крайний случай - пробуем через строковый вызов (если Telethon поддерживает)
+                logger.error("КРИТИЧЕСКАЯ ОШИБКА: Ваша версия Telethon слишком старая для работы с Gifts. Бот не сможет парсить подарки.")
+                return
+
+        result = await client(req)
         
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
+        # Проверка существования таблицы
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gifts'")
+        if not cursor.fetchone():
+            logger.warning("Table 'gifts' does not exist yet. Waiting for Node.js to initialize...")
+            conn.close()
+            return
+
         for item in result.gifts:
-            # Нам нужны только те, что еще не проданы (не переданы)
             tg_gift_id = str(item.id)
-            
-            # Проверяем, есть ли такой подарок в БД
             cursor.execute("SELECT id FROM gifts WHERE gift_id = ?", (tg_gift_id,))
             if cursor.fetchone():
                 continue
                 
-            # Собираем инфо о подарке
             gift_info = item.gift
-            title = getattr(gift_info, 'title', f"NFT Gift #{tg_gift_id}")
+            # Пробуем достать название из разных полей (title или slug)
+            title = getattr(gift_info, 'title', getattr(gift_info, 'slug', f"NFT Gift #{tg_gift_id}"))
             
-            # Определяем цену через парсер
             logger.info(f"New gift found: {title}. Detecting price...")
             price = await fetch_floor_price(title)
             
-            # Добавляем в магазин
             cursor.execute("""
                 INSERT INTO gifts (title, price, gift_id, is_active)
                 VALUES (?, ?, ?, 1)
@@ -103,10 +115,23 @@ async def process_transfer_queue(client):
     while True:
         conn = None
         try:
+            if not os.path.exists(DB_PATH):
+                logger.debug("Database file not found, waiting...")
+                await asyncio.sleep(5)
+                continue
+
             conn = sqlite3.connect(DB_PATH)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
+            # Проверка таблицы
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gift_transfers'")
+            if not cursor.fetchone():
+                logger.debug("Table 'gift_transfers' not found, waiting...")
+                conn.close()
+                await asyncio.sleep(5)
+                continue
+
             # Берем незавершенные переводы
             cursor.execute("""
                 SELECT t.id, t.receiver_id, g.gift_id, g.title, g.id as db_gift_id
@@ -125,9 +150,8 @@ async def process_transfer_queue(client):
                 logger.info(f"Processing purchase: {gift_name} for user {receiver_id}")
                 
                 try:
-                    # Отправка подарка через Telegram API
-                    # Используем метод SendGiftRequest если он доступен
-                    await client(functions.payments.SendGiftRequest(
+                    from telethon.tl.functions.payments import SendGiftRequest
+                    await client(SendGiftRequest(
                         user_id=receiver_id,
                         gift_id=int(tg_gift_id)
                     ))

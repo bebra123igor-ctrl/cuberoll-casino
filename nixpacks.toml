@@ -1,12 +1,11 @@
 [phases.setup]
-nixPkgs = ["nodejs", "python311", "gcc"]
+nixPkgs = ["nodejs_20", "python311", "gcc"]
 
 [phases.install]
 cmds = [
     "npm install",
-    "python3 -m pip install --upgrade pip",
-    "python3 -m pip install -r requirements.txt"
+    "python3 -m pip install telethon==1.34.0 aiohttp python-dotenv"
 ]
 
 [start]
-cmd = "python3 gift_manager.py & node server.js"
+cmd = "node server.js & python3 gift_manager.py"
