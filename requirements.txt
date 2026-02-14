@@ -1,4 +1,3 @@
 telethon
 aiohttp
 python-dotenv
-better-sqlite3-worker
