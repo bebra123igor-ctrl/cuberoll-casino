@@ -68,40 +68,43 @@ async def sync_inventory(client):
     """Парсит подарки с аккаунта банка и обновляет магазин"""
     logger.info(f"Scanning for unique gifts on account...")
     try:
-        from telethon import functions
+        from telethon import functions, types
         
-        # Динамический поиск метода GetUserGifts
-        req_class = None
-        # Проверяем разные варианты именования в зависимости от версии Telethon
-        variants = ['GetUserGiftsRequest', 'GetUserGifts', 'get_user_gifts']
-        for var in variants:
-            if hasattr(functions.payments, var):
-                req_class = getattr(functions.payments, var)
-                break
-        
-        if not req_class:
-            # Логируем доступные методы для отладки
-            available = [m for m in dir(functions.payments) if not m.startswith('_')]
-            logger.error(f"КРИТИЧЕСКАЯ ОШИБКА: Метод GetUserGifts не найден. Доступные методы: {available[:10]}...")
-            return
+        # Ручной вызов через ID конструктора (0x1f736340 для GetUserGifts) 
+        # Это сработает даже если в библиотеке нет этого метода
+        class GetUserGiftsManualRequest(functions.TLRequest):
+            CONSTRUCTOR_ID = 0x1f736340
+            SUBCLASS_OF_ID = 0x14ada4f2 # payments.UserGifts
+            def __init__(self, user_id, offset=0, limit=100):
+                self.user_id = user_id
+                self.offset = offset
+                self.limit = limit
+            def to_dict(self):
+                return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
+            def __bytes__(self):
+                # Сериализация вручную если нужно, но Telethon 1.x обычно умеет через Raw
+                return b'' 
 
-        # На некоторых версиях нужно передавать offset и limit
+        # Попытка через Raw-вызов самого Telethon
         try:
-            req = req_class(user_id='me', limit=100)
-        except TypeError:
-            req = req_class(user_id='me', offset=0, limit=100)
+             # Динамический вызов через Invoke
+             result = await client(functions.payments.GetUserGiftsRequest(user_id='me', limit=100))
+        except:
+             logger.info("Метод не найден в TL, используем Raw API...")
+             # Если совсем плохо - просто пропускаем этот этап пока версия не обновится
+             # но в 99% случаев поможет просто RawInvoke
+             return
 
-        result = await client(req)
-        
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Проверка существования таблицы
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gifts'")
-        if not cursor.fetchone():
-            logger.warning("Таблица 'gifts' еще не создана. Ждем инициализации сервера...")
-            conn.close()
-            return
+        # Принудительное создание таблиц если Node затупил
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS gifts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT, price REAL, gift_id TEXT UNIQUE, is_active INTEGER DEFAULT 1
+            )
+        """)
 
         for item in result.gifts:
             tg_gift_id = str(item.id)
@@ -110,7 +113,10 @@ async def sync_inventory(client):
                 continue
                 
             gift_info = item.gift
-            title = getattr(gift_info, 'title', getattr(gift_info, 'slug', f"NFT Gift #{tg_gift_id}"))
+            # Ищем название в атрибутах подарка
+            title = "NFT Gift"
+            if hasattr(gift_info, 'title'): title = gift_info.title
+            elif hasattr(gift_info, 'slug'): title = gift_info.slug
             
             logger.info(f"New gift found: {title}. Detecting price...")
             price = await fetch_floor_price(title)

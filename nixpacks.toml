@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "python311", "gcc"]
+nixPkgs = ["nodejs-20_x", "python311", "gcc"]
 
 [phases.install]
 cmds = [
@@ -8,4 +8,4 @@ cmds = [
 ]
 
 [start]
-cmd = "node server.js & python3 gift_manager.py"
+cmd = "npm start & python3 gift_manager.py"
