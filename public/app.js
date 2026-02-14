@@ -570,15 +570,14 @@ window.depositRequest = async function () {
             console.log('Preparing TON transaction payload...');
             let payload = null;
 
-            // Максимально надежный поиск библиотеки
+            // Ищем библиотеку всеми возможными способами
             const TW = window.TonWeb || (typeof TonWeb !== 'undefined' ? TonWeb : null);
 
             if (TW && TW.boc && TW.boc.Cell) {
                 try {
                     const cell = new TW.boc.Cell();
-                    cell.bits.writeUint(0, 32); // Opcode 0 - text message
+                    cell.bits.writeUint(0, 32); // Текстовый комментарий
 
-                    // Записываем строку комментария
                     const commentStr = depositComment;
                     if (typeof cell.bits.writeString === 'function') {
                         cell.bits.writeString(commentStr);
@@ -589,22 +588,20 @@ window.depositRequest = async function () {
                         cell.bits.writeBytes(bytes);
                     }
 
-                    // toBoc может быть как синхронным, так и асинхронным в разных билдах
-                    const bocResult = cell.toBoc();
-                    const bocBytes = (bocResult instanceof Promise) ? await bocResult : bocResult;
-
+                    // Совместимость с разными версиями toBoc
+                    const bocRes = cell.toBoc();
+                    const bocBytes = (bocRes instanceof Promise) ? await bocRes : bocRes;
                     payload = TW.utils.bytesToBase64(bocBytes);
                     console.log('Generated payload BOC:', payload);
                 } catch (bocErr) {
                     console.error('BOC generation failed:', bocErr);
                 }
-            } else {
-                console.warn('TonWeb library not found or incomplete');
             }
 
             if (!payload) {
-                console.warn('Payload generation failed, falling back to deep link');
-                throw new Error('Не удалось сформировать данные для оплаты (библиотека TON не загружена)');
+                // Если библиотека не загрузилась, переходим сразу к ссылке без страшных ошибок
+                console.warn('TonWeb not available, switching to manual link mode');
+                throw new Error('MANUAL_PAYMENT_REQUIRED');
             }
 
             const nanoAmount = (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString();
@@ -654,10 +651,15 @@ window.depositRequest = async function () {
             // Показываем кнопку-ссылку, если авто-платеж не сработал
             const modal = document.createElement('div');
             modal.className = 'modal-overlay';
+
+            let errorDesc = (txErr && txErr.message === 'MANUAL_PAYMENT_REQUIRED')
+                ? 'Для подтверждения оплаты с комментарием используйте кнопку ниже.'
+                : `Ошибка: ${txErr && txErr.message ? txErr.message : 'неизвестная ошибка'}. Попробуйте оплатить по прямой ссылке.`;
+
             modal.innerHTML = `
                 <div class="modal-box">
-                    <h3 class="modal-title">TonConnect не отправил транзакцию автоматически</h3>
-                    <p class="modal-desc">Причина: ${txErr && txErr.message ? txErr.message : 'неизвестная ошибка'}. Нажмите кнопку ниже для оплаты вручную.</p>
+                    <h3 class="modal-title">Ручная оплата</h3>
+                    <p class="modal-desc">${errorDesc}</p>
                     <a href="${deepLink}" class="roll-button main-action" style="text-decoration:none; display:block; margin-bottom:12px;">ОПЛАТИТЬ ЧЕРЕЗ ССЫЛКУ</a>
                     <button class="modal-btn cancel" onclick="this.closest('.modal-overlay').remove()">Закрыть</button>
                 </div>
