@@ -27,14 +27,25 @@ function initTg() {
 }
 
 async function api(url, method = 'GET', body = null) {
+    console.log(`[API Request] ${method} ${url}`, body);
     const h = { 'Content-Type': 'application/json' };
     if (initData) h['X-Telegram-Init-Data'] = initData;
     else h['X-Dev-User-Id'] = '12345';
     const opts = { method, headers: h };
     if (body) opts.body = JSON.stringify(body);
-    const res = await fetch(API + url, opts);
-    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'err'); }
-    return res.json();
+    try {
+        const res = await fetch(API + url, opts);
+        console.log(`[API Response] ${url} status: ${res.status}`);
+        if (!res.ok) {
+            const e = await res.json().catch(() => ({}));
+            console.error(`[API Error] ${url}:`, e);
+            throw new Error(e.error || 'err');
+        }
+        return res.json();
+    } catch (err) {
+        console.error(`[API Fetch Error] ${url}:`, err);
+        throw err;
+    }
 }
 
 // инит
@@ -401,28 +412,38 @@ async function loadGifts() {
                 <div class="gift-info">
                     <div class="gift-name">${g.title}</div>
                     <div class="gift-price">${g.price} TON</div>
-                    <button class="gift-buy-btn" onclick="openBuyModal(${g.id}, '${g.title.replace(/'/g, "\\'")}', ${g.price})">Купить</button>
+                    <button class="gift-buy-btn" data-id="${g.id}" data-name="${g.title.replace(/'/g, "\\'")}" data-price="${g.price}">Купить</button>
                 </div>
             `;
+            const buyBtn = card.querySelector('.gift-buy-btn');
+            buyBtn.onclick = () => window.openBuyModal(g.id, g.title, g.price);
             list.appendChild(card);
         });
-    } catch (e) { }
+    } catch (e) {
+        console.error('loadGifts error:', e);
+    }
 }
+window.loadGifts = loadGifts;
 
 let currentBuyId = null;
 let currentBuyPrice = 0;
 
 window.openBuyModal = function (id, name, price) {
+    console.log('Opening buy modal for:', id, name, price);
     currentBuyId = id;
     currentBuyPrice = parseFloat(price);
     document.getElementById('modal-gift-name').textContent = name;
     document.getElementById('modal-gift-price').textContent = price;
     document.getElementById('purchase-modal').classList.remove('hidden');
-    document.getElementById('modal-confirm-buy').onclick = () => confirmPurchase(id);
+
+    const confirmBtn = document.getElementById('modal-confirm-buy');
+    confirmBtn.onclick = () => window.confirmPurchase(id);
 };
 
 async function confirmPurchase(id) {
+    console.log('Confirming purchase for ID:', id);
     if (user.balance < currentBuyPrice) {
+        console.warn('Insufficient balance:', user.balance, '<', currentBuyPrice);
         return toast('Недостаточно TON для покупки', 'error');
     }
 
@@ -431,13 +452,17 @@ async function confirmPurchase(id) {
         btn.disabled = true;
         btn.textContent = '...';
 
+        console.log('Sending purchase request to server...');
         const res = await api('/api/gifts/buy', 'POST', { giftId: id });
+        console.log('Purchase response:', res);
+
         user.balance = res.newBalance;
         setBalance(user.balance, true);
         toast('Покупка успешна!', 'success');
         closeModal('purchase-modal');
-        loadGifts(); // Обновляем список, чтобы купленный товар пропал
+        loadGifts();
     } catch (e) {
+        console.error('Purchase error:', e);
         toast(e.message || 'Ошибка покупки', 'error');
     } finally {
         const btn = document.getElementById('modal-confirm-buy');
@@ -445,6 +470,7 @@ async function confirmPurchase(id) {
         btn.textContent = 'Купить';
     }
 }
+window.confirmPurchase = confirmPurchase;
 
 window.closeModal = function (id) {
     document.getElementById(id).classList.add('hidden');
@@ -500,24 +526,34 @@ async function loadLeaderboard() {
 
 // Депозиты
 window.depositRequest = async function () {
+    console.log('Deposit request triggered');
     if (!tonConnectUI.connected) {
+        console.warn('Wallet not connected');
         toast('Сначала подключите кошелёк', 'info');
         await tonConnectUI.openModal();
         return;
     }
-    if (!user) return toast('Ошибка: нет пользователя', 'error');
+    if (!user) {
+        console.error('User not loaded');
+        return toast('Ошибка: нет пользователя', 'error');
+    }
 
     const amountEl = document.getElementById('dep-amount');
     const amountVal = amountEl ? amountEl.value : null;
 
-    if (!amountVal || parseFloat(amountVal) < 0.1) return toast('Мин. сумма 0.1 TON', 'error');
+    if (!amountVal || parseFloat(amountVal) < 0.1) {
+        console.warn('Invalid amount:', amountVal);
+        return toast('Мин. сумма 0.1 TON', 'error');
+    }
 
     try {
         const btn = document.getElementById('dep-btn-go');
         btn.disabled = true;
         btn.textContent = '...';
 
+        console.log('Requesting deposit from server for amount:', amountVal);
         const res = await api('/api/deposit/request', 'POST', { amount: parseFloat(amountVal) });
+        console.log('Server deposit response:', res);
 
         document.getElementById('dep-addr-val').textContent = res.address;
         document.getElementById('dep-memo-val').textContent = res.comment;
@@ -527,6 +563,7 @@ window.depositRequest = async function () {
 
         // Вызываем транзакцию через TonConnect
         try {
+            console.log('Preparing TON transaction payload...');
             let payload = null;
             if (typeof TonWeb !== 'undefined') {
                 const cell = new TonWeb.boc.Cell();
@@ -535,6 +572,8 @@ window.depositRequest = async function () {
                 const boc = await cell.toBoc();
                 payload = TonWeb.utils.bytesToBase64(boc);
                 console.log('Generated payload BOC:', payload);
+            } else {
+                console.warn('TonWeb not found, sending without payload');
             }
 
             const transaction = {
@@ -547,15 +586,17 @@ window.depositRequest = async function () {
                     }
                 ]
             };
+            console.log('Sending transaction via TonConnect:', transaction);
             await tonConnectUI.sendTransaction(transaction);
+            console.log('Transaction sent successfully!');
             toast('Транзакция отправлена!', 'success');
         } catch (txErr) {
-            console.error('TX Error:', txErr);
+            console.error('TonConnect TX Error:', txErr);
             toast('Ошибка транзакции. Оплатите вручную.', 'info');
         }
 
     } catch (e) {
-        console.error('Request Error:', e);
+        console.error('Deposit request failed:', e);
         toast(e.message, 'error');
     } finally {
         const btn = document.getElementById('dep-btn-go');

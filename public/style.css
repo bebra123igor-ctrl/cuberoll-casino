@@ -1689,8 +1689,8 @@ body {
 .gift-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 20px;
-  overflow: hidden;
+  border-radius: 24px !important;
+  overflow: hidden !important;
   display: flex;
   flex-direction: column;
   transition: all .2s;
@@ -1698,7 +1698,7 @@ body {
 
 .gift-card:hover {
   transform: translateY(-2px);
-  border-color: var(--border2);
+  border-color: var(--accent);
 }
 
 .gift-img-wrap {
@@ -1708,7 +1708,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 10px;
-  border-radius: 20px 20px 10px 10px;
+  border-radius: 24px 24px 0 0 !important;
 }
 
 .gift-img {
