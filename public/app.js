@@ -44,8 +44,8 @@ async function init() {
 
     // TonConnect
     tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-        manifestUrl: 'https://cuberoll-casino-production.up.railway.app/tonconnect-manifest.json',
-        buttonRootId: null // мы используем свою кнопку
+        manifestUrl: window.location.origin + '/tonconnect-manifest.json',
+        buttonRootId: null
     });
 
     tonConnectUI.onStatusChange(wallet => {
@@ -70,6 +70,16 @@ async function init() {
         document.getElementById('user-initial').textContent = (user.firstName || user.username || 'P')[0].toUpperCase();
 
         setBalance(user.balance);
+
+        if (user.lastDailyClaim) {
+            const last = new Date(user.lastDailyClaim.includes(' ') ? user.lastDailyClaim + 'Z' : user.lastDailyClaim);
+            const now = new Date();
+            if (now - last < 24 * 60 * 60 * 1000) {
+                document.getElementById('daily-bonus').classList.add('claimed');
+                document.getElementById('daily-desc').textContent = 'Приходи завтра!';
+            }
+        }
+
         loadHistory();
         loadGifts();
         loadPendingDeposits();
@@ -438,10 +448,32 @@ window.closeModal = function (id) {
     document.getElementById(id).classList.add('hidden');
 };
 
+window.claimDaily = async function () {
+    if (rolling) return;
+    const btn = document.getElementById('daily-bonus');
+    if (btn.classList.contains('claimed')) return toast('Вы уже получили бонус сегодня', 'info');
+
+    try {
+        const res = await api('/api/daily/claim', 'POST');
+        user.balance = res.newBalance;
+        setBalance(user.balance, true);
+        toast('Бонус получен: +0.5 TON!', 'success');
+
+        btn.classList.add('claimed');
+        document.getElementById('daily-desc').textContent = 'Приходи завтра!';
+    } catch (e) {
+        toast(e.message, 'error');
+    }
+};
+
 // Депозиты
 window.depositRequest = async function () {
     console.log('Deposit requested');
-    if (!tonConnectUI.connected) return toast('Ошибка: добавьте кошелёк', 'error');
+    if (!tonConnectUI.connected) {
+        toast('Сначала подключите кошелёк', 'info');
+        await tonConnectUI.openModal();
+        return;
+    }
     if (!user) return toast('Ошибка: нет пользователя', 'error');
 
     const amountEl = document.getElementById('dep-amount');
@@ -450,7 +482,7 @@ window.depositRequest = async function () {
     if (!amount || parseFloat(amount) < 0.1) return toast('Мин. сумма 0.1 TON', 'error');
 
     try {
-        const res = await api('/api/deposit/request', 'POST', { amount });
+        const res = await api('/api/deposit/request', 'POST', { amount: parseFloat(amount) });
         document.getElementById('dep-addr-val').textContent = res.address;
         document.getElementById('dep-memo-val').textContent = res.comment;
         document.getElementById('dep-manual-info').classList.remove('hidden');
@@ -461,7 +493,7 @@ window.depositRequest = async function () {
             });
         }
 
-        toast('Заявка создана', 'success');
+        toast('Заявка создана. Переведите TON с комментарием!', 'success');
         loadPendingDeposits();
     } catch (e) {
         console.error(e);

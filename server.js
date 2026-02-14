@@ -97,9 +97,10 @@ app.post('/api/auth', auth, (req, res) => {
         user: {
             telegramId: user.telegram_id, username: user.username, firstName: user.first_name,
             balance: user.balance, gamesPlayed: user.games_played, gamesWon: user.games_won,
-            totalWagered: user.total_wagered, totalWon: user.total_won, totalLost: user.total_lost
+            totalWagered: user.total_wagered, totalWon: user.total_won, totalLost: user.total_lost,
+            lastDailyClaim: user.last_daily_claim
         },
-        seeds: { serverSeedHash: s.hash, clientSeed: s.clientSeed, nonce: s.nonce },
+        seeds: s,
         settings: {
             minBet: parseFloat(settingsOps.get('min_bet') || '10'),
             maxBet: parseFloat(settingsOps.get('max_bet') || '10000'),
@@ -108,6 +109,29 @@ app.post('/api/auth', auth, (req, res) => {
         },
         isAdmin: ADMIN_IDS.includes(u.id)
     });
+});
+
+app.post('/api/daily/claim', auth, (req, res) => {
+    const user = userOps.get(req.tgUser.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const now = new Date();
+    if (user.last_daily_claim) {
+        const last = new Date(user.last_daily_claim + 'Z');
+        const diff = now - last;
+        if (diff < 24 * 60 * 60 * 1000) {
+            const remains = 24 * 60 * 60 * 1000 - diff;
+            const hours = Math.floor(remains / (60 * 60 * 1000));
+            const mins = Math.floor((remains % (60 * 60 * 1000)) / (60 * 1000));
+            return res.status(400).json({ error: `Next claim in ${hours}h ${mins}m` });
+        }
+    }
+
+    const amount = 0.5;
+    userOps.claimDaily(req.tgUser.id, amount);
+    userOps.updateBalance(req.tgUser.id, 0, 'daily_bonus', 'Daily Bonus');
+    const updated = userOps.get(req.tgUser.id);
+    res.json({ success: true, newBalance: updated.balance, lastDailyClaim: updated.last_daily_claim });
 });
 
 // ставка
@@ -247,9 +271,14 @@ app.post('/api/deposit/request', auth, (req, res) => {
     if (isNaN(amt) || amt < 0.1) return res.status(400).json({ error: 'Min 0.1 TON' });
 
     const comment = 'CR-' + Math.random().toString(36).substring(2, 10).toUpperCase();
-    depositOps.createPending(req.tgUser.id, amt, comment);
+    try {
+        depositOps.createPending(req.tgUser.id, amt, comment);
+    } catch (e) {
+        return res.status(500).json({ error: 'Could not create request' });
+    }
 
-    res.json({ comment, address: process.env.TON_WALLET || 'UQBy7B0yPz6g5J0... (set in .env)' });
+    const wallet = process.env.TON_WALLET || settingsOps.get('ton_wallet');
+    res.json({ comment, address: wallet });
 });
 
 app.get('/api/deposit/check', auth, (req, res) => {

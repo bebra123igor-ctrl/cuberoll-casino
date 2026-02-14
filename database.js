@@ -19,6 +19,7 @@ db.exec(`
     games_played INTEGER DEFAULT 0,
     games_won INTEGER DEFAULT 0,
     is_banned INTEGER DEFAULT 0,
+    last_daily_claim TEXT DEFAULT NULL,
     created_at TEXT DEFAULT (datetime('now')),
     last_active TEXT DEFAULT (datetime('now'))
   );
@@ -87,6 +88,12 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_trans_tgid ON transactions(telegram_id);
 `);
 
+try {
+  db.exec('ALTER TABLE users ADD COLUMN last_daily_claim TEXT DEFAULT NULL');
+} catch (e) {
+  // Column already exists or table doesn't exist yet
+}
+
 
 const userOps = {
   getOrCreate(tgId, username, firstName, lastName) {
@@ -153,6 +160,10 @@ const userOps = {
 
   getTopPlayers(limit = 100) {
     return db.prepare('SELECT * FROM users ORDER BY balance DESC LIMIT ?').all(limit);
+  },
+
+  claimDaily(tgId, amount) {
+    db.prepare('UPDATE users SET balance = balance + ?, last_daily_claim = datetime(\'now\') WHERE telegram_id = ?').run(amount, tgId);
   }
 };
 
