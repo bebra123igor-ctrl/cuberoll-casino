@@ -500,6 +500,13 @@ window.openBuyModal = function (id, name, price) {
 async function confirmPurchase(id) {
     if (user.balance < currentBuyPrice) return toast('Недостаточно TON', 'error');
 
+    // Проверка первого вывода (предупреждение про дилера)
+    if (!localStorage.getItem('dealer_warned')) {
+        document.getElementById('dealer-warning-modal').classList.remove('hidden');
+        closeModal('purchase-modal');
+        return;
+    }
+
     try {
         const btn = document.getElementById('modal-confirm-buy');
         btn.disabled = true;

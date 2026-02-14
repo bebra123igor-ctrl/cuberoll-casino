@@ -2814,6 +2814,87 @@ body {
   box-shadow: 0 0 50px rgba(229, 57, 53, 0.1);
 }
 
+/* ═══ dealer modal ═══ */
+.dealer-modal {
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  border-color: var(--gold) !important;
+}
+
+.modal-glow-bg {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 207, 64, 0.05) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.modal-btns.column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.modal-btns.column .modal-btn {
+  width: 100%;
+  margin: 0;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.shiny {
+  position: relative;
+  font-size: 60px;
+  filter: drop-shadow(0 0 15px rgba(255, 207, 64, 0.4));
+  animation: shine-float 3s infinite ease-in-out;
+  margin-bottom: 20px;
+}
+
+@keyframes shine-float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.pulse-btn {
+  animation: btn-pulse 2s infinite;
+  background: var(--gold-g) !important;
+  color: #000 !important;
+  font-weight: 800;
+  border: none !important;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes btn-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 207, 64, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 15px rgba(255, 207, 64, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 207, 64, 0);
+  }
+}
+
 .ban-icon {
   font-size: 64px;
   margin-bottom: 24px;

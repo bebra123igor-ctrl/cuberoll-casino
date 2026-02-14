@@ -372,6 +372,24 @@
       </div>
     </div>
 
+    <!-- объявление для выдачи подарков -->
+    <div class="modal-overlay hidden" id="dealer-warning-modal">
+      <div class="modal-box premium-modal dealer-modal">
+        <div class="modal-glow-bg"></div>
+        <div class="modal-gift-icon shiny">🤖</div>
+        <h3 class="modal-title">Важное уведомление!</h3>
+        <p class="modal-desc">Для того чтобы мы могли отправить вам купленный подарок, вам <b>обязательно</b> нужно
+          написать нашему боту-дилеру. <br><br>Без первого сообщения от вас Телеграм запрещает нам отправлять подарки!
+        </p>
+        <div class="modal-btns column">
+          <a href="https://t.me/cuberoll_dealer" target="_blank" class="modal-btn confirm pulse-btn"
+            onclick="closeModal('dealer-warning-modal'); localStorage.setItem('dealer_warned', '1')">НАПИСАТЬ ДИЛЕРУ</a>
+          <button class="modal-btn cancel"
+            onclick="closeModal('dealer-warning-modal'); localStorage.setItem('dealer_warned', '1')">Я ПОНЯЛ</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Модальное окно ставки -->
     <div class="modal-overlay hidden" id="bet-modal">
       <div class="modal-box bet-modal-box">
