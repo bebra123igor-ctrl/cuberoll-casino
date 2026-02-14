@@ -307,8 +307,17 @@ function parseTonComment(msg) {
 
 async function checkTonTransactions() {
     const settings = settingsOps.getAll();
-    const addr = settings.ton_wallet || process.env.TON_WALLET;
-    if (!addr || addr.includes('your-') || addr.includes('UQ...')) return;
+    let addr = settings.ton_wallet;
+
+    // Если в базе заглушка или пусто, берём из .env
+    if (!addr || addr.includes('UQ...') || addr.includes('your-')) {
+        addr = process.env.TON_WALLET;
+    }
+
+    if (!addr || addr.includes('your-') || addr.includes('UQ...')) {
+        // console.log('[Monitor] No valid admin wallet address configured.');
+        return;
+    }
 
     https.get(`https://toncenter.com/api/v2/getTransactions?address=${addr}&limit=20`, (resp) => {
         let data = '';

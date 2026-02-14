@@ -130,7 +130,7 @@ const userOps = {
   },
 
   updateWallet(tgId, address) {
-    return db.prepare('UPDATE users SET wallet_address = ?, last_active = datetime("now") WHERE telegram_id = ?').run(address, tgId);
+    return db.prepare("UPDATE users SET wallet_address = ?, last_active = datetime('now') WHERE telegram_id = ?").run(address, tgId);
   },
 
   updateBalance(tgId, amount, type, desc) {
@@ -280,11 +280,11 @@ const depositOps = {
   markCompleted(comment, hash) {
     const dep = this.getByComment(comment);
     if (!dep || dep.status !== 'pending') return null;
-    db.prepare('UPDATE deposits SET status = "completed", tx_hash = ? WHERE comment = ?').run(hash, comment);
+    db.prepare("UPDATE deposits SET status = 'completed', tx_hash = ? WHERE comment = ?").run(hash, comment);
     return dep;
   },
   getPendingByUser(tgId) {
-    return db.prepare('SELECT * FROM deposits WHERE telegram_id = ? AND status = "pending"').all(tgId);
+    return db.prepare("SELECT * FROM deposits WHERE telegram_id = ? AND status = 'pending'").all(tgId);
   }
 };
 
