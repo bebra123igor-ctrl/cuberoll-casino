@@ -67,50 +67,33 @@ def get_db_connection():
     return sqlite3.connect("cuberoll.db") # fallback
 
 async def sync_inventory(client):
-    """Парсит подарки с аккаунта банка и обновляет магазин"""
-    logger.info(f"Scanning for unique gifts on account...")
+    """Парсит подарки с аккаунта дилера и обновляет магазин"""
+    logger.info("Scanning for unique gifts on account...")
+    
     try:
-        from telethon import functions, types
-        
-        # Ручной вызов через ID конструктора (0x1f736340 для GetUserGifts) 
-        # Это сработает даже если в библиотеке нет этого метода
-        class GetUserGiftsManualRequest(functions.TLRequest):
-            CONSTRUCTOR_ID = 0x1f736340
-            SUBCLASS_OF_ID = 0x14ada4f2 # payments.UserGifts
-            def __init__(self, user_id, offset=0, limit=100):
-                self.user_id = user_id
-                self.offset = offset
-                self.limit = limit
-            def to_dict(self):
-                return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
-            def __bytes__(self):
-                # Сериализация вручную если нужно, но Telethon 1.x обычно умеет через Raw
-                return b'' 
-
-    try:
-        # 0. ЛОГИРОВАНИЕ ОКРУЖЕНИЯ
+        # 0. Диагностика окружения
         try:
             import telethon
             import sys
             logger.info(f"Environment: Python {sys.version.split()[0]}, Telethon {telethon.__version__}")
         except: pass
 
-        # 1. ПРОВЕРКА АККАУНТА
+        # 1. Проверка аккаунта
         try:
             me = await client.get_me()
             if me.bot:
-                logger.error(f"!!! ОШИБКА: Аккаунт '{me.first_name}' (ID: {me.id}) - это БОТ. Подарки могут слать только ЮЗЕРЫ. Смените API_ID/HASH/SESSION на аккаунт человека.")
+                logger.error(f"!!! ОШИБКА: Аккаунт '{me.first_name}' - это БОТ. Подарки могут слать только ЮЗЕРЫ.")
                 return 
         except Exception as e:
             logger.error(f"Ошибка проверки аккаунта: {e}")
             return
 
-        # 2. ПОПЫТКА ПОЛУЧИТЬ ПОДАРКИ
+        # 2. Получение подарков
         result = None
         try:
              me_input = await client.get_input_entity('me')
              
-             # Пробуем найти официальный метод в библиотеке
+             # Пробуем найти официальный метод
              req_class = None
              from telethon.tl.functions import payments
              for name in ["GetUserGiftsRequest", "GetGiftsRequest"]:
@@ -122,8 +105,8 @@ async def sync_inventory(client):
                  logger.info(f"Используем официальный метод {req_class.__name__}...")
                  result = await client(req_class(user_id=me_input, limit=100))
              else:
-                 # Последний шанс: Raw Invoke
-                 logger.info("Метод не найден в Telethon, используем Raw Packet (Layer 191+)...")
+                 # Raw Packet (Layer 191+)
+                 logger.info("Метод не найден в Telethon, используем Raw Packet (0xe11da17c)...")
                  class GetGiftsReq(functions.TLRequest):
                      CONSTRUCTOR_ID = 0xe11da17c
                      SUBCLASS_OF_ID = 0x14ada4f2
@@ -134,32 +117,30 @@ async def sync_inventory(client):
                      def to_dict(self): return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
                      def _bytes(self):
                          import struct
-                         # payments.getUserGifts#e11da17c user_id:InputUser offset:int limit:int
                          return struct.pack('<I', 0xe11da17c) + self.user_id._bytes() + struct.pack('<ii', self.offset, self.limit)
 
                  result = await client(GetGiftsReq(u_id=me_input, limit=100))
 
         except Exception as e:
              logger.warning(f"Сервер не принял запрос на подарки: {e}")
-             logger.info("Если ошибка INPUT_METHOD_INVALID - значит библиотека Telethon на сервере слишком старая (нужно Layer 191+).")
              return
 
         if not result or not hasattr(result, 'gifts'):
-            logger.warning("Список подарков от Телеграма пуст.")
+            logger.warning("Список подарков пуст.")
             return
 
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Миграция колонок на лету
+        # Миграция колонок
         for col in ['model', 'background', 'symbol']:
             try: cursor.execute(f"ALTER TABLE gifts ADD COLUMN {col} TEXT")
             except: pass
         conn.commit()
 
-        # Парсер мета-данных (модель, фон, символ)
+        # Парсер мета-данных
         async def parse_nft_meta(slug, gift_id):
-            if not slug or not gift_id: return {}
+            if not slug: return {}
             url = f"https://t.me/nft/{slug}-{gift_id}"
             try:
                 import re
@@ -183,17 +164,14 @@ async def sync_inventory(client):
             gift_obj = item.gift
             slug = getattr(gift_obj, 'slug', '')
             
-            # Название подарка
             api_title = slug.replace('_', ' ').title() if slug else "NFT Gift"
             if hasattr(item, 'message') and item.message:
                 api_title = item.message
 
-            # Проверяем наличие
             cursor.execute("SELECT id FROM gifts WHERE gift_id = ?", (tg_gift_id,))
             if cursor.fetchone():
                 continue
             
-            # Привязка ручных подарков (по частичному совпадению)
             cursor.execute("SELECT id, title FROM gifts WHERE gift_id IS NULL AND is_active = 1")
             manual_items = cursor.fetchall()
             matched_id = None
@@ -205,7 +183,6 @@ async def sync_inventory(client):
                     matched_id = m_id
                     break
             
-            # Собираем мета-данные
             meta = await parse_nft_meta(slug, tg_gift_id)
             m_url = meta.get("model", "https://i.imgur.com/8YvYyZp.png")
             b_style = meta.get("backdrop", "radial-gradient(circle, #333, #000)")
@@ -218,7 +195,7 @@ async def sync_inventory(client):
                     WHERE id = ?
                 """, (tg_gift_id, m_url, b_style, sym, matched_id))
             else:
-                logger.info(f"Adding new gift from account: {api_title}")
+                logger.info(f"Adding new gift: {api_title}")
                 price = await fetch_floor_price(api_title)
                 cursor.execute("""
                     INSERT INTO gifts (title, price, gift_id, is_active, model, background, symbol)
@@ -229,7 +206,7 @@ async def sync_inventory(client):
         conn.close()
     except Exception as e:
         import traceback
-        logger.error(f"Inventory sync failed: {e}\n{traceback.format_exc()}")
+        logger.error(f"Sync failed: {e}\n{traceback.format_exc()}")
 
 async def process_transfer_queue(client):
     """Следит за новыми покупками в БД и отправляет подарки"""
