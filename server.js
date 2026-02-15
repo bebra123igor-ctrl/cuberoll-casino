@@ -538,80 +538,42 @@ function parseTonComment(msg) {
 async function checkTonTransactions() {
     const settings = settingsOps.getAll();
     let addr = settings.ton_wallet;
-
-    // Если в базе заглушка или пусто, берём из .env
     if (!addr || addr.includes('UQ...') || addr.includes('your-')) {
         addr = process.env.TON_WALLET;
     }
+    if (!addr || addr.includes('your-') || addr.includes('UQ...')) return;
 
-    if (!addr || addr.includes('your-') || addr.includes('UQ...')) {
-        // console.log('[Monitor] No valid admin wallet address configured.');
-        return;
-    }
-
-    https.get(`https://toncenter.com/api/v2/getTransactions?address=${addr}&limit=20`, (resp) => {
+    https.get(`https://toncenter.com/api/v2/getTransactions?address=${addr}&limit=10`, (resp) => {
         let data = '';
         resp.on('data', (c) => data += c);
         resp.on('end', () => {
             try {
                 const json = JSON.parse(data);
                 if (!json.ok) return;
-
                 const txs = json.result;
                 txs.forEach(tx => {
                     const msg = tx.in_msg;
                     if (!msg) return;
-
                     const comment = parseTonComment(msg);
                     const amountTON = parseInt(msg.value) / 1e9;
                     const txHash = tx.transaction_id.hash;
 
-                    // 1. Пытаемся найти по комменту
+                    // Match by comment
                     let pending = comment ? depositOps.getByComment(comment) : null;
-
-                    if (pending && (pending.status === 'pending' || pending.status === 'optimistic')) {
+                    if (pending && pending.status === 'pending') {
                         if (amountTON >= pending.amount * 0.99) {
-                            // Если он был pending, начисляем. Если optimistic - баланс уже там, просто завершаем.
-                            if (pending.status === 'pending') {
-                                userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `TON Deposit (Memo: ${comment})`);
-                            }
+                            userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `TON Deposit (Memo: ${comment})`);
                             depositOps.markCompleted(comment, txHash);
-                        }
-                        return;
-                    }
-
-                    // 2. Fallback: по адресу кошелька (from_addr)
-                    if (msg.source) {
-                        const sender = msg.source; // TON адрес отправителя
-                        const user = userOps.getByWallet(sender);
-
-                        if (user) {
-                            // Проверяем, не обрабатывали ли мы этот хеш уже (markCompleted помещает его в deposits.tx_hash)
-                            const alreadyDone = db.prepare('SELECT id FROM deposits WHERE tx_hash = ?').get(txHash);
-                            if (alreadyDone) return;
-
-                            // Ищем заявку
-                            const userPendings = depositOps.getPendingByUser(user.telegram_id);
-                            if (userPendings.length > 0) {
-                                const p = userPendings[0];
-                                userOps.updateBalance(p.telegram_id, amountTON, 'deposit', `TON Deposit (Wallet: ${sender})`);
-                                depositOps.markCompleted(p.comment, txHash);
-                            } else {
-                                // Если заявки нет, но кошелек привязан - всё равно начисляем!
-                                userOps.updateBalance(user.telegram_id, amountTON, 'deposit', `TON Deposit (Direct from wallet: ${sender})`);
-                                const vComm = 'W-' + txHash.slice(0, 8);
-                                db.prepare("INSERT INTO deposits (telegram_id, amount, status, comment, tx_hash) VALUES (?, ?, 'completed', ?, ?)")
-                                    .run(user.telegram_id, amountTON, vComm, txHash);
-                            }
+                            console.log(`[Monitor] Credited ${amountTON} TON to ${pending.telegram_id}`);
                         }
                     }
                 });
             } catch (e) { }
         });
-    }).on("error", (err) => { });
+    }).on('error', () => { });
 }
 
-setInterval(checkTonTransactions, 10000); // Проверка каждые 10 секунд для скорости подтверждения
+setInterval(checkTonTransactions, 15000);
 
 // --- GIFT BUYBACK (NFT) DYNAMIC PARSER ---
 

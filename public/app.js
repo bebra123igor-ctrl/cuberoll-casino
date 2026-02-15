@@ -700,21 +700,20 @@ window.depositRequest = async function () {
 
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
-        // Generate BOC payload for TonConnect
+        // Generate BOC payload for TonConnect (Standard Text Comment)
         let payload = undefined;
         if (depositComment) {
             try {
-                // TonConnect expects BOC as base64. Opcode 0 is text comment.
-                // Using a simpler, more robust manual construction if TonWeb/simple methods fail
                 if (window.TonWeb) {
                     const cell = new window.TonWeb.boc.Cell();
-                    cell.bits.writeUint(0, 32);
+                    cell.bits.writeUint(0, 32); // Opcode 0 is for text comment
                     cell.bits.writeBytes(new TextEncoder().encode(depositComment));
-                    const bytes = await cell.toBoc(false);
+                    const bytes = await cell.toBoc(); // Use default toBoc() for maximum compatibility
                     payload = window.TonWeb.utils.bytesToBase64(bytes);
+                    console.log('[Deposit] Comment BOC generated:', payload);
                 }
             } catch (e) {
-                console.warn('[Deposit] Payload BOC generation failed, falling back to no payload', e);
+                console.warn('[Deposit] Failed to generate BOC payload:', e);
             }
         }
 
