@@ -700,19 +700,22 @@ window.depositRequest = async function () {
 
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
-        // Generate BOC payload as a robust fallback
-        let payload = undefined; // Use undefined for optional field
-        try {
-            if (window.TonWeb && depositComment) {
-                const cell = new window.TonWeb.boc.Cell();
-                cell.bits.writeUint(0, 32); // Opcode 0 for text comment
-                cell.bits.writeBytes(window.TonWeb.utils.stringToBytes(depositComment));
-                const bocBytes = await cell.toBoc(false);
-                payload = window.TonWeb.utils.bytesToBase64(bocBytes);
-                console.log('[Deposit] Generated BOC payload:', payload);
+        // Generate BOC payload for TonConnect
+        let payload = undefined;
+        if (depositComment) {
+            try {
+                // TonConnect expects BOC as base64. Opcode 0 is text comment.
+                // Using a simpler, more robust manual construction if TonWeb/simple methods fail
+                if (window.TonWeb) {
+                    const cell = new window.TonWeb.boc.Cell();
+                    cell.bits.writeUint(0, 32);
+                    cell.bits.writeBytes(new TextEncoder().encode(depositComment));
+                    const bytes = await cell.toBoc(false);
+                    payload = window.TonWeb.utils.bytesToBase64(bytes);
+                }
+            } catch (e) {
+                console.warn('[Deposit] Payload BOC generation failed, falling back to no payload', e);
             }
-        } catch (e) {
-            console.error('[Deposit] Payload generation error:', e);
         }
 
         const message = {
@@ -722,7 +725,7 @@ window.depositRequest = async function () {
         };
 
         const transaction = {
-            validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes
+            validUntil: Math.floor(Date.now() / 1000) + 600,
             messages: [message]
         };
 
@@ -826,7 +829,7 @@ window.selectGame = function (game) {
 
 function startCrashPolling() {
     if (crashPolling) return;
-    crashPolling = setInterval(pollCrash, 1000);
+    crashPolling = setInterval(pollCrash, 500); // Faster polling for better sync
     pollCrash();
 }
 
@@ -872,12 +875,12 @@ function updateCrashUI() {
         } else {
             betBtn.classList.remove('hidden');
             betBtn.disabled = true;
-            betBtn.textContent = crashStatus.myBet?.cashedOut ? 'ВЫ ЗАБРАЛИ' : 'РАУНД ИДЕТ';
+            betBtn.textContent = crashStatus.myBet?.cashedOut ? 'СТАВКА ЗАБРАНА' : 'РАУНД ИДЕТ';
             cashoutBtn.classList.add('hidden');
         }
     } else if (crashStatus.phase === 'WAITING') {
         waitingUI.classList.remove('hidden');
-        statusEl.textContent = 'ГОТОВИМСЯ...';
+        statusEl.textContent = 'ОЖИДАНИЕ...';
         multEl.textContent = '1.00x';
         multEl.classList.remove('vibrating', 'flying');
         document.querySelector('.crash-info').classList.remove('crashed');
@@ -886,8 +889,8 @@ function updateCrashUI() {
         const totalWait = 10000;
         const remaining = crashStatus.timeLeft;
         const progress = (1 - (remaining / totalWait)) * 100;
-        document.getElementById('timer-progress-bar').style.width = progress + '%';
-        document.getElementById('timer-seconds').textContent = (remaining / 1000).toFixed(1) + 's';
+        document.getElementById('timer-progress-bar').style.width = Math.min(100, progress) + '%';
+        document.getElementById('timer-seconds').textContent = Math.max(0, remaining / 1000).toFixed(1) + 's';
 
         betBtn.classList.remove('hidden');
         betBtn.disabled = !!crashStatus.myBet;
@@ -895,7 +898,7 @@ function updateCrashUI() {
         cashoutBtn.classList.add('hidden');
     } else if (crashStatus.phase === 'CRASHED') {
         waitingUI.classList.add('hidden');
-        statusEl.textContent = 'РВАНО! 💥';
+        statusEl.textContent = 'КРАШ! 💥';
         multEl.textContent = crashStatus.multiplier.toFixed(2) + 'x';
         multEl.classList.remove('vibrating', 'flying');
         document.querySelector('.crash-info').classList.add('crashed');
@@ -951,22 +954,22 @@ function renderCrash() {
     const isPlaying = crashStatus && crashStatus.phase === 'FLYING';
     const isCrashed = crashStatus && crashStatus.phase === 'CRASHED';
 
-    // Фикс овершута: если крашнулось, ограничиваем время t моментом краша
+    // СТРОГИЙ ФИКС ОВЕРШУТА
     if (isCrashed) {
-        const crashT = Math.log(crashStatus.multiplier) / Math.log(1.07);
+        // Вычисляем точное время t для данного множителя (inverse of 1.07^t)
+        const targetMult = crashStatus.multiplier || 1;
+        const crashT = Math.log(targetMult) / Math.log(1.07);
         t = Math.min(t, crashT);
     }
 
-    // 1. СТРАЗЫ (Звезды)
+    // 1. Звезды
     crashCtx.fillStyle = '#ffffff';
     stars.forEach(s => {
         if (isPlaying) s.y += s.s * 5;
         else s.y += s.s * 0.5;
-
         if (s.y > h) s.y = 0;
         if (s.y < 0) s.y = h;
         if (s.x > w) s.x = Math.random() * w;
-
         crashCtx.globalAlpha = s.o;
         crashCtx.beginPath();
         crashCtx.arc(s.x, s.y, s.s, 0, Math.PI * 2);
@@ -974,7 +977,7 @@ function renderCrash() {
     });
     crashCtx.globalAlpha = 1;
 
-    // РАКЕТА (Полная детализация)
+    // РАКЕТА
     if (isPlaying || isCrashed || (crashStatus && crashStatus.phase === 'WAITING')) {
         const timeFactor = (isPlaying || isCrashed) ? t : (Date.now() / 1000);
 
@@ -982,79 +985,72 @@ function renderCrash() {
             const currentMult = Math.max(1, Math.pow(1.07, t));
             const multDisplay = currentMult.toFixed(2);
             const multEl = document.getElementById('crash-multiplier');
-            if (multEl) multEl.textContent = multDisplay + 'x';
-
-            const cashBtn = document.getElementById('crash-cashout-btn');
-            if (cashBtn && !cashBtn.classList.contains('hidden') && crashStatus.myBet) {
-                cashBtn.textContent = `ЗАБРАТЬ ${(crashStatus.myBet.amount * currentMult).toFixed(2)}`;
+            if (multEl) {
+                multEl.textContent = multDisplay + 'x';
             }
         }
 
-        const rx = w / 2 + Math.sin(timeFactor * 12) * 2;
-        const ry = h / 2 + 15;
+        const rx = w / 2 + Math.sin(timeFactor * 12) * 1.5;
+        const ry = h / 2 + 10;
 
-        // ТЕНЬ ПОД РАКЕТОЙ (для объема)
-        crashCtx.fillStyle = 'rgba(0,0,0,0.3)';
-        crashCtx.beginPath();
-        crashCtx.ellipse(rx, ry + 25, 10, 3, 0, 0, Math.PI * 2);
-        crashCtx.fill();
-
-        // ПЛАМЯ (только при полете или если еще не достигли точки краша)
-        if (isPlaying || (isCrashed && t < (Math.log(crashStatus.multiplier) / Math.log(1.07)))) {
-            const fireLen = 60 + Math.random() * 30;
+        // ПЛАМЯ
+        if (isPlaying || (isCrashed && t < (Math.log(crashStatus.multiplier || 1) / Math.log(1.07)) - 0.05)) {
+            const fireLen = 55 + Math.random() * 25;
             const fireGrad = crashCtx.createLinearGradient(rx, ry + 15, rx, ry + fireLen);
             fireGrad.addColorStop(0, '#f39c12');
-            fireGrad.addColorStop(0.4, '#e67e22');
+            fireGrad.addColorStop(0.5, '#e67e22');
             fireGrad.addColorStop(1, 'transparent');
             crashCtx.fillStyle = fireGrad;
             crashCtx.beginPath();
-            crashCtx.moveTo(rx - 9, ry + 10);
-            crashCtx.quadraticCurveTo(rx, ry + fireLen + 10, rx + 9, ry + 10);
+            crashCtx.moveTo(rx - 8, ry + 12);
+            crashCtx.quadraticCurveTo(rx, ry + fireLen + 10, rx + 8, ry + 12);
             crashCtx.fill();
         }
 
-        // КОРПУС
-        crashCtx.shadowBlur = (isPlaying || isCrashed) ? 30 : 0;
-        crashCtx.shadowColor = '#f1c40f';
+        // ТЕНЬ (на корпусе для объема)
+        crashCtx.shadowBlur = (isPlaying || isCrashed) ? 25 : 0;
+        crashCtx.shadowColor = 'rgba(241, 196, 15, 0.5)';
 
-        // 1. Основной цилиндр
+        // 1. Основное тело (Белое)
         crashCtx.fillStyle = '#ffffff';
         crashCtx.beginPath();
-        crashCtx.roundRect(rx - 10, ry - 15, 20, 30, 5);
+        crashCtx.roundRect(rx - 12, ry - 15, 24, 38, 7);
         crashCtx.fill();
 
-        // 2. Носовой обтекатель (Золотой)
+        // 2. Нос (Золотой)
         crashCtx.fillStyle = '#c2a74d';
         crashCtx.beginPath();
-        crashCtx.moveTo(rx - 10, ry - 14);
-        crashCtx.bezierCurveTo(rx - 10, ry - 42, rx + 10, ry - 42, rx + 10, ry - 14);
+        crashCtx.moveTo(rx - 12, ry - 14);
+        crashCtx.bezierCurveTo(rx - 12, ry - 48, rx + 12, ry - 48, rx + 12, ry - 14);
         crashCtx.fill();
 
-        // 3. Иллюминатор (более детализированный)
-        crashCtx.fillStyle = '#3498db'; // Цвет стекла
+        // 3. Иллюминатор
+        crashCtx.fillStyle = '#3498db';
         crashCtx.beginPath();
-        crashCtx.arc(rx, ry - 5, 4.5, 0, Math.PI * 2);
+        crashCtx.arc(rx, ry - 4, 5.5, 0, Math.PI * 2);
         crashCtx.fill();
         crashCtx.strokeStyle = '#2c3e50';
-        crashCtx.lineWidth = 1.5;
+        crashCtx.lineWidth = 2;
         crashCtx.stroke();
-        // Блик на стекле
+        // Блик
         crashCtx.fillStyle = 'rgba(255,255,255,0.4)';
         crashCtx.beginPath();
-        crashCtx.arc(rx - 1.5, ry - 6.5, 1.5, 0, Math.PI * 2);
+        crashCtx.arc(rx - 2, ry - 6, 2, 0, Math.PI * 2);
         crashCtx.fill();
 
-        // 4. Крылья (Золотые)
+        // 4. Крылья
         crashCtx.fillStyle = '#c2a74d';
+        // Левое
         crashCtx.beginPath();
-        crashCtx.moveTo(rx - 10, ry + 5);
-        crashCtx.lineTo(rx - 25, ry + 22);
-        crashCtx.lineTo(rx - 10, ry + 18);
+        crashCtx.moveTo(rx - 12, ry + 10);
+        crashCtx.lineTo(rx - 26, ry + 26);
+        crashCtx.lineTo(rx - 12, ry + 22);
         crashCtx.fill();
+        // Правое
         crashCtx.beginPath();
-        crashCtx.moveTo(rx + 10, ry + 5);
-        crashCtx.lineTo(rx + 25, ry + 22);
-        crashCtx.lineTo(rx + 10, ry + 18);
+        crashCtx.moveTo(rx + 12, ry + 10);
+        crashCtx.lineTo(rx + 26, ry + 26);
+        crashCtx.lineTo(rx + 12, ry + 22);
         crashCtx.fill();
 
         crashCtx.shadowBlur = 0;
