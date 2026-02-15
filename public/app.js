@@ -997,8 +997,20 @@ function renderCrash() {
 
         // Позиция: Центр с нарастающей тряской
         const shakeAmp = isPlaying ? (1 + currentMult / 8) : 0;
-        const rx = Math.round(w / 2 + Math.sin(timeFactor * 30) * shakeAmp);
-        const ry = Math.round(h / 2 + 10);
+
+        // Адаптивный масштаб для мелких экранов
+        // Базовый размер - для экранов > 500px. Если меньше - уменьшаем.
+        const baseScale = Math.min(w, h) / 300;
+        const s = Math.min(1.2, Math.max(0.6, baseScale)); // Ограничиваем от 0.6x до 1.2x
+
+        const rx = w / 2 + Math.sin(timeFactor * 30) * shakeAmp;
+        const ry = h / 2 + 10 * s; // Чуть ниже центра, с учетом масштаба
+
+        crashCtx.save();
+        // Масштабируем всё относительно центра ракеты
+        crashCtx.translate(rx, ry);
+        crashCtx.scale(s, s);
+        crashCtx.translate(-rx, -ry);
 
         // ПЛАМЯ (увеличивается и белеет при разгоне)
         if (isPlaying || (isCrashed && t > 0)) {
@@ -1074,6 +1086,7 @@ function renderCrash() {
         crashCtx.stroke();
 
         crashCtx.shadowBlur = 0;
+        crashCtx.restore(); // Сбрасываем трансформации (scale)
 
         if (isPlaying && window.haptic && hapticEnabled && Math.random() > 0.96) {
             haptic.impactOccurred('light');
