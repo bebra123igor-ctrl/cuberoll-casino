@@ -841,7 +841,8 @@ function addCar(lane) {
         const car = document.createElement('div');
         car.className = 'cr-obstacle';
         car.style.animationDuration = (2 + Math.random() * 2) + 's';
-        car.style.animationDelay = (Math.random() * 4) + 's';
+        // Используем отрицательную задержку, чтобы машины уже ехали при старте
+        car.style.animationDelay = '-' + (Math.random() * 5) + 's';
         if (Math.random() > 0.5) {
             car.style.animationDirection = 'reverse';
         }

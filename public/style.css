@@ -3345,6 +3345,11 @@ input:checked+.toggle-slider:before {
 }
 
 .cr-dice-3d .dice-face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%);
   border: 2px solid rgba(194, 167, 77, 0.4);
   box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8), 0 0 10px rgba(194, 167, 77, 0.1);
@@ -3352,8 +3357,8 @@ input:checked+.toggle-slider:before {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  position: relative;
   overflow: hidden;
+  backface-visibility: visible;
 }
 
 .cr-dice-3d .dice-face::after {
@@ -3372,8 +3377,33 @@ input:checked+.toggle-slider:before {
   width: 9px;
   height: 9px;
   background: radial-gradient(circle, #f1c40f 0%, #c2a74d 100%);
-  box-shadow: 0 0 8px rgba(241, 196, 15, 0.6);
+  box-shadow: 0 0 10px rgba(241, 196, 15, 0.8);
   border-radius: 50%;
+}
+
+/* Фикс геометрии куба (50px / 2 = 25px) */
+.cr-dice-3d .front {
+  transform: translateZ(25px) !important;
+}
+
+.cr-dice-3d .back {
+  transform: rotateY(180deg) translateZ(25px) !important;
+}
+
+.cr-dice-3d .right {
+  transform: rotateY(90deg) translateZ(25px) !important;
+}
+
+.cr-dice-3d .left {
+  transform: rotateY(-90deg) translateZ(25px) !important;
+}
+
+.cr-dice-3d .top {
+  transform: rotateX(90deg) translateZ(25px) !important;
+}
+
+.cr-dice-3d .bottom {
+  transform: rotateX(-90deg) translateZ(25px) !important;
 }
 
 /* Красивая аура под кубом */
@@ -3410,14 +3440,15 @@ input:checked+.toggle-slider:before {
 /* МАШИНА (Реалистичный вид сверху) */
 .cr-obstacle {
   position: absolute;
-  width: 90px;
-  height: 44px;
+  width: 95px;
+  height: 46px;
   background: #2a2a2a;
-  border-radius: 8px;
-  border: 2px solid #555;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.7);
   z-index: 5;
-  transition: background 0.3s, transform 0.5s cubic-bezier(0.19, 1, 0.22, 1), left 0.1s linear, filter 0.3s;
+  animation: cr-car-move linear infinite;
+  transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1), filter 0.3s, box-shadow 0.3s;
 }
 
 /* Стекла и детали корпуса */
@@ -3473,20 +3504,20 @@ input:checked+.toggle-slider:before {
 
 .cr-obstacle.braking {
   animation-play-state: paused !important;
-  transition: filter 0.3s, box-shadow 0.3s;
-  box-shadow: -10px 0 20px rgba(255, 0, 0, 0.4);
-  /* Задние огни при торможении */
+  box-shadow: -15px 0 35px rgba(255, 0, 0, 0.6);
+  filter: brightness(1.2);
 }
 
-/* Lamborghini (Киллер) теперь скрыта среди обычных */
-.cr-obstacle.lamborghini {
+/* Lamborghini (Киллер) */
+.cr-obstacle.lamborghini.killer {
   width: 100px;
-  border-radius: 4px 12px 12px 4px;
+  z-index: 20;
 }
 
 .cr-obstacle.lamborghini.revealed {
   background: #f1c40f !important;
-  box-shadow: 0 0 30px rgba(255, 68, 68, 0.6);
+  box-shadow: 0 0 40px rgba(255, 0, 0, 0.7);
+  border-color: #ff0000;
 }
 
 /* Анимация прыжка куба */
@@ -3547,8 +3578,8 @@ input:checked+.toggle-slider:before {
   }
 
   45% {
-    transform: translateX(-50%) scale(1.4) translateY(-30px) rotate(180deg);
-    filter: brightness(1.4);
+    transform: translateX(-50%) scale(1.35) translateY(-35px) rotate(180deg);
+    filter: brightness(1.5) drop-shadow(0 0 15px rgba(194, 167, 77, 0.6));
   }
 
   100% {
