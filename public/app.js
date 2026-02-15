@@ -861,6 +861,24 @@ function updateChickenPosition() {
     // Куб остается внизу, дорога едет вниз
     const laneHeight = 80;
     container.style.transform = `translateY(${crStep * laneHeight}px)`;
+
+    // Остановка всех машин в текущем ряду (тормозной путь)
+    stopCarsInLane(crStep);
+}
+
+function stopCarsInLane(step) {
+    const lane = document.getElementById(`cr-lane-${step}`);
+    if (!lane) return;
+    const cars = lane.querySelectorAll('.cr-obstacle');
+    cars.forEach(car => {
+        const rect = car.getBoundingClientRect();
+        const parentRect = lane.getBoundingClientRect();
+        const currentLeft = ((rect.left - parentRect.left) / parentRect.width) * 100;
+
+        car.style.animation = 'none';
+        car.style.left = currentLeft + '%';
+        car.classList.add('braking');
+    });
 }
 
 window.crossroadStart = async function () {
@@ -930,21 +948,20 @@ async function animateCrash(targetStep) {
     player.classList.add('jumping');
     container.style.transform = `translateY(${targetStep * laneHeight}px)`;
 
-    // 2. Спавним "Машину-убийцу"
+    // 2. Спавним "Ламборгини-убийцу"
     const killer = document.createElement('div');
-    killer.className = 'cr-obstacle killer';
-    // Направление зависит от того, как мы хотим
+    killer.className = 'cr-obstacle killer lamborghini';
     const exitRight = Math.random() > 0.5;
-    killer.style.left = exitRight ? '-100px' : '100%';
-    killer.style.transition = 'left 0.4s linear';
+    killer.style.left = exitRight ? '-120px' : '110%';
+    killer.style.transition = 'left 0.35s cubic-bezier(0.45, 0.05, 0.55, 0.95)';
     lane.appendChild(killer);
 
-    // 3. Машина вылетает на середину (где куб) спустя мгновение
-    await new Promise(r => setTimeout(r, 100));
+    // 3. Машина вылетает на середину
+    await new Promise(r => setTimeout(r, 50));
     killer.style.left = '50%';
 
     // Ждем удара
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise(r => setTimeout(r, 200));
 
     // Спецэффект удара
     player.style.filter = 'hue-rotate(90deg) brightness(2)';

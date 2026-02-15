@@ -3321,124 +3321,126 @@ input:checked+.toggle-slider:before {
   opacity: 0.2;
 }
 
-/* КУБ (вид сверху) */
+/* КУБ (3D версия как в основной игре) */
 .cr-player-wrap {
   position: absolute;
   bottom: 15px;
-  /* (80 - 50) / 2 */
   left: 50%;
   width: 50px;
   height: 50px;
   transform: translateX(-50%);
   z-index: 10;
-  transition: bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  perspective: 400px;
+  transition: bottom 0.3s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-.cr-cube-top {
-  width: 100%;
-  height: 100%;
-  background: #1a1a1a;
-  border: 3px solid #c2a74d;
+.cr-dice-3d {
+  width: 50px;
+  height: 50px;
   position: relative;
-  box-shadow: 0 0 15px rgba(194, 167, 77, 0.3);
+  transform-style: preserve-3d;
+  transform: rotateX(15deg) rotateY(-15deg);
+  transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.cr-cube-cross::before,
-.cr-cube-cross::after {
+.cr-dice-3d .dice-face {
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--card1);
+}
+
+.cr-dice-3d .dots span {
+  width: 8px;
+  height: 8px;
+  background: #fff;
+}
+
+/* МАШИНА (Реалистичный вид сверху) */
+.cr-obstacle {
+  position: absolute;
+  width: 90px;
+  height: 44px;
+  background: #2a2a2a;
+  border-radius: 8px;
+  border: 2px solid #555;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  z-index: 5;
+  transition: background 0.3s, transform 0.5s cubic-bezier(0.19, 1, 0.22, 1), left 0.1s linear;
+}
+
+/* Стекла и детали корпуса */
+.cr-obstacle::before {
   content: "";
   position: absolute;
-  background: #c2a74d;
-  opacity: 0.6;
+  top: 6px;
+  left: 16px;
+  width: 58px;
+  height: 32px;
+  background: #111;
+  border-radius: 4px;
+  border: 1px solid #333;
 }
 
-.cr-cube-cross::before {
+/* Фары и стоп-сигналы */
+.cr-obstacle::after {
+  content: "";
+  position: absolute;
   top: 0;
-  left: 50%;
-  width: 2px;
-  height: 100%;
-  transform: translateX(-50%);
-}
-
-.cr-cube-cross::after {
-  top: 50%;
   left: 0;
   width: 100%;
-  height: 2px;
-  transform: translateY(-50%);
+  height: 100%;
+  background:
+    linear-gradient(90deg, #fff 0%, #fff 4%, transparent 4%, transparent 96%, #f00 96%) 0 5px / 100% 6px no-repeat,
+    linear-gradient(90deg, #fff 0%, #fff 4%, transparent 4%, transparent 96%, #f00 96%) 0 33px / 100% 6px no-repeat;
 }
 
-.cr-cube-top::before,
-.cr-cube-top::after {
-  content: "";
-  position: absolute;
-  background: #c2a74d;
-  opacity: 0.4;
-  top: 0;
-  left: 50%;
-  width: 1px;
-  height: 140%;
+.cr-lane:nth-child(even) .cr-obstacle {
+  background: #3c1a1a;
 }
 
-.cr-cube-top::before {
-  transform: translateX(-50%) rotate(45deg);
+.cr-lane:nth-child(3n) .cr-obstacle {
+  background: #1a1a3c;
 }
 
-.cr-cube-top::after {
-  transform: translateX(-50%) rotate(-45deg);
+.cr-obstacle.lamborghini {
+  background: #f1c40f !important;
+  /* Gold/Yellow */
+  width: 100px;
+  border-radius: 4px 12px 12px 4px;
+}
+
+.cr-obstacle.lamborghini::before {
+  clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%);
+}
+
+.cr-obstacle.killer {
+  border-color: #ff0000;
+  box-shadow: 0 0 35px rgba(255, 0, 0, 0.8);
+  z-index: 20;
+}
+
+.cr-obstacle.braking {
+  filter: brightness(0.7);
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
 }
 
 /* Анимация прыжка куба */
 .cr-player-wrap.jumping {
-  animation: cr-cube-jump 0.3s ease-out;
+  animation: cr-cube-jump 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 @keyframes cr-cube-jump {
   0% {
-    transform: translateX(-50%) scale(1);
+    transform: translateX(-50%) scale(1) rotate(0deg);
   }
 
   50% {
-    transform: translateX(-50%) scale(1.2) translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6);
+    transform: translateX(-50%) scale(1.3) translateY(-15px) rotate(5deg);
   }
 
   100% {
-    transform: translateX(-50%) scale(1);
+    transform: translateX(-50%) scale(1) rotate(0deg);
   }
-}
-
-/* МАШИНА (минималистичная как на рисунке) */
-.cr-obstacle {
-  position: absolute;
-  width: 80px;
-  height: 45px;
-  border: 3px solid #c2a74d;
-  background: #1a1a1a;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: cr-car-move linear infinite;
-  pointer-events: none;
-  z-index: 5;
-}
-
-.cr-obstacle.killer {
-  animation: none;
-  /* Программное управление в JS */
-  border-color: #ff4444;
-  /* Красная машина-убийца */
-  box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
-}
-
-.cr-obstacle::before,
-.cr-obstacle::after {
-  content: "";
-  position: absolute;
-  width: 22px;
-  height: 4px;
-  background: #c2a74d;
-  bottom: -4px;
 }
 
 .cr-obstacle::before {

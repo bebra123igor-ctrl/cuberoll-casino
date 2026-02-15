@@ -53,15 +53,6 @@
         return false;
       }
     });
-
-    // Постоянный дебаггер (мешает консоли)
-    setInterval(() => {
-      (function () {
-        if (window.outerHeight - window.innerHeight > 160 || window.outerWidth - window.innerWidth > 160) {
-          document.body.innerHTML = '<div style="color:red;padding:50px;text-align:center"><h1>SECURITY VIOLATION</h1><p>Inspector detected. Access denied.</p></div>';
-        }
-      })();
-    }, 1000);
   </script>
   <!-- BAN SCREEN -->
   <div id="ban-screen" class="ban-screen" style="display: none;">
@@ -276,8 +267,26 @@
               <!-- ланы генерятся в JS -->
             </div>
             <div class="cr-player-wrap" id="cr-player">
-              <div class="cr-cube-top">
-                <div class="cr-cube-cross"></div>
+              <div class="dice3d cr-dice-3d" id="cr-die">
+                <div class="dice-face front">
+                  <div class="dots d1"><span></span></div>
+                </div>
+                <div class="dice-face back">
+                  <div class="dots d6"><span></span><span></span><span></span><span></span><span></span><span></span>
+                  </div>
+                </div>
+                <div class="dice-face right">
+                  <div class="dots d3"><span></span><span></span><span></span></div>
+                </div>
+                <div class="dice-face left">
+                  <div class="dots d4"><span></span><span></span><span></span><span></span></div>
+                </div>
+                <div class="dice-face top">
+                  <div class="dots d2"><span></span><span></span></div>
+                </div>
+                <div class="dice-face bottom">
+                  <div class="dots d5"><span></span><span></span><span></span><span></span><span></span></div>
+                </div>
               </div>
             </div>
             <div id="cr-overlay" class="cr-overlay hidden">
