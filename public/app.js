@@ -701,13 +701,12 @@ window.depositRequest = async function () {
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
         // Generate BOC payload as a robust fallback
-        let payload = null;
+        let payload = undefined; // Use undefined for optional field
         try {
-            if (window.TonWeb) {
+            if (window.TonWeb && depositComment) {
                 const cell = new window.TonWeb.boc.Cell();
                 cell.bits.writeUint(0, 32); // Opcode 0 for text comment
                 cell.bits.writeBytes(window.TonWeb.utils.stringToBytes(depositComment));
-                // Generate BOC without index, but with CRC32 (standard for comments)
                 const bocBytes = await cell.toBoc(false);
                 payload = window.TonWeb.utils.bytesToBase64(bocBytes);
                 console.log('[Deposit] Generated BOC payload:', payload);
@@ -719,7 +718,7 @@ window.depositRequest = async function () {
         const message = {
             address: res.address.trim(),
             amount: (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString(),
-            payload: payload // Binary BOC containing the comment
+            payload: payload
         };
 
         const transaction = {
@@ -948,20 +947,24 @@ function renderCrash() {
     crashCtx.clearRect(0, 0, w, h);
 
     const now = Date.now() - timeOffset;
-    const t = (now - (crashStatus?.startTime || 0)) / 1000;
+    let t = (now - (crashStatus?.startTime || 0)) / 1000;
     const isPlaying = crashStatus && crashStatus.phase === 'FLYING';
     const isCrashed = crashStatus && crashStatus.phase === 'CRASHED';
 
-    // 1. СТРАЗЫ (Звезды) - Теперь их мало и они чисто белые
+    // Фикс овершута: если крашнулось, ограничиваем время t моментом краша
+    if (isCrashed) {
+        const crashT = Math.log(crashStatus.multiplier) / Math.log(1.07);
+        t = Math.min(t, crashT);
+    }
+
+    // 1. СТРАЗЫ (Звезды)
     crashCtx.fillStyle = '#ffffff';
     stars.forEach(s => {
         if (isPlaying) s.y += s.s * 5;
         else s.y += s.s * 0.5;
 
-        // Корректная обертка по текущим границам
         if (s.y > h) s.y = 0;
         if (s.y < 0) s.y = h;
-        // Распределяем по ширине, если вылетели (при ресайзе)
         if (s.x > w) s.x = Math.random() * w;
 
         crashCtx.globalAlpha = s.o;
@@ -972,8 +975,8 @@ function renderCrash() {
     crashCtx.globalAlpha = 1;
 
     // РАКЕТА (Полная детализация)
-    if (isPlaying || (crashStatus && crashStatus.phase === 'WAITING')) {
-        const timeFactor = isPlaying ? t : (Date.now() / 1000);
+    if (isPlaying || isCrashed || (crashStatus && crashStatus.phase === 'WAITING')) {
+        const timeFactor = (isPlaying || isCrashed) ? t : (Date.now() / 1000);
 
         if (isPlaying) {
             const currentMult = Math.max(1, Math.pow(1.07, t));
@@ -990,8 +993,14 @@ function renderCrash() {
         const rx = w / 2 + Math.sin(timeFactor * 12) * 2;
         const ry = h / 2 + 15;
 
-        // ПЛАМЯ
-        if (isPlaying) {
+        // ТЕНЬ ПОД РАКЕТОЙ (для объема)
+        crashCtx.fillStyle = 'rgba(0,0,0,0.3)';
+        crashCtx.beginPath();
+        crashCtx.ellipse(rx, ry + 25, 10, 3, 0, 0, Math.PI * 2);
+        crashCtx.fill();
+
+        // ПЛАМЯ (только при полете или если еще не достигли точки краша)
+        if (isPlaying || (isCrashed && t < (Math.log(crashStatus.multiplier) / Math.log(1.07)))) {
             const fireLen = 60 + Math.random() * 30;
             const fireGrad = crashCtx.createLinearGradient(rx, ry + 15, rx, ry + fireLen);
             fireGrad.addColorStop(0, '#f39c12');
@@ -1004,12 +1013,12 @@ function renderCrash() {
             crashCtx.fill();
         }
 
-        // КОРПУС (Детальный)
-        crashCtx.shadowBlur = isPlaying ? 30 : 0;
+        // КОРПУС
+        crashCtx.shadowBlur = (isPlaying || isCrashed) ? 30 : 0;
         crashCtx.shadowColor = '#f1c40f';
 
         // 1. Основной цилиндр
-        crashCtx.fillStyle = '#ffffff'; // Белый корпус для контраста
+        crashCtx.fillStyle = '#ffffff';
         crashCtx.beginPath();
         crashCtx.roundRect(rx - 10, ry - 15, 20, 30, 5);
         crashCtx.fill();
@@ -1018,34 +1027,35 @@ function renderCrash() {
         crashCtx.fillStyle = '#c2a74d';
         crashCtx.beginPath();
         crashCtx.moveTo(rx - 10, ry - 14);
-        crashCtx.bezierCurveTo(rx - 10, ry - 45, rx + 10, ry - 45, rx + 10, ry - 14);
+        crashCtx.bezierCurveTo(rx - 10, ry - 42, rx + 10, ry - 42, rx + 10, ry - 14);
         crashCtx.fill();
 
-        // 3. Иллюминатор
-        crashCtx.fillStyle = '#2c3e50';
+        // 3. Иллюминатор (более детализированный)
+        crashCtx.fillStyle = '#3498db'; // Цвет стекла
         crashCtx.beginPath();
-        crashCtx.arc(rx, ry - 5, 4, 0, Math.PI * 2);
+        crashCtx.arc(rx, ry - 5, 4.5, 0, Math.PI * 2);
         crashCtx.fill();
-        crashCtx.strokeStyle = '#bdc3c7';
-        crashCtx.lineWidth = 1;
+        crashCtx.strokeStyle = '#2c3e50';
+        crashCtx.lineWidth = 1.5;
         crashCtx.stroke();
+        // Блик на стекле
+        crashCtx.fillStyle = 'rgba(255,255,255,0.4)';
+        crashCtx.beginPath();
+        crashCtx.arc(rx - 1.5, ry - 6.5, 1.5, 0, Math.PI * 2);
+        crashCtx.fill();
 
         // 4. Крылья (Золотые)
         crashCtx.fillStyle = '#c2a74d';
-        // Левое
         crashCtx.beginPath();
         crashCtx.moveTo(rx - 10, ry + 5);
-        crashCtx.lineTo(rx - 22, ry + 20);
-        crashCtx.lineTo(rx - 10, ry + 15);
+        crashCtx.lineTo(rx - 25, ry + 22);
+        crashCtx.lineTo(rx - 10, ry + 18);
         crashCtx.fill();
-        // Правое
         crashCtx.beginPath();
         crashCtx.moveTo(rx + 10, ry + 5);
-        crashCtx.lineTo(rx + 22, ry + 20);
-        crashCtx.lineTo(rx + 10, ry + 15);
+        crashCtx.lineTo(rx + 25, ry + 22);
+        crashCtx.lineTo(rx + 10, ry + 18);
         crashCtx.fill();
-        // Центральное (небольшой выступ)
-        crashCtx.fillRect(rx - 2, ry + 12, 4, 6);
 
         crashCtx.shadowBlur = 0;
 
