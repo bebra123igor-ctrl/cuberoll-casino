@@ -315,37 +315,43 @@ async def process_transfer_queue(client):
         await asyncio.sleep(5)
 
 async def main():
-    if not API_ID or not API_HASH:
-        logger.error("КРИТИЧЕСКАЯ ОШИБКА: TG_API_ID или TG_API_HASH не установлены в переменных Railway!")
+    # Подгружаем заново для верности (Railway env)
+    api_id = os.getenv("TG_API_ID")
+    api_hash = os.getenv("TG_API_HASH")
+    session_string = os.getenv("TG_SESSION_STRING")
+
+    if not api_id or not api_hash:
+        logger.error("КРИТИЧЕСКАЯ ОШИБКА: TG_API_ID или TG_API_HASH не установлены!")
         return
 
-    session_string = os.getenv("TG_SESSION_STRING")
     if not session_string:
-         logger.error("КРИТИЧЕСКАЯ ОШИБКА: TG_SESSION_STRING не установлен! Бот не сможет войти.")
+         logger.error("КРИТИЧЕСКАЯ ОШИБКА: TG_SESSION_STRING не установлен!")
          return
     
-    logger.info("Initializing gift manager client...")
-    
-    from telethon.sessions import StringSession
-    from telethon.network import ConnectionTcpIntermediate
+    logger.info(f"Инициализация... Сессия (начало): {session_string[:8]}...")
     
     try:
+        from telethon.sessions import StringSession
         client = TelegramClient(
-            StringSession(session_string),
-            int(API_ID),
-            API_HASH,
-            connection=ConnectionTcpIntermediate
+            StringSession(session_string.strip()), 
+            int(api_id), 
+            api_hash
         )
-    except Exception as e:
-        logger.error(f"Ошибка инициализации клиента: {e}")
-        return
-    
-    try:
-        await client.start()
+        
+        await client.connect()
+        
+        if not await client.is_user_authorized():
+            logger.error("❌ ОШИБКА АВТОРИЗАЦИИ: Ваша TG_SESSION_STRING не подходит или протухла.")
+            logger.error("Пожалуйста, перевыпустите String Session в @session_gen_bot или через скрипт.")
+            return
+
         me = await client.get_me()
-        logger.info(f"Юзербот успешно запущен! Аккаунт: {me.first_name} (ID: {me.id})")
+        logger.info(f"✅ Успешный вход! Аккаунт: {me.first_name} (ID: {me.id})")
+        if me.bot:
+            logger.error("!!! ВНИМАНИЕ: Вы вошли как БОТ. NFT-подарки работают ТОЛЬКО на юзер-аккаунтах.")
+            
     except Exception as e:
-        logger.error(f"Не удалось запустить клиент: {e}")
+        logger.error(f"❌ Не удалось запустить клиент: {e}")
         return
 
     # Цикл синхронизации
