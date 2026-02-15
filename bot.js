@@ -21,7 +21,7 @@ function isAdmin(id) {
     return ok;
 }
 
-const WELCOME_IMG = 'https://i.imgur.com/8YvYyZp.png'; // Твоя картинка (можно заменить на /welcome.png если есть на хостинге)
+const WELCOME_IMG = `${WEBAPP}/welcome.png`; // Твоя картинка на хостинге
 
 bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
