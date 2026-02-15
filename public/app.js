@@ -698,31 +698,31 @@ window.depositRequest = async function () {
 
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
+        // Generate BOC payload as a robust fallback
         let payload = null;
         try {
-            const TW = window.TonWeb || (typeof TonWeb !== 'undefined' ? TonWeb : null);
-            if (TW && TW.boc && TW.boc.Cell) {
-                const cell = new TW.boc.Cell();
-                cell.bits.writeUint(0, 32);
-                cell.bits.writeBytes(new TextEncoder().encode(depositComment));
-                const bocRes = await cell.toBoc(false);
-                payload = TW.utils.bytesToBase64(bocRes);
+            if (window.TonWeb) {
+                const cell = new window.TonWeb.boc.Cell();
+                cell.bits.writeUint(0, 32); // Opcode 0 for text comment
+                cell.bits.writeBytes(window.TonWeb.utils.stringToBytes(depositComment));
+                // Generate BOC without index, but with CRC32 (standard for comments)
+                const bocBytes = await cell.toBoc(false);
+                payload = window.TonWeb.utils.bytesToBase64(bocBytes);
+                console.log('[Deposit] Generated BOC payload:', payload);
             }
         } catch (e) {
-            console.error('Payload generation failed:', e);
+            console.error('[Deposit] Payload generation error:', e);
         }
 
         const message = {
             address: res.address.trim(),
             amount: (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString(),
+            payload: payload, // Binary BOC fallback
+            comment: depositComment // Modern SDK text comment field
         };
 
-        if (payload) {
-            message.payload = payload;
-        }
-
         const transaction = {
-            validUntil: Math.floor(Date.now() / 1000) + 360,
+            validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes
             messages: [message]
         };
 
@@ -786,9 +786,18 @@ window.showResult = function (res) {
 window.copyText = function (id) {
     const el = document.getElementById(id);
     if (!el) return;
-    const txt = el.textContent || el.innerText;
+    const txt = (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') ? el.value : el.textContent;
     if (navigator.clipboard) {
         navigator.clipboard.writeText(txt).then(() => toast('Скопировано!', 'success'));
+    } else {
+        toast('Браузер не поддерживает копирование', 'error');
+    }
+};
+
+window.copyMemo = function () {
+    const memo = document.getElementById('active-memo')?.textContent;
+    if (memo && navigator.clipboard) {
+        navigator.clipboard.writeText(memo).then(() => toast('Комментарий скопирован!', 'success'));
     }
 };
 
