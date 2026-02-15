@@ -4,7 +4,7 @@ import asyncio
 import logging
 import random
 import aiohttp
-from telethon import TelegramClient, functions, types
+from telethon import TelegramClient, functions, types, events
 from telethon.network import connection
 from telethon.sessions import StringSession
 from dotenv import load_dotenv
@@ -433,7 +433,7 @@ async def main():
 
     try:
         # Регистрация слушателя событий
-        @client.on(types.UpdateNewMessage())
+        @client.on(events.NewMessage())
         async def event_handler(event):
             await handle_incoming_gift(event, client)
 
