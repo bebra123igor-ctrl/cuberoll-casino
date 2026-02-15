@@ -954,22 +954,21 @@ function renderCrash() {
     const isPlaying = crashStatus && crashStatus.phase === 'FLYING';
     const isCrashed = crashStatus && crashStatus.phase === 'CRASHED';
 
-    // СТРОГИЙ ФИКС ОВЕРШУТА
+    // ЖЕСТКИЙ ФИКС: Если краш, берем только иксы из статуса
     if (isCrashed) {
-        // Вычисляем точное время t для данного множителя (inverse of 1.07^t)
-        const targetMult = crashStatus.multiplier || 1;
-        const crashT = Math.log(targetMult) / Math.log(1.07);
-        t = Math.min(t, crashT);
+        t = Math.log(crashStatus.multiplier || 1) / Math.log(1.07);
     }
 
-    // 1. Звезды
+    // Звезды
     crashCtx.fillStyle = '#ffffff';
     stars.forEach(s => {
         if (isPlaying) s.y += s.s * 5;
-        else s.y += s.s * 0.5;
+        else if (!isCrashed) s.y += s.s * 0.5;
+
         if (s.y > h) s.y = 0;
         if (s.y < 0) s.y = h;
         if (s.x > w) s.x = Math.random() * w;
+
         crashCtx.globalAlpha = s.o;
         crashCtx.beginPath();
         crashCtx.arc(s.x, s.y, s.s, 0, Math.PI * 2);
@@ -982,20 +981,17 @@ function renderCrash() {
         const timeFactor = (isPlaying || isCrashed) ? t : (Date.now() / 1000);
 
         if (isPlaying) {
-            const currentMult = Math.max(1, Math.pow(1.07, t));
-            const multDisplay = currentMult.toFixed(2);
+            const currentMult = Math.pow(1.07, t);
             const multEl = document.getElementById('crash-multiplier');
-            if (multEl) {
-                multEl.textContent = multDisplay + 'x';
-            }
+            if (multEl) multEl.textContent = currentMult.toFixed(2) + 'x';
         }
 
-        const rx = w / 2 + Math.sin(timeFactor * 12) * 1.5;
+        const rx = w / 2 + (isCrashed ? 0 : Math.sin(timeFactor * 12) * 1.5);
         const ry = h / 2 + 10;
 
-        // ПЛАМЯ
-        if (isPlaying || (isCrashed && t < (Math.log(crashStatus.multiplier || 1) / Math.log(1.07)) - 0.05)) {
-            const fireLen = 55 + Math.random() * 25;
+        // ПЛАМЯ (только если летим)
+        if (isPlaying) {
+            const fireLen = 50 + Math.random() * 25;
             const fireGrad = crashCtx.createLinearGradient(rx, ry + 15, rx, ry + fireLen);
             fireGrad.addColorStop(0, '#f39c12');
             fireGrad.addColorStop(0.5, '#e67e22');
@@ -1007,50 +1003,43 @@ function renderCrash() {
             crashCtx.fill();
         }
 
-        // ТЕНЬ (на корпусе для объема)
+        // КОРПУС
         crashCtx.shadowBlur = (isPlaying || isCrashed) ? 25 : 0;
-        crashCtx.shadowColor = 'rgba(241, 196, 15, 0.5)';
+        crashCtx.shadowColor = 'rgba(241, 196, 15, 0.4)';
 
-        // 1. Основное тело (Белое)
+        // Тело (Максимальная полнота)
         crashCtx.fillStyle = '#ffffff';
         crashCtx.beginPath();
-        crashCtx.roundRect(rx - 12, ry - 15, 24, 38, 7);
+        crashCtx.roundRect(rx - 13, ry - 15, 26, 40, 8);
         crashCtx.fill();
 
-        // 2. Нос (Золотой)
+        // Нос
         crashCtx.fillStyle = '#c2a74d';
         crashCtx.beginPath();
-        crashCtx.moveTo(rx - 12, ry - 14);
-        crashCtx.bezierCurveTo(rx - 12, ry - 48, rx + 12, ry - 48, rx + 12, ry - 14);
+        crashCtx.moveTo(rx - 13, ry - 14);
+        crashCtx.bezierCurveTo(rx - 13, ry - 50, rx + 13, ry - 50, rx + 13, ry - 14);
         crashCtx.fill();
 
-        // 3. Иллюминатор
+        // Иллюминатор
         crashCtx.fillStyle = '#3498db';
         crashCtx.beginPath();
-        crashCtx.arc(rx, ry - 4, 5.5, 0, Math.PI * 2);
+        crashCtx.arc(rx, ry - 4, 6, 0, Math.PI * 2);
         crashCtx.fill();
         crashCtx.strokeStyle = '#2c3e50';
-        crashCtx.lineWidth = 2;
+        crashCtx.lineWidth = 2.2;
         crashCtx.stroke();
-        // Блик
-        crashCtx.fillStyle = 'rgba(255,255,255,0.4)';
-        crashCtx.beginPath();
-        crashCtx.arc(rx - 2, ry - 6, 2, 0, Math.PI * 2);
-        crashCtx.fill();
 
-        // 4. Крылья
+        // Крылья
         crashCtx.fillStyle = '#c2a74d';
-        // Левое
         crashCtx.beginPath();
-        crashCtx.moveTo(rx - 12, ry + 10);
-        crashCtx.lineTo(rx - 26, ry + 26);
-        crashCtx.lineTo(rx - 12, ry + 22);
+        crashCtx.moveTo(rx - 13, ry + 10);
+        crashCtx.lineTo(rx - 28, ry + 28);
+        crashCtx.lineTo(rx - 13, ry + 24);
         crashCtx.fill();
-        // Правое
         crashCtx.beginPath();
-        crashCtx.moveTo(rx + 12, ry + 10);
-        crashCtx.lineTo(rx + 26, ry + 26);
-        crashCtx.lineTo(rx + 12, ry + 22);
+        crashCtx.moveTo(rx + 13, ry + 10);
+        crashCtx.lineTo(rx + 28, ry + 28);
+        crashCtx.lineTo(rx + 13, ry + 24);
         crashCtx.fill();
 
         crashCtx.shadowBlur = 0;

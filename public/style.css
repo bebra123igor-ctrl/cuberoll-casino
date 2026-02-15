@@ -797,12 +797,14 @@ body {
 /* Scrollable wrapper inside tab */
 .tab-scrollable {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: auto !important;
   overflow-x: hidden;
   padding: 16px;
-  padding-bottom: 80px;
-  /* Space for bottom nav */
+  padding-bottom: 150px;
+  /* Увеличенный отступ для скролла */
   -webkit-overflow-scrolling: touch;
+  position: relative;
+  height: 100%;
 }
 
 #content-game {
