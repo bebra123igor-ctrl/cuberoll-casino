@@ -675,6 +675,15 @@ window.depositRequest = async function () {
         }
 
         const depositComment = (res.comment || '').trim();
+
+        // Показываем мемо в UI
+        const memoCard = document.getElementById('memo-display-card');
+        const activeMemo = document.getElementById('active-memo');
+        if (memoCard && activeMemo) {
+            activeMemo.textContent = depositComment;
+            memoCard.classList.remove('hidden');
+        }
+
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
         let payload = null;
@@ -707,20 +716,33 @@ window.depositRequest = async function () {
 
         await tonConnectUI.sendTransaction(transaction);
 
-        // Optimistic credit
-        try {
-            const opt = await api('/api/deposit/optimistic', 'POST', { comment: depositComment });
-            if (opt.success) {
-                user.balance = opt.newBalance;
-                setBalance(user.balance, true);
-                toast('Пополнение зачислено (авансом)!', 'success');
-                triggerConfetti();
+        // Теперь вместо мгновенного зачисления ждем подтверждения от блокчейна
+        toast('Ждём подтверждения в сети TON...', 'info');
+        btn.textContent = 'ОЖИДАНИЕ...';
+
+        const checkDeposit = async () => {
+            for (let i = 0; i < 30; i++) { // Проверяем 5 минут
+                await new Promise(r => setTimeout(r, 10000));
+                try {
+                    const status = await api('/api/deposit/check');
+                    if (status.completed && status.completed.some(d => d.comment === depositComment)) {
+                        toast('Пополнение подтверждено!', 'success');
+                        triggerConfetti();
+                        refreshBalance();
+                        return true;
+                    }
+                } catch (e) { }
             }
-        } catch (e) { }
+            toast('Платеж все еще не найден. Он зачислится автоматически позже.', 'info');
+            return false;
+        };
+        checkDeposit();
 
     } catch (e) {
         console.error('Deposit flow failed:', e);
-        toast(`Ошибка: ${e.message || 'Cancelled'}`, 'error');
+        const errMsg = e.message || 'Cancelled';
+        if (errMsg.includes('User reject')) toast('Транзакция отменена', 'info');
+        else toast(`Ошибка: ${errMsg}`, 'error');
     } finally {
         btn.disabled = false;
         btn.textContent = 'ПОПОЛНИТЬ';

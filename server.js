@@ -364,24 +364,12 @@ app.post('/api/deposit/request', auth, (req, res) => {
 
 app.get('/api/deposit/check', auth, (req, res) => {
     const pending = depositOps.getPendingByUser(req.tgUser.id);
-    const optimistic = depositOps.getOptimisticByUser(req.tgUser.id);
-    res.secure({ pending, optimistic });
+    const completed = db.prepare("SELECT * FROM deposits WHERE telegram_id = ? AND status = 'completed' ORDER BY created_at DESC LIMIT 5").all(req.tgUser.id);
+    res.secure({ pending, completed });
 });
 
-app.post('/api/deposit/optimistic', auth, (req, res) => {
-    const { comment } = req.body;
-    if (!comment) return res.status(400).secure({ error: 'Comment required' });
-
-    const dep = depositOps.getByComment(comment);
-    if (!dep || dep.telegram_id !== req.tgUser.id) return res.status(404).secure({ error: 'Deposit not found' });
-    if (dep.status !== 'pending') return res.status(400).secure({ error: 'Deposit is not pending' });
-
-    // Зачисляем "авансом"
-    userOps.updateBalance(req.tgUser.id, dep.amount, 'deposit_optimistic', `Optimistic Credit (Memo: ${comment})`);
-    depositOps.markOptimistic(comment);
-
-    res.secure({ success: true, newBalance: userOps.get(req.tgUser.id).balance });
-});
+// УДАЛЕНО: app.post('/api/deposit/optimistic' ...)
+// Теперь зачисление только по факту транзакции в блокчейне.
 
 // Фоновая проверка транзакций TON
 const https = require('https');
@@ -489,17 +477,11 @@ async function checkTonTransactions() {
     }).on("error", (err) => { });
 }
 
-setInterval(checkTonTransactions, 20000); // каждые 20 сек
+setInterval(checkTonTransactions, 10000); // Проверка каждые 10 секунд для скорости подтверждения
 
-// Откат фейковых подтверждений (увеличиваем до 60 мин для "автоматизма")
-function rollbackExpiredOptimisticDeposits() {
-    const expired = depositOps.getExpiredOptimistic(60);
-    expired.forEach(dep => {
-        userOps.updateBalance(dep.telegram_id, -dep.amount, 'deposit_rollback', `Rollback failed optimistic deposit (Memo: ${dep.comment})`);
-        db.prepare("UPDATE deposits SET status = 'failed' WHERE id = ?").run(dep.id);
-    });
-}
-setInterval(rollbackExpiredOptimisticDeposits, 60000); // каждые 60 сек
+// Зачисление теперь только через честный мониторинг транзакций.
+// Оптимистичное зачисление и его откаты удалены для безопасности.
+
 
 
 // --- ПРОМОКОДЫ ---
