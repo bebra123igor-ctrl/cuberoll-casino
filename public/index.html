@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CubeRoll</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
@@ -23,10 +23,17 @@
       text-align: center;
       padding: 30px;
     }
+
+    input,
+    textarea {
+      -webkit-user-select: text !important;
+      user-select: text !important;
+      pointer-events: auto !important;
+    }
   </style>
 </head>
 
-<body oncontextmenu="return false;">
+<body>
   <!-- ТГ ЗАМОК -->
   <div id="tg-lock">
     <div style="font-size: 64px; margin-bottom: 20px;">📲</div>
@@ -376,7 +383,7 @@
             <div class="dep-label">Сумма пополнения</div>
             <div class="dep-input-container">
               <div class="dep-input-group">
-                <input type="number" id="dep-amount" placeholder="0.00" step="0.1">
+                <input type="text" inputmode="decimal" id="dep-amount" placeholder="0.00">
                 <span>TON</span>
               </div>
               <button class="dep-go-btn main-action" id="dep-btn-go" onclick="depositRequest()">ПОПОЛНИТЬ</button>
