@@ -150,10 +150,17 @@ async def sync_inventory(client):
             except: return {}
 
         for item in result.gifts:
-            tg_gift_id = str(item.id)
-            gift_obj = item.gift
+            # Универсальный способ вытащить ID и Slug
+            # Т.к. структура может отличаться в зависимости от метода (GetStarGifts vs GetSavedStarGifts)
+            tg_gift_id = str(getattr(item, 'id', ''))
+            
+            # Ищем объект подарка (он может быть в item.gift или сам item быть подарком)
+            gift_obj = getattr(item, 'gift', item)
             slug = getattr(gift_obj, 'slug', '')
             
+            if not slug and hasattr(item, 'stargift'): # на всякий случай для других версий
+                slug = getattr(item.stargift, 'slug', '')
+
             api_title = slug.replace('_', ' ').title() if slug else "NFT Gift"
             if hasattr(item, 'message') and item.message:
                 api_title = item.message
@@ -181,16 +188,16 @@ async def sync_inventory(client):
             if matched_id:
                 logger.info(f"Linking '{api_title}' to existing item #{matched_id}")
                 cursor.execute("""
-                    UPDATE gifts SET gift_id = ?, model = ?, background = ?, symbol = ? 
+                    UPDATE gifts SET gift_id = ?, model = ?, background = ?, symbol = ?, slug = ? 
                     WHERE id = ?
-                """, (tg_gift_id, m_url, b_style, sym, matched_id))
+                """, (tg_gift_id, m_url, b_style, sym, slug, matched_id))
             else:
                 logger.info(f"Adding new gift: {api_title}")
                 price = await fetch_floor_price(api_title)
                 cursor.execute("""
-                    INSERT INTO gifts (title, price, gift_id, is_active, model, background, symbol)
-                    VALUES (?, ?, ?, 1, ?, ?, ?)
-                """, (api_title, price, tg_gift_id, m_url, b_style, sym))
+                    INSERT INTO gifts (title, price, gift_id, is_active, model, background, symbol, slug)
+                    VALUES (?, ?, ?, 1, ?, ?, ?, ?)
+                """, (api_title, price, tg_gift_id, m_url, b_style, sym, slug))
             
         conn.commit()
         conn.close()
