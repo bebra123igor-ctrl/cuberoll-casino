@@ -67,8 +67,8 @@ def get_db_connection():
     return sqlite3.connect("cuberoll.db") # fallback
 
 async def sync_inventory(client):
-    """Парсит подарки с аккаунта дилера и обновляет магазин (v1.0.3)"""
-    logger.info("--- SYNC START (v1.0.3) ---")
+    """Парсит подарки с аккаунта дилера и обновляет магазин (v1.0.4)"""
+    logger.info("--- SYNC START (v1.0.4) ---")
     
     try:
         # 0. Диагностика окружения
@@ -126,6 +126,12 @@ async def sync_inventory(client):
         for col in ['model', 'background', 'symbol', 'slug']:
             try: cursor.execute(f"ALTER TABLE gifts ADD COLUMN {col} TEXT")
             except: pass
+        
+        # ЧИСТКА: Удаляем мусорные "NFT Gift"
+        try:
+            cursor.execute("DELETE FROM gifts WHERE title = 'NFT Gift' AND slug IS NULL")
+            logger.info("Удален мусор из базы подарков.")
+        except: pass
         conn.commit()
 
         # Помощник для данных из t.me/nft
@@ -150,19 +156,22 @@ async def sync_inventory(client):
             except: return {}
 
         for item in result.gifts:
-            # ЗАЩИТА ОТ ATTRIBUTERROR (v1.0.3)
+            # ЗАЩИТА (v1.0.4)
             tg_gift_id = str(getattr(item, 'id', '0'))
+            if tg_gift_id == '0': continue
             
             # Телеграм может вернуть StarGift или UserStarGift
-            # В одном случае slug внутри .gift, в другом - прямо в item
             gift_obj = getattr(item, 'gift', item)
             slug = getattr(gift_obj, 'slug', '')
             
-            # Если slug всё еще нет, пробуем другие варианты
             if not slug and hasattr(item, 'stargift'):
                 slug = getattr(item.stargift, 'slug', '')
             
-            api_title = slug.replace('_', ' ').title() if slug else "NFT Gift"
+            # ВАЖНО: Если нет slug - это не NFT, игнорируем!
+            if not slug:
+                continue
+
+            api_title = slug.replace('_', ' ').title()
             if hasattr(item, 'message') and item.message:
                 api_title = item.message
 
@@ -204,7 +213,7 @@ async def sync_inventory(client):
         conn.close()
     except Exception as e:
         import traceback
-        logger.error(f"Sync failed (v1.0.3): {e}\n{traceback.format_exc()}")
+        logger.error(f"Sync failed (v1.0.4): {e}\n{traceback.format_exc()}")
 
 async def process_transfer_queue(client):
     """Следит за новыми покупками в БД и отправляет подарки"""

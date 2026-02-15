@@ -91,6 +91,10 @@ db.exec(`
 `);
 
 try {
+  db.exec('ALTER TABLE users ADD COLUMN last_name TEXT');
+} catch (e) { }
+
+try {
   db.exec('ALTER TABLE users ADD COLUMN last_daily_claim TEXT DEFAULT NULL');
 } catch (e) { }
 
