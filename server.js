@@ -479,6 +479,131 @@ async function checkTonTransactions() {
 
 setInterval(checkTonTransactions, 10000); // Проверка каждые 10 секунд для скорости подтверждения
 
+// --- GIFT BUYBACK (NFT) DYNAMIC PARSER ---
+
+async function fetchNftFloorPrice(query) {
+    return new Promise((resolve) => {
+        // Portal-Market API is used to get the current floor price (suggested by user)
+        const url = `https://portal-market.com/api/collections?search=${encodeURIComponent(query)}&limit=1`;
+        const options = {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'application/json'
+            }
+        };
+        https.get(url, options, (res) => {
+            let body = '';
+            res.on('data', (c) => body += c);
+            res.on('end', () => {
+                try {
+                    const data = JSON.parse(body);
+                    const collections = data.collections || [];
+                    if (collections.length > 0) {
+                        const col = collections[0];
+                        let price = parseFloat(col.floor_price || 0);
+                        // Heuristic: if price > 1,000,000, it's likely NanoTON
+                        if (price > 1000000) price /= 1e9;
+                        resolve({ price, name: col.name });
+                    } else {
+                        resolve(null);
+                    }
+                } catch (e) { resolve(null); }
+            });
+        }).on('error', () => resolve(null));
+    });
+}
+
+async function checkNftGifts() {
+    const settings = settingsOps.getAll();
+    let dealerAddr = settings.ton_wallet;
+    if (!dealerAddr || dealerAddr.includes('UQ...') || dealerAddr.includes('your-')) {
+        dealerAddr = process.env.TON_WALLET;
+    }
+    if (!dealerAddr || dealerAddr.includes('your-') || dealerAddr.includes('UQ...')) return;
+
+    https.get(`https://toncenter.com/api/v2/getTransactions?address=${dealerAddr}&limit=10`, (resp) => {
+        let data = '';
+        resp.on('data', (c) => data += c);
+        resp.on('end', async () => {
+            try {
+                const json = JSON.parse(data);
+                if (!json.ok) return;
+
+                const txs = json.result;
+                for (const tx of txs) {
+                    const msg = tx.in_msg;
+                    if (!msg || !msg.source) continue;
+
+                    const txHash = tx.transaction_id.hash;
+                    // Проверяем, не обрабатывали ли мы этот перевод NFT
+                    const alreadyDone = db.prepare('SELECT id FROM transactions WHERE description LIKE ?').get(`%NFT:${txHash}%`);
+                    if (alreadyDone) continue;
+
+                    const nftItemAddress = msg.source;
+
+                    // 1. Получаем данные NFT
+                    https.get(`https://toncenter.com/api/v2/runGetMethod?address=${nftItemAddress}&method=get_nft_data&stack=[]`, (nr) => {
+                        let nd = '';
+                        nr.on('data', (c) => nd += c);
+                        nr.on('end', async () => {
+                            try {
+                                const nj = JSON.parse(nd);
+                                if (!nj.ok || nj.result.exit_code !== 0) return;
+
+                                // Попробуем найти КТО отправил этот NFT
+                                https.get(`https://toncenter.com/api/v2/getTransactions?address=${nftItemAddress}&limit=5`, (tr) => {
+                                    let td = '';
+                                    tr.on('data', (c) => td += c);
+                                    tr.on('end', async () => {
+                                        try {
+                                            const tj = JSON.parse(td);
+                                            const transferTx = tj.result.find(t => t.out_msgs && t.out_msgs.some(m => m.destination === dealerAddr));
+                                            if (!transferTx) return;
+
+                                            const senderWallet = transferTx.in_msg.source;
+                                            const user = userOps.getByWallet(senderWallet);
+                                            if (!user) return;
+
+                                            // 2. Определяем ЦЕНУ динамически
+                                            let dynamicPrice = null;
+                                            let nftName = "Unknown NFT";
+
+                                            // Сначала по адресу самого предмета (некоторые API понимают его как ID коллекции)
+                                            const marketData = await fetchNftFloorPrice(nftItemAddress);
+                                            if (marketData) {
+                                                dynamicPrice = marketData.price;
+                                                nftName = marketData.name;
+                                            }
+
+                                            // Если не вышло по адресу, ищем по шаблонам в базе
+                                            if (!dynamicPrice) {
+                                                const allGifts = giftOps.getAll();
+                                                const giftTemplate = allGifts.find(g => g.nft_address && (nftItemAddress.includes(g.nft_address)));
+                                                if (giftTemplate) {
+                                                    const namedPrice = await fetchNftFloorPrice(giftTemplate.title);
+                                                    dynamicPrice = namedPrice ? namedPrice.price : giftTemplate.price;
+                                                    nftName = giftTemplate.title;
+                                                }
+                                            }
+
+                                            if (dynamicPrice && dynamicPrice > 0) {
+                                                console.log(`[NFT-Buyback] User ${user.telegram_id} sent "${nftName}". Price: ${dynamicPrice} TON`);
+                                                userOps.updateBalance(user.telegram_id, dynamicPrice, 'gift_sell', `Sold Gift ${nftName} NFT:${txHash}`);
+                                            }
+                                        } catch (e) { }
+                                    });
+                                });
+                            } catch (e) { }
+                        });
+                    });
+                }
+            } catch (e) { }
+        });
+    }).on("error", () => { });
+}
+
+setInterval(checkNftGifts, 20000);
+
 // Зачисление теперь только через честный мониторинг транзакций.
 // Оптимистичное зачисление и его откаты удалены для безопасности.
 

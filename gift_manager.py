@@ -314,6 +314,74 @@ async def process_transfer_queue(client):
         
         await asyncio.sleep(5)
 
+async def handle_incoming_gift(event, client):
+    """Слушатель входящих подарков на аккаунте дилера"""
+    try:
+        # Проверяем, есть ли действие (action) в сообщении
+        if not event.message or not event.message.action:
+            return
+
+        action = event.message.action
+        sender_id = event.sender_id
+        
+        # Разные типы подарков в Telethon
+        is_gift = False
+        gift_title = "Unknown Gift"
+        
+        # Обычный или Unique подарок
+        if hasattr(types, 'MessageActionStarGift') and isinstance(action, types.MessageActionStarGift):
+            is_gift = True
+            # Пытаемся достать название из slug
+            if hasattr(action, 'gift') and hasattr(action.gift, 'slug'):
+                gift_title = action.gift.slug.replace('_', ' ').title()
+        elif hasattr(types, 'MessageActionGiftCode') and isinstance(action, types.MessageActionGiftCode):
+            is_gift = True
+            gift_title = "Telegram Premium / Gift Code"
+
+        if not is_gift:
+            return
+
+        logger.info(f"🎁 ПОЛУЧЕН ПОДАРОК от {sender_id}: {gift_title}")
+
+        # 1. Считаем цену
+        price = await fetch_floor_price(gift_title)
+        
+        # 2. Начисляем в БД
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Проверяем юзера
+        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (sender_id,))
+        row = cursor.fetchone()
+        
+        if row:
+            old_balance = row[0]
+            new_balance = old_balance + price
+            
+            # Обновляем баланс
+            cursor.execute("UPDATE users SET balance = ? WHERE telegram_id = ?", (new_balance, sender_id))
+            
+            # Лог транзакции
+            cursor.execute("""
+                INSERT INTO transactions (telegram_id, type, amount, balance_before, balance_after, description)
+                VALUES (?, 'gift_sell', ?, ?, ?, ?)
+            """, (sender_id, price, old_balance, new_balance, f"Sold Gift: {gift_title}"))
+            
+            conn.commit()
+            logger.info(f"✅ Баланс юзера {sender_id} пополнен на {price} TON за подарок {gift_title}")
+            
+            # Опционально: Отправляем уведомление
+            try:
+                await client.send_message(sender_id, f"✅ Ваш подарок **{gift_title}** принят!\n💰 На баланс зачислено: **{price} TON**")
+            except: pass
+        else:
+            logger.warning(f"⚠️ Юзер {sender_id} прислал подарок, но его нет в БД казино.")
+            
+        conn.close()
+
+    except Exception as e:
+        logger.error(f"Ошибка при обработке входящего подарка: {e}")
+
 async def main():
     # Подгружаем заново для верности (Railway env)
     api_id = os.getenv("TG_API_ID")
@@ -364,6 +432,11 @@ async def main():
             await asyncio.sleep(60)
 
     try:
+        # Регистрация слушателя событий
+        @client.on(types.UpdateNewMessage())
+        async def event_handler(event):
+            await handle_incoming_gift(event, client)
+
         await asyncio.gather(
             process_transfer_queue(client),
             periodic_sync()
