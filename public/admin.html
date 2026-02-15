@@ -607,10 +607,15 @@
 
     <script>
         let tg = null, initData = '';
-        if (window.Telegram && window.Telegram.WebApp) {
-            tg = window.Telegram.WebApp; tg.expand(); tg.ready();
-            try { tg.setHeaderColor('#121212'); tg.setBackgroundColor('#121212'); } catch (e) { }
-            initData = tg.initData;
+
+        function initTg() {
+            if (window.Telegram && window.Telegram.WebApp) {
+                tg = window.Telegram.WebApp;
+                tg.expand();
+                tg.ready();
+                try { tg.setHeaderColor('#121212'); tg.setBackgroundColor('#121212'); } catch (e) { }
+                initData = tg.initData;
+            }
         }
 
         // "Шифрование" для "обычных смертных"
@@ -640,8 +645,10 @@
 
             if (!r.ok) {
                 let e = {};
-                try { e = _0x_dec(raw); } catch (err) { e = { error: 'Server Error ' + r.status }; }
-                throw new Error(e.error || 'err');
+                try { e = _0x_dec(raw); } catch (err) {
+                    try { e = JSON.parse(raw); } catch (ex) { e = { error: 'Server Error ' + r.status }; }
+                }
+                throw new Error(e.error || e.message || 'Unknown Error');
             }
 
             return _0x_dec(raw);
@@ -657,12 +664,16 @@
         });
 
         async function loadAll() {
+            const msg = document.querySelector('.auth-msg');
+            msg.innerHTML = '<div style="color:var(--gold);font-weight:700">🔄 Авторизация...</div>';
+
             try {
                 const data = await api('/api/auth', 'POST');
                 if (!data.isAdmin) {
-                    document.querySelector('.auth-msg').innerHTML = '<div style="color:var(--red);font-weight:900;font-size:18px">⛔️ В ДОСТУПЕ ОТКАЗАНО</div><p style="margin-top:10px">Этот раздел только для администраторов казино.</p>';
+                    msg.innerHTML = '<div style="color:var(--red);font-weight:900;font-size:18px">⛔️ В ДОСТУПЕ ОТКАЗАНО</div><p style="margin-top:10px">Ваш ID (' + (data.user ? data.user.telegramId : 'unknown') + ') не в списке администраторов.</p>';
                     return;
                 }
+
                 document.getElementById('auth-box').classList.add('hidden');
                 document.getElementById('content').classList.remove('hidden');
 
@@ -676,13 +687,14 @@
                     loadSets()
                 ]);
             } catch (e) {
-                document.querySelector('.auth-msg').innerHTML = '<div style="color:var(--red);font-weight:900;font-size:18px">🛑 ОШИБКА АВТОРИЗАЦИИ</div><p style="margin-top:10px">' + e.message + '</p>';
+                msg.innerHTML = '<div style="color:var(--red);font-weight:900;font-size:18px">🛑 ОШИБКА АВТОРИЗАЦИИ</div><p style="margin-top:10px">' + e.message + '</p><p style="font-size:10px;opacity:0.5;margin-top:5px">Убедитесь, что вы открыли админку через бота.</p>';
             }
         }
 
         // Инициализация при загрузке
         initTg();
         loadAll();
+
 
         async function loadStats() {
             try {
