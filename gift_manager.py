@@ -87,36 +87,26 @@ async def sync_inventory(client):
 
         # Максимально надежный вызов GetUserGifts
         try:
-             from telethon.tl import core
-             # 0xe11da17c = payments.getUserGifts
-             # Мы создаем максимально совместимый объект запроса
-             class GetGiftsReq(functions.TLRequest):
-                 CONSTRUCTOR_ID = 0xe11da17c
-                 SUBCLASS_OF_ID = 0x14ada4f2
-                 def __init__(self, user_id, offset=0, limit=100):
-                     self.user_id = user_id
-                     self.offset = offset
-                     self.limit = limit
-                 def to_dict(self): return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
-                 def __bytes__(self):
-                     # Ручная упаковка для Telethon 1.x
-                     return b''.join([
-                         self.CONSTRUCTOR_ID.to_bytes(4, 'little'),
-                         client._entity_cache[self.user_id].to_bytes() if hasattr(self.user_id, 'to_bytes') else b'\x00',
-                         self.offset.to_bytes(4, 'little'),
-                         self.limit.to_bytes(4, 'little')
-                     ])
-
-             # Пробуем получить сущность дилера (себя)
-             me = await client.get_me()
-             
-             # Пытаемся вызвать через обычный Invoke, если не выйдет - через Raw
+             # Попытка 1: Стандартный метод
              try:
-                 # В новых версиях Telethon это может сработать просто так
-                 result = await client(functions.payments.GetUserGiftsRequest(user_id=me, limit=100))
-             except:
-                 # Если нет - используем наш кастомный класс
-                 result = await client(GetGiftsReq(user_id=me, limit=100))
+                 from telethon.tl.functions.payments import GetUserGiftsRequest
+                 result = await client(GetUserGiftsRequest(user_id='me', limit=100))
+             except (ImportError, AttributeError):
+                 # Попытка 2: Если метода нет в библиотеке, используем Raw Invoke
+                 # 0xe11da17c = payments.getUserGifts
+                 logger.info("GetUserGiftsRequest не найден, используем Raw Invoke...")
+                 
+                 class GetGiftsReq(functions.TLRequest):
+                     CONSTRUCTOR_ID = 0xe11da17c
+                     SUBCLASS_OF_ID = 0x14ada4f2
+                     def __init__(self, user_id, offset=0, limit=100):
+                         self.user_id = user_id
+                         self.offset = offset
+                         self.limit = limit
+                     def to_dict(self): return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
+                     # Убираем __bytes__, Телетон сам попытается собрать объект если мы не мешаем
+                 
+                 result = await client(GetGiftsReq(user_id='me', limit=100))
         except Exception as e:
              logger.error(f"Не удалось получить список подарков: {e}")
              return
@@ -301,12 +291,17 @@ async def main():
          logger.error("КРИТИЧЕСКАЯ ОШИБКА: TG_SESSION_STRING не установлен! Бот не сможет войти.")
          return
     
-    logger.info("Initializing Userbot with StringSession...")
+    logger.info("Initializing gift manager client...")
     
     from telethon.sessions import StringSession
     
     try:
-        client = TelegramClient(StringSession(session_string), int(API_ID), API_HASH)
+        client = TelegramClient(
+            StringSession(session_string),
+            int(API_ID),
+            API_HASH,
+            connection=connection.TcpIntermediate
+        )
     except Exception as e:
         logger.error(f"Ошибка инициализации клиента: {e}")
         return
