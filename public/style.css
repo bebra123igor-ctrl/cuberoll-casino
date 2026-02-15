@@ -3265,16 +3265,17 @@ input:checked+.toggle-slider:before {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* --- CROSSROAD GAME (COMPACT & SLIDING) --- */
+/* --- CROSSROAD GAME (MINIMALIST TOP-DOWN) --- */
 .crossroad-board {
   position: relative;
   width: 100%;
-  height: 180px;
-  /* Фиксированная маленькая высота */
-  background: #111;
-  border-radius: 16px;
+  height: 240px;
+  /* Показываем 3 линии по 80px */
+  background: #1a1a1a;
+  border-radius: 12px;
   overflow: hidden;
-  border: 1px solid var(--border2);
+  border: 2px solid #333;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
   margin-bottom: 12px;
 }
 
@@ -3287,12 +3288,12 @@ input:checked+.toggle-slider:before {
   display: flex;
   flex-direction: column-reverse;
   /* Курица внизу, дорога уходит вверх */
-  transition: transform 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .cr-lane {
-  height: 60px;
-  /* Ровно 1/3 от 180px */
+  height: 80px;
+  /* Увеличили для лучшей видимости куба */
   width: 100%;
   flex-shrink: 0;
   display: flex;
@@ -3301,41 +3302,104 @@ input:checked+.toggle-slider:before {
 }
 
 .cr-lane.safe {
-  background: #1a2a1a;
+  background: #1c1c1c;
 }
 
 .cr-lane.road {
-  background: #151515;
-  border-top: 1px dashed rgba(255, 255, 255, 0.05);
+  background: #1a1a1a;
 }
 
-.cr-chicken {
+/* Золотистая линия из наброска */
+.cr-lane::after {
+  content: "";
   position: absolute;
-  bottom: 0px;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #c2a74d;
+  opacity: 0.2;
+}
+
+/* КУБ (вид сверху) */
+.cr-player-wrap {
+  position: absolute;
+  bottom: 15px;
+  /* (80 - 50) / 2 */
   left: 50%;
-  width: 40px;
-  height: 40px;
-  font-size: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 50px;
+  height: 50px;
   transform: translateX(-50%);
   z-index: 10;
-  transition: bottom 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  transition: bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* Эффект прыжка */
-.cr-chicken.jumping {
-  animation: cr-jump 0.3s ease-out;
+.cr-cube-top {
+  width: 100%;
+  height: 100%;
+  background: #1a1a1a;
+  border: 3px solid #c2a74d;
+  position: relative;
+  box-shadow: 0 0 15px rgba(194, 167, 77, 0.3);
 }
 
-@keyframes cr-jump {
+.cr-cube-cross::before,
+.cr-cube-cross::after {
+  content: "";
+  position: absolute;
+  background: #c2a74d;
+  opacity: 0.6;
+}
+
+.cr-cube-cross::before {
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+
+.cr-cube-cross::after {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+.cr-cube-top::before,
+.cr-cube-top::after {
+  content: "";
+  position: absolute;
+  background: #c2a74d;
+  opacity: 0.4;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 140%;
+}
+
+.cr-cube-top::before {
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.cr-cube-top::after {
+  transform: translateX(-50%) rotate(-45deg);
+}
+
+/* Анимация прыжка куба */
+.cr-player-wrap.jumping {
+  animation: cr-cube-jump 0.3s ease-out;
+}
+
+@keyframes cr-cube-jump {
   0% {
     transform: translateX(-50%) scale(1);
   }
 
   50% {
-    transform: translateX(-50%) translateY(-15px) scale(1.1);
+    transform: translateX(-50%) scale(1.2) translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6);
   }
 
   100% {
@@ -3343,16 +3407,42 @@ input:checked+.toggle-slider:before {
   }
 }
 
+/* МАШИНА (минималистичная как на рисунке) */
 .cr-obstacle {
   position: absolute;
-  font-size: 22px;
+  width: 80px;
+  height: 45px;
+  border: 3px solid #c2a74d;
+  background: #1a1a1a;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   animation: cr-car-move linear infinite;
   pointer-events: none;
 }
 
+.cr-obstacle::before,
+.cr-obstacle::after {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 4px;
+  background: #c2a74d;
+  bottom: -4px;
+}
+
+.cr-obstacle::before {
+  left: 10px;
+}
+
+.cr-obstacle::after {
+  right: 10px;
+}
+
 @keyframes cr-car-move {
   from {
-    left: -60px;
+    left: -100px;
   }
 
   to {
@@ -3363,8 +3453,7 @@ input:checked+.toggle-slider:before {
 .cr-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3372,80 +3461,84 @@ input:checked+.toggle-slider:before {
 }
 
 .cr-status-msg {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 900;
-  color: var(--red);
-  text-shadow: 0 0 15px var(--red-g);
+  color: #c2a74d;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .cr-controls {
-  background: var(--card1);
-  border: 1px solid var(--border2);
-  border-radius: 16px;
-  padding: 12px;
+  background: #1a1a1a;
+  border: 2px solid #333;
+  border-radius: 12px;
+  padding: 15px;
 }
 
 .cr-stats {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 15px;
 }
 
 .cr-stat-item {
   flex: 1;
-  background: var(--card2);
+  background: #222;
   border-radius: 10px;
-  padding: 8px;
+  padding: 10px;
   text-align: center;
+  border: 1px solid #333;
 }
 
 .cr-stat-item span {
   display: block;
-  font-size: 9px;
-  color: var(--t3);
+  font-size: 10px;
+  color: #888;
   margin-bottom: 2px;
 }
 
 .cr-stat-item strong {
-  font-size: 13px;
-  color: var(--gold);
-}
-
-.cr-bet-input {
-  margin-bottom: 8px;
+  font-size: 15px;
+  color: #c2a74d;
 }
 
 .cr-bet-input input {
-  padding: 10px;
-  font-size: 14px;
+  width: 100%;
+  background: #222;
+  border: 2px solid #333;
   border-radius: 10px;
+  padding: 12px;
+  color: #fff;
+  text-align: center;
+  font-size: 15px;
+  margin-bottom: 10px;
 }
 
 .cr-btn {
   width: 100%;
-  padding: 12px;
-  font-size: 13px;
-  font-weight: 800;
+  padding: 15px;
   border-radius: 10px;
+  font-weight: 800;
   text-transform: uppercase;
   cursor: pointer;
+  border: none;
 }
 
 .cr-btn.start {
-  background: var(--grad-gold);
-  color: #000;
+  background: #c2a74d;
+  color: #1a1a1a;
 }
 
 .cr-btn.jump {
-  background: var(--grad-gold);
-  color: #000;
-  margin-bottom: 8px;
+  background: #c2a74d;
+  color: #1a1a1a;
+  margin-bottom: 10px;
 }
 
 .cr-btn.cashout {
-  background: var(--card2);
-  color: var(--gold);
-  border: 1px solid var(--gold);
+  background: transparent;
+  color: #c2a74d;
+  border: 2px solid #c2a74d;
 }
 
 #cr-play-ui {

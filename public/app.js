@@ -836,15 +836,12 @@ function initCrLanes() {
 }
 
 function addCar(lane) {
-    const cars = ['🚗', '🚕', '🚙', '🚌', '🏎️', '🚛', '🚑', '🚚'];
     const count = 1;
     for (let i = 0; i < count; i++) {
         const car = document.createElement('div');
         car.className = 'cr-obstacle';
-        car.textContent = cars[Math.floor(Math.random() * cars.length)];
         car.style.animationDuration = (2 + Math.random() * 2) + 's';
         car.style.animationDelay = (Math.random() * 4) + 's';
-        // Randomize direction
         if (Math.random() > 0.5) {
             car.style.animationDirection = 'reverse';
         }
@@ -853,16 +850,16 @@ function addCar(lane) {
 }
 
 function updateChickenPosition() {
-    const chicken = document.getElementById('cr-chicken');
+    const player = document.getElementById('cr-player');
     const container = document.getElementById('cr-lanes-container');
 
-    // Добавляем класс прыжка для анимации
-    chicken.classList.remove('jumping');
-    void chicken.offsetWidth; // trigger reflow
-    chicken.classList.add('jumping');
+    // Прыжок (анимация через CSS класс)
+    player.classList.remove('jumping');
+    void player.offsetWidth;
+    player.classList.add('jumping');
 
-    // Курица всегда внизу, а дорога едет вниз на 60px за каждый шаг
-    const laneHeight = 60;
+    // Куб остается внизу, дорога едет вниз
+    const laneHeight = 80;
     container.style.transform = `translateY(${crStep * laneHeight}px)`;
 }
 
