@@ -67,8 +67,8 @@ def get_db_connection():
     return sqlite3.connect("cuberoll.db") # fallback
 
 async def sync_inventory(client):
-    """Парсит подарки с аккаунта дилера и обновляет магазин"""
-    logger.info("Scanning for unique gifts on account...")
+    """Парсит подарки с аккаунта дилера и обновляет магазин (v1.0.3)"""
+    logger.info("--- SYNC START (v1.0.3) ---")
     
     try:
         # 0. Диагностика окружения
@@ -150,17 +150,18 @@ async def sync_inventory(client):
             except: return {}
 
         for item in result.gifts:
-            # Универсальный способ вытащить ID и Slug
-            # Т.к. структура может отличаться в зависимости от метода (GetStarGifts vs GetSavedStarGifts)
-            tg_gift_id = str(getattr(item, 'id', ''))
+            # ЗАЩИТА ОТ ATTRIBUTERROR (v1.0.3)
+            tg_gift_id = str(getattr(item, 'id', '0'))
             
-            # Ищем объект подарка (он может быть в item.gift или сам item быть подарком)
+            # Телеграм может вернуть StarGift или UserStarGift
+            # В одном случае slug внутри .gift, в другом - прямо в item
             gift_obj = getattr(item, 'gift', item)
             slug = getattr(gift_obj, 'slug', '')
             
-            if not slug and hasattr(item, 'stargift'): # на всякий случай для других версий
+            # Если slug всё еще нет, пробуем другие варианты
+            if not slug and hasattr(item, 'stargift'):
                 slug = getattr(item.stargift, 'slug', '')
-
+            
             api_title = slug.replace('_', ' ').title() if slug else "NFT Gift"
             if hasattr(item, 'message') and item.message:
                 api_title = item.message
@@ -203,7 +204,7 @@ async def sync_inventory(client):
         conn.close()
     except Exception as e:
         import traceback
-        logger.error(f"Sync failed: {e}\n{traceback.format_exc()}")
+        logger.error(f"Sync failed (v1.0.3): {e}\n{traceback.format_exc()}")
 
 async def process_transfer_queue(client):
     """Следит за новыми покупками в БД и отправляет подарки"""
