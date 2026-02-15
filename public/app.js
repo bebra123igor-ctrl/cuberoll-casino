@@ -863,8 +863,9 @@ function updateCrashUI() {
     if (crashStatus.phase === 'FLYING') {
         waitingUI.classList.add('hidden');
         statusEl.textContent = 'ПОЛЁТ...';
-        multEl.classList.add('vibrating');
+        multEl.classList.add('vibrating', 'flying');
         document.querySelector('.crash-info').classList.remove('crashed');
+        document.querySelector('.crash-main').style.backdropFilter = 'none';
 
         if (crashStatus.myBet && !crashStatus.myBet.cashedOut) {
             betBtn.classList.add('hidden');
@@ -879,8 +880,9 @@ function updateCrashUI() {
         waitingUI.classList.remove('hidden');
         statusEl.textContent = 'ГОТОВИМСЯ...';
         multEl.textContent = '1.00x';
-        multEl.classList.remove('vibrating');
+        multEl.classList.remove('vibrating', 'flying');
         document.querySelector('.crash-info').classList.remove('crashed');
+        document.querySelector('.crash-main').style.backdropFilter = 'none';
 
         const totalWait = 10000;
         const remaining = crashStatus.timeLeft;
@@ -896,19 +898,15 @@ function updateCrashUI() {
         waitingUI.classList.add('hidden');
         statusEl.textContent = 'РВАНО! 💥';
         multEl.textContent = crashStatus.multiplier.toFixed(2) + 'x';
-        multEl.classList.remove('vibrating');
+        multEl.classList.remove('vibrating', 'flying');
         document.querySelector('.crash-info').classList.add('crashed');
-
-        betBtn.classList.remove('hidden');
-        betBtn.disabled = true;
-        betBtn.textContent = 'КРАШ';
-        cashoutBtn.classList.add('hidden');
     }
 
-    // Update history
-    historyBar.innerHTML = crashStatus.history.map(h => `
-        <div class="crash-history-item ${h >= 2 ? 'win' : 'loss'}">${h.toFixed(2)}x</div>
-    `).join('');
+    if (historyBar) {
+        historyBar.innerHTML = crashStatus.history.map(h => `
+            <div class="crash-history-item ${h >= 2 ? 'win' : 'loss'}">${h.toFixed(2)}x</div>
+        `).join('');
+    }
 }
 
 function initCrashCanvas() {
@@ -928,7 +926,19 @@ function initCrashCanvas() {
     renderCrash();
 }
 
-const particles = [];
+const stars = [];
+function initStars() {
+    stars.length = 0;
+    for (let i = 0; i < 80; i++) {
+        stars.push({
+            x: Math.random() * 1000,
+            y: Math.random() * 600,
+            s: 0.5 + Math.random() * 2,
+            o: 0.3 + Math.random() * 0.7
+        });
+    }
+}
+initStars();
 
 function renderCrash() {
     if (!crashCanvas || !crashCtx) return;
@@ -937,71 +947,70 @@ function renderCrash() {
 
     crashCtx.clearRect(0, 0, w, h);
 
-    if (crashStatus && crashStatus.phase === 'FLYING') {
-        const now = Date.now() - timeOffset;
-        const t = (now - (crashStatus.startTime || 0)) / 1000;
+    const now = Date.now() - timeOffset;
+    const t = (now - (crashStatus?.startTime || 0)) / 1000;
+    const isPlaying = crashStatus && crashStatus.phase === 'FLYING';
+    const isCrashed = crashStatus && crashStatus.phase === 'CRASHED';
 
-        // Плавная интерполяция икса на клиенте (1.07^t)
+    // 1. Звезды (Фон)
+    crashCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    stars.forEach(s => {
+        if (isPlaying) s.x -= s.s * 3.5;
+        else s.x -= s.s * 0.4;
+        if (s.x < 0) s.x = w;
+        crashCtx.globalAlpha = s.o;
+        crashCtx.beginPath();
+        crashCtx.arc(s.x, s.y, s.s, 0, Math.PI * 2);
+        crashCtx.fill();
+    });
+    crashCtx.globalAlpha = 1;
+
+    if (isPlaying) {
         const currentMult = Math.max(1, Math.pow(1.07, t));
         const multDisplay = currentMult.toFixed(2);
         const multEl = document.getElementById('crash-multiplier');
         if (multEl) multEl.textContent = multDisplay + 'x';
 
-        // Обновляем кнопку наличных
+        // Кнопка
         const cashBtn = document.getElementById('crash-cashout-btn');
         if (cashBtn && !cashBtn.classList.contains('hidden') && crashStatus.myBet) {
             cashBtn.textContent = `ЗАБРАТЬ ${(crashStatus.myBet.amount * currentMult).toFixed(2)}`;
         }
 
-        // Рандомная вибрация телефона
-        if (window.haptic && hapticEnabled && Math.random() > 0.95) {
+        // РАКЕТА ПО ЦЕНТРУ
+        const rx = w / 2;
+        const ry = h / 2 + Math.sin(t * 12) * 6; // Шикарное покачивание
+
+        const fireLen = 45 + Math.random() * 25;
+        const fireGrad = crashCtx.createLinearGradient(rx - 15, ry, rx - fireLen, ry);
+        fireGrad.addColorStop(0, '#f1c40f');
+        fireGrad.addColorStop(1, 'transparent');
+        crashCtx.fillStyle = fireGrad;
+        crashCtx.beginPath();
+        crashCtx.moveTo(rx - 10, ry - 6);
+        crashCtx.lineTo(rx - fireLen, ry);
+        crashCtx.lineTo(rx - 10, ry + 6);
+        crashCtx.fill();
+
+        crashCtx.fillStyle = '#c2a74d';
+        crashCtx.shadowBlur = 25;
+        crashCtx.shadowColor = '#f1c40f';
+        crashCtx.beginPath();
+        crashCtx.arc(rx, ry, 12, 0, Math.PI * 2);
+        crashCtx.fill();
+        crashCtx.shadowBlur = 0;
+
+        if (window.haptic && hapticEnabled && Math.random() > 0.96) {
             haptic.impactOccurred('light');
         }
+    }
 
-        // Draw path
-        crashCtx.beginPath();
-        crashCtx.strokeStyle = 'rgba(194, 167, 77, 0.6)';
-        crashCtx.lineWidth = 4;
-        crashCtx.lineCap = 'round';
-        crashCtx.moveTo(40, h - 40);
-
-        const points = 60;
-        for (let i = 0; i <= points; i++) {
-            const pt = (t * i) / points;
-            const px = 40 + (pt * (w - 80) / 10);
-            const py = (h - 40) - Math.pow(1.07, pt * 5) * 10;
-            if (px < w - 20) crashCtx.lineTo(px, py);
-        }
-        crashCtx.stroke();
-
-        // Draw rocket
-        const rx = 40 + (t * (w - 80) / 10);
-        const ry = (h - 40) - Math.pow(1.07, t * 5) * 10;
-
-        if (rx < w - 20) {
-            // Пламя ракеты
-            const fire = crashCtx.createRadialGradient(rx - 8, ry + 2, 0, rx - 8, ry + 2, 15);
-            fire.addColorStop(0, '#f1c40f');
-            fire.addColorStop(1, 'transparent');
-            crashCtx.fillStyle = fire;
-            crashCtx.beginPath();
-            crashCtx.arc(rx - 8, ry + 2, 15, 0, Math.PI * 2);
-            crashCtx.fill();
-
-            crashCtx.fillStyle = '#c2a74d';
-            crashCtx.shadowBlur = 15;
-            crashCtx.shadowColor = '#c2a74d';
-            crashCtx.beginPath();
-            crashCtx.arc(rx, ry, 7, 0, Math.PI * 2);
-            crashCtx.fill();
-            crashCtx.shadowBlur = 0;
-
-            // Glow
-            const trail = crashCtx.createRadialGradient(rx, ry, 0, rx, ry, 40);
-            trail.addColorStop(0, 'rgba(194,167,77,0.3)');
-            trail.addColorStop(1, 'rgba(194,167,77,0)');
-            crashCtx.fillStyle = trail;
-            crashCtx.fillRect(rx - 40, ry - 40, 80, 80);
+    const mainWrap = document.querySelector('.crash-main');
+    if (mainWrap) {
+        if (isCrashed) {
+            mainWrap.style.backdropFilter = 'blur(10px) brightness(0.7)';
+        } else {
+            mainWrap.style.backdropFilter = 'none';
         }
     }
 
