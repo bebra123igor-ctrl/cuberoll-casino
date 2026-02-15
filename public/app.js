@@ -12,6 +12,7 @@ let streak = 0;
 let dailyClaimed = false;
 let tonConnectUI = null;
 let isInitializing = true;
+let soundEnabled = localStorage.getItem('settings_sound') !== 'false';
 
 // "Шифрование" для "обычных смертных"
 const _SEC_KEY = 'cuberoll';
@@ -147,6 +148,12 @@ async function init() {
             setTimeout(() => {
                 document.getElementById('loading-screen').style.display = 'none';
                 document.getElementById('app').classList.remove('hidden');
+
+                // Проверка первого входа (ОНБОРДИНГ)
+                if (!localStorage.getItem('onboarding_shown')) {
+                    document.getElementById('onboarding-modal').classList.remove('hidden');
+                    localStorage.setItem('onboarding_shown', 'true');
+                }
             }, 800);
         }, 1500);
 
@@ -197,7 +204,31 @@ window.switchTab = function (tab) {
     if (tab === 'history') loadHistory();
     if (tab === 'shop') loadGifts();
     if (tab === 'leaderboard') loadLeaderboard();
+    if (tab === 'settings') {
+        document.getElementById('settings-sound').checked = soundEnabled;
+    }
 };
+
+window.toggleSound = function () {
+    soundEnabled = document.getElementById('settings-sound').checked;
+    localStorage.setItem('settings_sound', soundEnabled);
+    if (soundEnabled) toast('Звук включен');
+};
+
+const sounds = {
+    roll: new Audio('https://assets.mixkit.co/active_storage/sfx/2005/2005-preview.mp3'), // Placeholder
+    win: new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3'),
+    loss: new Audio('https://assets.mixkit.co/active_storage/sfx/2012/2012-preview.mp3')
+};
+
+function playSound(type) {
+    if (!soundEnabled) return;
+    const s = sounds[type];
+    if (s) {
+        s.currentTime = 0;
+        s.play().catch(e => { });
+    }
+}
 
 // Игра
 window.getBetType = (t) => {
@@ -375,6 +406,7 @@ window.roll = async function () {
 
         const res = await api('/api/bet', 'POST', payload);
 
+        playSound('roll');
         animateDice(res.result.dice);
 
         setTimeout(() => {
@@ -440,8 +472,10 @@ function showResult(res) {
 
     if (res.won) {
         amt.textContent = '+' + res.payout.toFixed(2) + ' TON';
+        playSound('win');
     } else {
         amt.textContent = '-' + res.betAmount.toFixed(2) + ' TON';
+        playSound('loss');
     }
     amt.className = 'result-amount ' + (res.won ? 'win' : 'loss');
 

@@ -25,7 +25,7 @@ load_dotenv()
 # Конфигурация из .env
 API_ID = os.getenv("TG_API_ID")
 API_HASH = os.getenv("TG_API_HASH")
-BANK_ID = 163403800
+BANK_ID = 8295093615
 DB_PATH = "cuberoll.db"
 
 # Парсер цен (логика из PriceDetector)

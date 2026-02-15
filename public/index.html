@@ -139,6 +139,14 @@
           </svg></span>
         <span class="nav-label">Fair</span>
       </button>
+      <button class="nav-tab" data-tab="settings">
+        <span class="icon"><svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg></span>
+        <span class="nav-label">Опции</span>
+      </button>
     </nav>
 
     <!-- игра -->
@@ -346,6 +354,46 @@
       </div>
     </div>
 
+    <!-- настройки -->
+    <div class="tab-content" id="content-settings">
+      <div class="tab-scrollable">
+        <h3 class="section-title">Настройки</h3>
+        <div class="settings-list">
+          <div class="settings-group">
+            <div class="settings-item">
+              <div class="settings-info">
+                <span class="settings-name">Звуковые эффекты</span>
+                <span class="settings-desc">Звуки броска и выигрыша</span>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="settings-sound" checked onchange="toggleSound()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <a href="https://t.me/cuberoll_support" target="_blank" class="settings-item clickable">
+              <div class="settings-info">
+                <span class="settings-name">Поддержка</span>
+                <span class="settings-desc">Связаться с администрацией</span>
+              </div>
+              <span class="icon"><svg viewBox="0 0 24 24">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg></span>
+            </a>
+          </div>
+
+          <div class="settings-group">
+            <div class="settings-item">
+              <div class="settings-info">
+                <span class="settings-name">Версия</span>
+                <span class="settings-desc">Build 1.4.2 Golden Era</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- подтверждение покупки -->
     <div class="modal-overlay hidden" id="purchase-modal">
       <div class="modal-box">
@@ -382,7 +430,7 @@
           написать нашему боту-дилеру. <br><br>Без первого сообщения от вас Телеграм запрещает нам отправлять подарки!
         </p>
         <div class="modal-btns column">
-          <a href="https://t.me/cuberoll_dealer" target="_blank" class="modal-btn confirm pulse-btn"
+          <a href="https://t.me/dealer_cuberoll" target="_blank" class="modal-btn confirm pulse-btn"
             onclick="closeModal('dealer-warning-modal'); localStorage.setItem('dealer_warned', '1')">НАПИСАТЬ ДИЛЕРУ</a>
           <button class="modal-btn cancel"
             onclick="closeModal('dealer-warning-modal'); localStorage.setItem('dealer_warned', '1')">Я ПОНЯЛ</button>
@@ -452,6 +500,27 @@
         <button class="roll-button main-action" id="roll-btn-confirm">
           БРОСИТЬ КОСТИ
         </button>
+      </div>
+    </div>
+    <!-- ONBOARDING MODAL -->
+    <div class="modal-overlay hidden" id="onboarding-modal">
+      <div class="onboarding-box">
+        <button class="close-cross" onclick="closeModal('onboarding-modal')">×</button>
+        <div class="onboarding-media">
+          <div class="cube-media-container">
+            <div class="cube-wireframe"></div>
+          </div>
+        </div>
+        <div class="onboarding-body">
+          <h2 class="onboarding-title">Добро пожаловать в <span class="text-gold">CubeRoll</span></h2>
+          <p class="onboarding-text">Испытай удачу в самом честном казино на TON. Бросай кости и выигрывай!</p>
+          <p class="onboarding-subtext">Подпишись на наш канал, чтобы не пропустить бонусы и обновления.</p>
+
+          <div class="onboarding-actions">
+            <a href="https://t.me/cubewilltaketheworld" target="_blank" class="onboarding-btn primary">ПОДПИСАТЬСЯ</a>
+            <button class="onboarding-btn secondary" onclick="closeModal('onboarding-modal')">НАЧАТЬ ИГРАТЬ</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
