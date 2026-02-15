@@ -826,7 +826,8 @@
         async function loadSets() {
             try {
                 const d = await api('/api/admin/stats');
-                const g = document.getElementById('sgrp'); const s = d.settings || {};
+                const g = document.getElementById('sgrp');
+                const s = d.settings || {};
                 const n = {
                     min_bet: 'Мин. ставка',
                     max_bet: 'Макс. ставка',
@@ -836,7 +837,12 @@
                     ton_wallet: 'Кошелёк для TON (принимающий)',
                     min_deposit: 'Мин. пополнение (TON)'
                 };
-                g.innerHTML = Object.entries(s).map(([k, v]) => `<div class="si"><span class="si-l">${n[k] || k}</span><input type="text" class="si-i" data-k="${k}" value="${v}"></div>`).join('');
+
+                // Show all keys from 'n', not just what's in 's'
+                g.innerHTML = Object.keys(n).map(k => {
+                    const v = s[k] !== undefined ? s[k] : '';
+                    return `<div class="si"><span class="si-l">${n[k]}</span><input type="text" class="si-i" data-k="${k}" value="${v}"></div>`;
+                }).join('');
             } catch (e) { console.error(e); }
         }
 

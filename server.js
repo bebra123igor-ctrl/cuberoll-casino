@@ -336,7 +336,8 @@ app.post('/api/gifts/buy', auth, (req, res) => {
 app.post('/api/deposit/request', auth, (req, res) => {
     const { amount } = req.body;
     const amt = parseFloat(amount);
-    if (isNaN(amt) || amt < 0.1) return res.status(400).secure({ error: 'Min 0.1 TON' });
+    const minDep = parseFloat(settingsOps.get('min_deposit') || 0.1);
+    if (isNaN(amt) || amt < minDep) return res.status(400).secure({ error: `Минимум: ${minDep} TON` });
 
     const comment = 'CR-' + Math.random().toString(36).substring(2, 10).toUpperCase();
     try {

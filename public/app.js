@@ -128,6 +128,15 @@ async function init() {
         const data = await api('/api/auth', 'POST');
         user = data.user;
         curSeeds = data.seeds;
+        window.appSettings = data.settings || {};
+
+        // Update UI with settings
+        if (window.appSettings.minDeposit) {
+            const h = document.getElementById('dep-min-hint');
+            if (h) h.textContent = `Минимум: ${window.appSettings.minDeposit} TON`;
+            const inp = document.getElementById('dep-amount');
+            if (inp) inp.setAttribute('min', window.appSettings.minDeposit);
+        }
 
         // Показываем инфо юзера
         document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
@@ -650,8 +659,9 @@ window.depositRequest = async function () {
 
     const amountEl = document.getElementById('dep-amount');
     const amountVal = amountEl ? amountEl.value : null;
+    const minD = window.appSettings?.minDeposit || 0.1;
 
-    if (!amountVal || parseFloat(amountVal) < 0.1) return toast('Мин. сумма 0.1 TON', 'error');
+    if (!amountVal || parseFloat(amountVal) < minD) return toast(`Мин. сумма ${minD} TON`, 'error');
 
     const btn = document.getElementById('dep-btn-go');
     btn.disabled = true;
