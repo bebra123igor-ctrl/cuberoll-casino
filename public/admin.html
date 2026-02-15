@@ -665,11 +665,24 @@
                 }
                 document.getElementById('auth-box').classList.add('hidden');
                 document.getElementById('content').classList.remove('hidden');
-                await loadAll();
+
+                // Загружаем данные всех вкладок
+                await Promise.all([
+                    loadStats(),
+                    loadUsers(),
+                    loadGames(),
+                    loadGifts(),
+                    loadPromos(),
+                    loadSets()
+                ]);
             } catch (e) {
                 document.querySelector('.auth-msg').innerHTML = '<div style="color:var(--red);font-weight:900;font-size:18px">🛑 ОШИБКА АВТОРИЗАЦИИ</div><p style="margin-top:10px">' + e.message + '</p>';
             }
         }
+
+        // Инициализация при загрузке
+        initTg();
+        loadAll();
 
         async function loadStats() {
             try {
@@ -861,7 +874,7 @@
         async function ban(id) { if (!confirm('Забанить?')) return; try { await api(`/api/admin/user/${id}/ban`, 'POST'); loadUsers(); } catch (e) { alert(e.message); } }
         async function unban(id) { try { await api(`/api/admin/user/${id}/unban`, 'POST'); loadUsers(); } catch (e) { alert(e.message); } }
         document.getElementById('bal-modal').addEventListener('click', e => { if (e.target.id === 'bal-modal') closeModal(); });
-        loadAll();
+    </script>
     </script>
 </body>
 
