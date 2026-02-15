@@ -3301,391 +3301,215 @@ input:checked+.toggle-slider:before {
   position: relative;
 }
 
-.cr-lane.safe {
-  background: #1c1c1c;
-}
-
-.cr-lane.road {
-  background: #1a1a1a;
-}
-
-/* Золотистая линия из наброска */
-.cr-lane::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: #c2a74d;
-  opacity: 0.2;
-}
-
-/* КУБ (3D версия как в основной игре) */
-.cr-player-wrap {
-  position: absolute;
-  bottom: 15px;
-  left: 50%;
-  width: 50px;
-  height: 50px;
-  transform: translateX(-50%);
-  z-index: 10;
-  perspective: 400px;
-  transition: bottom 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-}
-
-/* КУБ (Премиальный 3D куб) */
-.cr-dice-3d {
-  width: 50px;
-  height: 50px;
-  position: relative;
-  transform-style: preserve-3d;
-  transform: rotateX(-20deg) rotateY(25deg);
-  transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.cr-dice-3d .dice-face {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%);
-  border: 2px solid rgba(194, 167, 77, 0.4);
-  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8), 0 0 10px rgba(194, 167, 77, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  overflow: hidden;
-  backface-visibility: visible;
-}
-
-.cr-dice-3d .dice-face::after {
-  content: "";
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%, rgba(255, 255, 255, 0.05) 100%);
-  transform: rotate(30deg);
-  pointer-events: none;
-}
-
-.cr-dice-3d .dots span {
-  width: 9px;
-  height: 9px;
-  background: radial-gradient(circle, #f1c40f 0%, #c2a74d 100%);
-  box-shadow: 0 0 10px rgba(241, 196, 15, 0.8);
-  border-radius: 50%;
-}
-
-/* Фикс геометрии куба (50px / 2 = 25px) */
-.cr-dice-3d .front {
-  transform: translateZ(25px) !important;
-}
-
-.cr-dice-3d .back {
-  transform: rotateY(180deg) translateZ(25px) !important;
-}
-
-.cr-dice-3d .right {
-  transform: rotateY(90deg) translateZ(25px) !important;
-}
-
-.cr-dice-3d .left {
-  transform: rotateY(-90deg) translateZ(25px) !important;
-}
-
-.cr-dice-3d .top {
-  transform: rotateX(90deg) translateZ(25px) !important;
-}
-
-.cr-dice-3d .bottom {
-  transform: rotateX(-90deg) translateZ(25px) !important;
-}
-
-/* Красивая аура под кубом */
-.cr-player-aura {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 70px;
-  height: 70px;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(194, 167, 77, 0.3) 0%, transparent 70%);
-  border-radius: 50%;
-  z-index: -1;
-  animation: aura-pulse 2s infinite;
-}
-
-@keyframes aura-pulse {
-  0% {
-    transform: translate(-50%, -50%) scale(0.9);
-    opacity: 0.3;
-  }
-
-  50% {
-    transform: translate(-50%, -50%) scale(1.1);
-    opacity: 0.5;
-  }
-
-  100% {
-    transform: translate(-50%, -50%) scale(0.9);
-    opacity: 0.3;
-  }
-}
-
-/* МАШИНА (Реалистичный вид сверху) */
-.cr-obstacle {
-  position: absolute;
-  width: 95px;
-  height: 46px;
-  background: #2a2a2a;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.7);
-  z-index: 5;
-  animation: cr-car-move linear infinite;
-  transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1), filter 0.3s, box-shadow 0.3s;
-}
-
-/* Стекла и детали корпуса */
-.cr-obstacle::before {
-  content: "";
-  position: absolute;
-  top: 6px;
-  left: 16px;
-  width: 58px;
-  height: 32px;
-  background: #111;
-  border-radius: 4px;
-  border: 1px solid #333;
-}
-
-/* Фары и стоп-сигналы */
-.cr-obstacle::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background:
-    linear-gradient(90deg, #fff 0%, #fff 4%, transparent 4%, transparent 96%, #f00 96%) 0 5px / 100% 6px no-repeat,
-    linear-gradient(90deg, #fff 0%, #fff 4%, transparent 4%, transparent 96%, #f00 96%) 0 33px / 100% 6px no-repeat;
-}
-
-.cr-lane:nth-child(even) .cr-obstacle {
-  background: #3c1a1a;
-}
-
-.cr-lane:nth-child(3n) .cr-obstacle {
-  background: #1a1a3c;
-}
-
-.cr-obstacle.lamborghini {
-  background: #f1c40f !important;
-  /* Gold/Yellow */
-  width: 100px;
-  border-radius: 4px 12px 12px 4px;
-}
-
-.cr-obstacle.lamborghini::before {
-  clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%);
-}
-
-.cr-obstacle.killer {
-  border-color: #ff0000;
-  box-shadow: 0 0 35px rgba(255, 0, 0, 0.8);
-  z-index: 20;
-}
-
-.cr-obstacle.braking {
-  animation-play-state: paused !important;
-  box-shadow: -15px 0 35px rgba(255, 0, 0, 0.6);
-  filter: brightness(1.2);
-}
-
-/* Lamborghini (Киллер) */
-.cr-obstacle.lamborghini.killer {
-  width: 100px;
-  z-index: 20;
-}
-
-.cr-obstacle.lamborghini.revealed {
-  background: #f1c40f !important;
-  box-shadow: 0 0 40px rgba(255, 0, 0, 0.7);
-  border-color: #ff0000;
-}
-
-/* Анимация прыжка куба */
-.cr-player-wrap.jumping {
-  animation: cr-cube-jump 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-@keyframes cr-cube-jump {
-  0% {
-    transform: translateX(-50%) scale(1) rotate(0deg);
-  }
-
-  50% {
-    transform: translateX(-50%) scale(1.3) translateY(-15px) rotate(5deg);
-  }
-
-  100% {
-    transform: translateX(-50%) scale(1) rotate(0deg);
-  }
-}
-
-.cr-obstacle::before {
-  left: 10px;
-}
-
-.cr-obstacle::after {
-  right: 10px;
-}
-
-@keyframes cr-car-move {
-  from {
-    left: -100px;
-  }
-
-  to {
-    left: 100%;
-  }
-}
-
-.cr-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 20;
-}
-
-/* Анимация прыжка с кувырком */
-.cr-player-wrap.jumping {
-  animation: cr-cube-jump 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-@keyframes cr-cube-jump {
-  0% {
-    transform: translateX(-50%) scale(1) rotate(0deg);
-  }
-
-  45% {
-    transform: translateX(-50%) scale(1.35) translateY(-35px) rotate(180deg);
-    filter: brightness(1.5) drop-shadow(0 0 15px rgba(194, 167, 77, 0.6));
-  }
-
-  100% {
-    transform: translateX(-50%) scale(1) rotate(360deg);
-  }
-}
-
-.cr-lane {
-  height: 80px;
-  width: 100%;
-  display: flex;
-  position: relative;
-  background: #181818;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.02);
-}
-
-.cr-lane.road::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: repeating-linear-gradient(90deg, #333 0, #333 40px, transparent 40px, transparent 80px);
-  transform: translateY(-50%);
-  opacity: 0.5;
-}
-
-.cr-lane.safe {
-  background: #1c1c1c;
-}
-
-.cr-lane.safe::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(45deg, rgba(194, 167, 77, 0.05) 0, rgba(194, 167, 77, 0.05) 10px, transparent 10px, transparent 20px);
-}
-
-.cr-stats {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.cr-stat-item {
-  flex: 1;
-  background: #222;
-  border-radius: 10px;
-  padding: 10px;
-  text-align: center;
-  border: 1px solid #333;
-}
-
-.cr-stat-item span {
-  display: block;
-  font-size: 10px;
-  color: #888;
-  margin-bottom: 2px;
-}
-
-.cr-stat-item strong {
-  font-size: 15px;
-  color: #c2a74d;
-}
-
-.cr-bet-input input {
-  width: 100%;
-  background: #222;
-  border: 2px solid #333;
-  border-radius: 10px;
-  padding: 12px;
-  color: #fff;
-  text-align: center;
-  font-size: 15px;
-  margin-bottom: 10px;
-}
-
-.cr-btn {
-  width: 100%;
-  padding: 15px;
-  border-radius: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  cursor: pointer;
-  border: none;
-}
-
-.cr-btn.start {
-  background: #c2a74d;
-  color: #1a1a1a;
-}
-
-.cr-btn.jump {
-  background: #c2a74d;
-  color: #1a1a1a;
-  margin-bottom: 10px;
-}
-
-.cr-btn.cashout {
-  background: transparent;
-  color: #c2a74d;
-  border: 2px solid #c2a74d;
-}
-
-#cr-play-ui {
+/* ═══ CRASH (ROCKET) ═══ */
+.crash-container {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.crash-stats-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  min-height: 28px;
+}
+
+.crash-history-item {
+  padding: 4px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.crash-history-item.win {
+  color: var(--green);
+}
+
+.crash-history-item.loss {
+  color: var(--red);
+}
+
+.crash-main {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #080808;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+#crash-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.crash-info {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.crash-mult {
+  font-size: 48px;
+  font-weight: 900;
+  color: var(--t1);
+  text-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px var(--accent-g);
+  font-variant-numeric: tabular-nums;
+}
+
+.crash-status {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--t3);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.crash-waiting-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.waiting-timer {
+  text-align: center;
+  width: 80%;
+}
+
+.timer-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--t4);
+  margin-bottom: 8px;
+}
+
+.timer-progress-wrap {
+  height: 4px;
+  background: var(--bg2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.timer-progress {
+  height: 100%;
+  background: var(--accent);
+  width: 0%;
+  transition: width 0.1s linear;
+}
+
+.timer-sec {
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--accent);
+}
+
+.crash-controls {
+  background: var(--bg2);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+}
+
+.crash-bet-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bet-input-wrap {
+  display: flex;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.bet-input-wrap input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: white;
+  padding: 8px;
+  font-family: var(--font);
+  font-weight: 700;
+  outline: none;
+}
+
+.bet-max {
+  background: var(--border3);
+  border: none;
+  color: var(--t3);
+  padding: 0 12px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.crash-btn {
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 900;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+.crash-btn.bet {
+  background: var(--accent);
+  color: #000;
+}
+
+.crash-btn.cashout {
+  background: var(--green);
+  color: #000;
+  animation: pulse-green 1.5s infinite;
+}
+
+@keyframes pulse-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
+}
+
+.crash-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.crash-info.crashed .crash-mult {
+  color: var(--red);
+  text-shadow: 0 0 30px rgba(229, 57, 53, 0.5);
 }

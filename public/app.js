@@ -806,203 +806,208 @@ window.copyMemo = function () {
 };
 
 
-// --- CROSSROAD LOGIC ---
-let crActive = false;
-let crStep = 0;
-let crMult = 1.0;
-let crBet = 0;
+// --- CRASH LOGIC ---
+let crashStatus = null;
+let crashPolling = null;
+let crashCanvas = null;
+let crashCtx = null;
+let crashAnimationId = null;
+let crashLastUpdate = 0;
 
 window.selectGame = function (game) {
     document.getElementById('game-view-dice').classList.toggle('hidden', game !== 'dice');
-    document.getElementById('game-view-crossroad').classList.toggle('hidden', game !== 'crossroad');
+    document.getElementById('game-view-crash').classList.toggle('hidden', game !== 'crash');
     document.getElementById('game-tab-dice').classList.toggle('active', game === 'dice');
-    document.getElementById('game-tab-crossroad').classList.toggle('active', game === 'crossroad');
-    if (game === 'crossroad') initCrLanes();
-}
+    document.getElementById('game-tab-crash').classList.toggle('active', game === 'crash');
 
-function initCrLanes() {
-    const container = document.getElementById('cr-lanes-container');
-    if (container.children.length > 0) return;
-    for (let i = 0; i < 25; i++) {
-        const lane = document.createElement('div');
-        lane.className = 'cr-lane ' + (i % 3 === 0 ? 'safe' : 'road');
-        lane.id = `cr-lane-${i}`;
-        if (i > 0 && i % 3 !== 0) {
-            addCar(lane);
-        }
-        container.appendChild(lane);
-    }
-    updateChickenPosition();
-}
-
-function addCar(lane) {
-    const count = 1;
-    for (let i = 0; i < count; i++) {
-        const car = document.createElement('div');
-        car.className = 'cr-obstacle';
-        car.style.animationDuration = (2 + Math.random() * 2) + 's';
-        // Используем отрицательную задержку, чтобы машины уже ехали при старте
-        car.style.animationDelay = '-' + (Math.random() * 5) + 's';
-        if (Math.random() > 0.5) {
-            car.style.animationDirection = 'reverse';
-        }
-        lane.appendChild(car);
+    if (game === 'crash') {
+        startCrashPolling();
+        initCrashCanvas();
+    } else {
+        stopCrashPolling();
     }
 }
 
-function updateChickenPosition() {
-    const player = document.getElementById('cr-player');
-    const container = document.getElementById('cr-lanes-container');
-
-    // Начинаем анимацию прыжка
-    player.classList.remove('jumping');
-    void player.offsetWidth;
-    player.classList.add('jumping');
-
-    // Двигаем дорогу
-    const laneHeight = 80;
-    container.style.transform = `translateY(${crStep * laneHeight}px)`;
-
-    // Машины в старом ряду пускаем СРАЗУ (как только игрок оторвался от земли)
-    if (crStep > 0) resumeCarsInLane(crStep - 1);
-
-    // Машины в НОВОМ ряду останавливаем только когда кубик "приземлится" (~300ms)
-    setTimeout(() => {
-        if (!crActive) return; // Если уже разбились, не стопаем
-        stopCarsInLane(crStep);
-    }, 300);
+function startCrashPolling() {
+    if (crashPolling) return;
+    crashPolling = setInterval(pollCrash, 1000);
+    pollCrash();
 }
 
-function stopCarsInLane(step) {
-    const lane = document.getElementById(`cr-lane-${step}`);
-    if (!lane) return;
-    lane.querySelectorAll('.cr-obstacle').forEach(car => {
-        car.classList.add('braking');
-    });
+function stopCrashPolling() {
+    clearInterval(crashPolling);
+    crashPolling = null;
+    cancelAnimationFrame(crashAnimationId);
 }
 
-function resumeCarsInLane(step) {
-    const lane = document.getElementById(`cr-lane-${step}`);
-    if (!lane) return;
-    lane.querySelectorAll('.cr-obstacle').forEach(car => {
-        car.classList.remove('braking');
-    });
+let timeOffset = 0;
+
+async function pollCrash() {
+    try {
+        const status = await api('/api/crash/status');
+        if (status.serverTime) {
+            timeOffset = Date.now() - status.serverTime;
+        }
+        crashStatus = status;
+        updateCrashUI();
+    } catch (e) { console.error('Crash poll failed:', e); }
 }
 
-window.crossroadStart = async function () {
-    if (crActive) return;
-    const amtStr = document.getElementById('cr-bet-amount').value.replace(',', '.');
+function updateCrashUI() {
+    if (!crashStatus) return;
+
+    const multEl = document.getElementById('crash-multiplier');
+    const statusEl = document.getElementById('crash-status-text');
+    const waitingUI = document.getElementById('crash-waiting-ui');
+    const betBtn = document.getElementById('crash-bet-btn');
+    const cashoutBtn = document.getElementById('crash-cashout-btn');
+    const historyBar = document.getElementById('crash-history-bar');
+
+    if (crashStatus.phase === 'FLYING') {
+        waitingUI.classList.add('hidden');
+        statusEl.textContent = 'ПОЛЁТ...';
+        multEl.textContent = crashStatus.multiplier.toFixed(2) + 'x';
+        document.querySelector('.crash-info').classList.remove('crashed');
+
+        if (crashStatus.myBet && !crashStatus.myBet.cashedOut) {
+            betBtn.classList.add('hidden');
+            cashoutBtn.classList.remove('hidden');
+            cashoutBtn.textContent = `ЗАБРАТЬ ${(crashStatus.myBet.amount * crashStatus.multiplier).toFixed(2)}`;
+        } else {
+            betBtn.classList.remove('hidden');
+            betBtn.disabled = true;
+            betBtn.textContent = crashStatus.myBet?.cashedOut ? 'ВЫ ЗАБРАЛИ' : 'РАУНД ИДЕТ';
+            cashoutBtn.classList.add('hidden');
+        }
+    } else if (crashStatus.phase === 'WAITING') {
+        waitingUI.classList.remove('hidden');
+        statusEl.textContent = 'ГОТОВИМСЯ...';
+        multEl.textContent = '1.00x';
+        document.querySelector('.crash-info').classList.remove('crashed');
+
+        const totalWait = 10000;
+        const remaining = crashStatus.timeLeft;
+        const progress = (1 - (remaining / totalWait)) * 100;
+        document.getElementById('timer-progress-bar').style.width = progress + '%';
+        document.getElementById('timer-seconds').textContent = (remaining / 1000).toFixed(1) + 's';
+
+        betBtn.classList.remove('hidden');
+        betBtn.disabled = !!crashStatus.myBet;
+        betBtn.textContent = crashStatus.myBet ? 'СТАВКА ПРИНЯТА' : 'ПОСТАВИТЬ';
+        cashoutBtn.classList.add('hidden');
+    } else if (crashStatus.phase === 'CRASHED') {
+        waitingUI.classList.add('hidden');
+        statusEl.textContent = 'РВАНО! 💥';
+        multEl.textContent = crashStatus.multiplier.toFixed(2) + 'x';
+        document.querySelector('.crash-info').classList.add('crashed');
+
+        betBtn.classList.remove('hidden');
+        betBtn.disabled = true;
+        betBtn.textContent = 'КРАШ';
+        cashoutBtn.classList.add('hidden');
+    }
+
+    // Update history
+    historyBar.innerHTML = crashStatus.history.map(h => `
+        <div class="crash-history-item ${h >= 2 ? 'win' : 'loss'}">${h.toFixed(2)}x</div>
+    `).join('');
+}
+
+function initCrashCanvas() {
+    crashCanvas = document.getElementById('crash-canvas');
+    if (!crashCanvas) return;
+    crashCtx = crashCanvas.getContext('2d');
+
+    const resize = () => {
+        const dpr = window.devicePixelRatio || 1;
+        crashCanvas.width = crashCanvas.clientWidth * dpr;
+        crashCanvas.height = crashCanvas.clientHeight * dpr;
+        crashCtx.scale(dpr, dpr);
+    };
+
+    window.addEventListener('resize', resize);
+    resize();
+    renderCrash();
+}
+
+const particles = [];
+
+function renderCrash() {
+    if (!crashCanvas || !crashCtx) return;
+    const w = crashCanvas.width / (window.devicePixelRatio || 1);
+    const h = crashCanvas.height / (window.devicePixelRatio || 1);
+
+    crashCtx.clearRect(0, 0, w, h);
+
+    if (crashStatus && crashStatus.phase === 'FLYING') {
+        const t = (Date.now() - timeOffset - (crashStatus.startTime || 0)) / 1000;
+
+        // Draw path
+        crashCtx.beginPath();
+        crashCtx.strokeStyle = 'rgba(194, 167, 77, 0.5)';
+        crashCtx.lineWidth = 3;
+        crashCtx.moveTo(40, h - 40);
+
+        const points = 50;
+        for (let i = 0; i <= points; i++) {
+            const pt = (t * i) / points;
+            const px = 40 + (pt * (w - 80) / 10); // scale speed
+            const py = (h - 40) - Math.pow(1.07, pt * 5) * 10;
+            if (px < w - 20) crashCtx.lineTo(px, py);
+        }
+        crashCtx.stroke();
+
+        // Draw rocket
+        const rx = 40 + (t * (w - 80) / 10);
+        const ry = (h - 40) - Math.pow(1.07, t * 5) * 10;
+
+        if (rx < w - 20) {
+            crashCtx.fillStyle = '#c2a74d';
+            crashCtx.beginPath();
+            crashCtx.arc(rx, ry, 6, 0, Math.PI * 2);
+            crashCtx.fill();
+
+            // Glow
+            const trail = crashCtx.createRadialGradient(rx, ry, 0, rx, ry, 30);
+            trail.addColorStop(0, 'rgba(194,167,77,0.4)');
+            trail.addColorStop(1, 'rgba(194,167,77,0)');
+            crashCtx.fillStyle = trail;
+            crashCtx.fillRect(rx - 30, ry - 30, 60, 60);
+        }
+    }
+
+    crashAnimationId = requestAnimationFrame(renderCrash);
+}
+
+window.crashPlaceBet = async function () {
+    const amtStr = document.getElementById('crash-bet-amount').value;
     const amt = parseFloat(amtStr);
-    if (isNaN(amt) || amt < 0.1) return toast('Мин. ставка 0.1 TON', 'error');
+
+    if (isNaN(amt) || amt < 0.1) return toast('Минимум 0.1 TON', 'error');
     if (amt > user.balance) return toast('Недостаточно баланса', 'error');
 
     try {
-        const res = await api('/api/crossroad/start', 'POST', { betAmount: amt });
-        crActive = true;
-        crBet = amt;
-        crStep = 0;
-        crMult = 1.0;
+        const res = await api('/api/crash/bet', 'POST', { betAmount: amt });
         setBalance(res.newBalance);
-
-        document.getElementById('cr-setup-ui').classList.add('hidden');
-        document.getElementById('cr-play-ui').classList.remove('hidden');
-        document.getElementById('cr-overlay').classList.add('hidden');
-
-        updateCrUI();
-        updateChickenPosition();
+        toast('Ставка принята!', 'success');
         if (window.haptic) haptic.impactOccurred('medium');
+        pollCrash();
     } catch (e) { toast(e.message, 'error'); }
-}
+};
 
-window.crossroadStep = async function () {
-    if (!crActive) return;
+window.crashCashout = async function () {
     try {
-        const res = await api('/api/crossroad/step', 'POST');
-
-        if (res.crash) {
-            crActive = false;
-            // Анимация смерти: сначала спавним быструю машину
-            await animateCrash(res.step);
-
-            document.getElementById('cr-status-text').textContent = 'СБИТ ТЕХНИКОЙ! 💥';
-            document.getElementById('cr-overlay').classList.remove('hidden');
-
-            setTimeout(() => {
-                document.getElementById('cr-setup-ui').classList.remove('manual-hidden');
-                document.getElementById('cr-setup-ui').classList.remove('hidden');
-                document.getElementById('cr-play-ui').classList.add('hidden');
-            }, 1500);
-
-            if (window.haptic) haptic.notificationOccurred('error');
-        } else {
-            crStep = res.step;
-            crMult = res.multiplier;
-            updateCrUI();
-            updateChickenPosition();
-            if (window.haptic) haptic.impactOccurred('light');
-        }
-    } catch (e) { toast(e.message, 'error'); }
-}
-
-async function animateCrash(targetStep) {
-    const lane = document.getElementById(`cr-lane-${targetStep}`);
-    if (!lane) return;
-
-    const player = document.getElementById('cr-player');
-    const container = document.getElementById('cr-lanes-container');
-    const laneHeight = 80;
-
-    // 1. Прыжок в ловушку
-    player.classList.add('jumping');
-    container.style.transform = `translateY(${targetStep * laneHeight}px)`;
-
-    // Возобновляем движение в прошлом ряду, чтобы сзади был трафик
-    if (crStep >= 0) resumeCarsInLane(crStep);
-
-    // 2. Спавним "Скрытую Ламборгини"
-    const killer = document.createElement('div');
-    killer.className = 'cr-obstacle lamborghini killer';
-    const exitRight = Math.random() > 0.5;
-    killer.style.left = exitRight ? '-200px' : '150%';
-    killer.style.transition = 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-    lane.appendChild(killer);
-
-    // 3. Резкий вылет и раскрытие (желтый цвет) прямо перед хитом
-    await new Promise(r => setTimeout(r, 50));
-    killer.style.left = '50%';
-    setTimeout(() => killer.classList.add('revealed'), 100);
-
-    // Удар
-    await new Promise(r => setTimeout(r, 200));
-    player.style.filter = 'hue-rotate(90deg) brightness(2)';
-    player.style.transform = 'translateX(-50%) scale(0.6) rotate(45deg)';
-
-    // Машина едет дальше, не останавливаясь
-    killer.style.left = exitRight ? '200%' : '-200%';
-
-    await new Promise(r => setTimeout(r, 300));
-    player.style.filter = '';
-    player.style.transform = '';
-}
-
-window.crossroadCashout = async function () {
-    if (!crActive) return;
-    try {
-        const res = await api('/api/crossroad/cashout', 'POST');
-        crActive = false;
+        const res = await api('/api/crash/cashout', 'POST');
         setBalance(res.newBalance);
         triggerConfetti();
-        toast(`Вы выиграли ${res.payout.toFixed(2)} TON!`, 'success');
-
-        document.getElementById('cr-setup-ui').classList.remove('hidden');
-        document.getElementById('cr-play-ui').classList.add('hidden');
-        updateCrUI();
+        toast(`Вы забрали ${res.payout.toFixed(2)} TON! (${res.multiplier}x)`, 'success');
+        if (window.haptic) haptic.notificationOccurred('success');
+        pollCrash();
     } catch (e) { toast(e.message, 'error'); }
-}
+};
 
-function updateCrUI() {
-    document.getElementById('cr-current-multiplier').textContent = crMult.toFixed(2) + 'x';
-    document.getElementById('cr-current-win').textContent = (crBet * crMult).toFixed(2);
-}
+window.setMaxCrashBet = function () {
+    document.getElementById('crash-bet-amount').value = Math.floor(user.balance);
+};
 
 document.addEventListener('DOMContentLoaded', init);

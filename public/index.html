@@ -187,7 +187,7 @@
 
         <div class="game-selector">
           <button class="game-sel-btn active" id="game-tab-dice" onclick="selectGame('dice')">Dice</button>
-          <button class="game-sel-btn" id="game-tab-crossroad" onclick="selectGame('crossroad')">Crossroad</button>
+          <button class="game-sel-btn" id="game-tab-crash" onclick="selectGame('crash')">Rocket</button>
         </div>
 
         <!-- КУБИКИ -->
@@ -260,63 +260,43 @@
           </div>
         </div>
 
-        <!-- CROSSROAD -->
-        <div id="game-view-crossroad" class="hidden">
-          <div class="crossroad-board">
-            <div class="cr-lanes" id="cr-lanes-container">
-              <!-- ланы генерятся в JS -->
+        <!-- CRASH (ROCKET) -->
+        <div id="game-view-crash" class="hidden">
+          <div class="crash-container">
+            <div class="crash-stats-bar" id="crash-history-bar">
+              <!-- История крашей -->
             </div>
-            <div class="cr-player-wrap" id="cr-player">
-              <div class="cr-player-aura"></div>
-              <div class="dice3d cr-dice-3d" id="cr-die">
-                <div class="dice-face front">
-                  <div class="dots d1"><span></span></div>
+
+            <div class="crash-main">
+              <div class="crash-canvas-wrap">
+                <canvas id="crash-canvas"></canvas>
+                <div class="crash-info">
+                  <div id="crash-multiplier" class="crash-mult">1.00x</div>
+                  <div id="crash-status-text" class="crash-status">ОЖИДАНИЕ...</div>
                 </div>
-                <div class="dice-face back">
-                  <div class="dots d6"><span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+
+              <div id="crash-waiting-ui" class="crash-waiting-overlay hidden">
+                <div class="waiting-timer">
+                  <div class="timer-label">СЛЕДУЮЩИЙ РАУНД</div>
+                  <div class="timer-progress-wrap">
+                    <div id="timer-progress-bar" class="timer-progress"></div>
                   </div>
+                  <div id="timer-seconds" class="timer-sec">0.0s</div>
                 </div>
-                <div class="dice-face right">
-                  <div class="dots d3"><span></span><span></span><span></span></div>
-                </div>
-                <div class="dice-face left">
-                  <div class="dots d4"><span></span><span></span><span></span><span></span></div>
-                </div>
-                <div class="dice-face top">
-                  <div class="dots d2"><span></span><span></span></div>
-                </div>
-                <div class="dice-face bottom">
-                  <div class="dots d5"><span></span><span></span><span></span><span></span><span></span></div>
-                </div>
-              </div>
-            </div>
-            <div id="cr-overlay" class="cr-overlay hidden">
-              <div class="cr-status-msg" id="cr-status-text">CRASHED!</div>
-            </div>
-          </div>
-
-          <div class="cr-controls">
-            <div class="cr-stats">
-              <div class="cr-stat-item">
-                <span>Суммарно:</span>
-                <strong id="cr-current-multiplier">1.00x</strong>
-              </div>
-              <div class="cr-stat-item">
-                <span>Выигрыш:</span>
-                <strong id="cr-current-win">0.00</strong>
               </div>
             </div>
 
-            <div id="cr-setup-ui">
-              <div class="cr-bet-input">
-                <input type="text" inputmode="decimal" id="cr-bet-amount" placeholder="Ставка (TON)" value="1">
+            <div class="crash-controls">
+              <div class="crash-bet-box">
+                <div class="bet-input-wrap">
+                  <input type="number" id="crash-bet-amount" placeholder="Ставка" value="10">
+                  <button class="bet-max" onclick="setMaxCrashBet()">MAX</button>
+                </div>
+                <button id="crash-bet-btn" class="crash-btn bet" onclick="crashPlaceBet()">ПОСТАВИТЬ</button>
+                <button id="crash-cashout-btn" class="crash-btn cashout hidden"
+                  onclick="crashCashout()">ЗАБРАТЬ</button>
               </div>
-              <button class="cr-btn start" onclick="crossroadStart()">ИГРАТЬ</button>
-            </div>
-
-            <div id="cr-play-ui" class="hidden">
-              <button class="cr-btn jump" onclick="crossroadStep()">ПРЫЖОК</button>
-              <button class="cr-btn cashout" onclick="crossroadCashout()">ЗАБРАТЬ</button>
             </div>
           </div>
         </div>

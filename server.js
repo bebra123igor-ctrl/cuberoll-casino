@@ -268,16 +268,96 @@ app.post('/api/bet', auth, (req, res) => {
     });
 });
 
-// --- CROSSROAD GAME ---
+// --- CRASH (ROCKET) GAME (GLOBAL SYNC) ---
 
-app.post('/api/crossroad/start', auth, (req, res) => {
+const crashState = {
+    phase: 'WAITING', // WAITING, FLYING, CRASHED
+    multiplier: 1.0,
+    startTime: Date.now() + 10000, // Start in 10s
+    crashPoint: 0,
+    history: [],
+    bets: [], // { telegramId: number, amount: number, cashedOut: boolean, payout: number }
+    gameId: Math.random().toString(36).substring(2, 9)
+};
+
+function generateCrashPoint() {
+    // Вероятностная формула: 97% RTP (3% house edge)
+    const e = 2 ** 32;
+    const h = crypto.randomBytes(4).readUInt32BE(0);
+    if (h % 33 === 0) return 1.00; // Мгновенный краш (3.03% шанс)
+    return Math.floor((100 * e - h) / (e - h)) / 100;
+}
+
+function tickCrash() {
+    const now = Date.now();
+
+    if (crashState.phase === 'WAITING') {
+        if (now >= crashState.startTime) {
+            crashState.phase = 'FLYING';
+            crashState.crashPoint = generateCrashPoint();
+            crashState.multiplier = 1.0;
+            console.log(`[Crash] Game ${crashState.gameId} started. Crash Point: ${crashState.crashPoint}`);
+        }
+    } else if (crashState.phase === 'FLYING') {
+        const elapsed = (now - crashState.startTime) / 1000; // s
+        // Экспоненциальный рост: 1.07 ^ t
+        crashState.multiplier = Math.round(Math.pow(1.07, elapsed) * 100) / 100;
+
+        if (crashState.multiplier >= crashState.crashPoint) {
+            crashState.phase = 'CRASHED';
+            crashState.multiplier = crashState.crashPoint; // Fix at crash point
+            crashState.history.unshift(crashState.crashPoint);
+            if (crashState.history.length > 10) crashState.history.pop();
+
+            console.log(`[Crash] Game ${crashState.gameId} CRASHED at ${crashState.crashPoint}x`);
+
+            // Завершаем ставки тех, кто не забрал
+            crashState.bets.forEach(b => {
+                if (!b.cashedOut) {
+                    gameOps.create({
+                        telegramId: b.telegramId, betAmount: b.amount, gameType: 'crash',
+                        playerChoice: 'crash', diceResult: String(crashState.crashPoint),
+                        multiplier: 0, payout: 0, profit: -b.amount, won: 0
+                    });
+                    userOps.updateStats(b.telegramId, b.amount, false, -b.amount);
+                }
+            });
+
+            setTimeout(() => {
+                crashState.phase = 'WAITING';
+                crashState.startTime = Date.now() + 10000;
+                crashState.bets = [];
+                crashState.gameId = Math.random().toString(36).substring(2, 9);
+            }, 5000);
+        }
+    }
+}
+
+setInterval(tickCrash, 100);
+
+app.get('/api/crash/status', auth, (req, res) => {
+    const myBet = crashState.bets.find(b => b.telegramId === req.tgUser.id);
+    res.secure({
+        phase: crashState.phase,
+        multiplier: crashState.multiplier,
+        timeLeft: Math.max(0, crashState.startTime - Date.now()),
+        history: crashState.history,
+        gameId: crashState.gameId,
+        myBet: myBet ? { amount: myBet.amount, cashedOut: myBet.cashedOut } : null,
+        serverTime: Date.now(),
+        startTime: crashState.startTime
+    });
+});
+
+app.post('/api/crash/bet', auth, (req, res) => {
+    if (crashState.phase !== 'WAITING') return res.status(400).secure({ error: 'Game already started' });
+
     const u = req.tgUser;
     const user = userOps.get(u.id);
-    if (!user || user.is_banned) return res.status(403).secure({ error: 'Access denied' });
-    if (settingsOps.get('maintenance_mode') === '1') return res.status(503).secure({ error: 'Maintenance mode' });
+    if (!user || user.is_banned) return res.status(403).secure({ error: 'Denied' });
 
-    const active = sessionOps.get(u.id);
-    if (active) return res.status(400).secure({ error: 'Finish active game first' });
+    const existing = crashState.bets.find(b => b.telegramId === u.id);
+    if (existing) return res.status(400).secure({ error: 'Bet already placed' });
 
     const { betAmount } = req.body;
     const amt = Math.round(parseFloat(betAmount) * 1e9) / 1e9;
@@ -287,59 +367,39 @@ app.post('/api/crossroad/start', auth, (req, res) => {
     if (isNaN(amt) || amt < minBet || amt > maxBet) return res.status(400).secure({ error: `Min: ${minBet}, Max: ${maxBet}` });
     if (amt > user.balance + 0.000000001) return res.status(400).secure({ error: 'Insufficient balance' });
 
-    userOps.updateBalance(u.id, -amt, 'crossroad_start', 'Crossroad game start');
-    sessionOps.create(u.id, amt, 'crossroad');
+    userOps.updateBalance(u.id, -amt, 'crash_bet', 'Crash game bet');
+    crashState.bets.push({ telegramId: u.id, amount: amt, cashedOut: false });
 
     res.secure({ success: true, newBalance: user.balance - amt });
 });
 
-app.post('/api/crossroad/step', auth, (req, res) => {
+app.post('/api/crash/cashout', auth, (req, res) => {
+    if (crashState.phase !== 'FLYING') return res.status(400).secure({ error: 'Not in flight' });
+
     const u = req.tgUser;
-    const session = sessionOps.get(u.id);
-    if (!session || session.game_type !== 'crossroad') return res.status(400).secure({ error: 'No active game' });
+    const bet = crashState.bets.find(b => b.telegramId === u.id);
+    if (!bet) return res.status(400).secure({ error: 'No bet placed' });
+    if (bet.cashedOut) return res.status(400).secure({ error: 'Already cashed out' });
 
-    if (Math.random() < 0.1) {
-        const amt = session.bet_amount;
-        gameOps.create({
-            telegramId: u.id, betAmount: amt, gameType: 'crossroad',
-            playerChoice: `steps:${session.current_step}`, diceResult: 'hit',
-            multiplier: 0, payout: 0, profit: -amt,
-            won: 0
-        });
-        sessionOps.delete(u.id);
-        return res.secure({ crash: true, step: session.current_step + 1 });
-    }
+    const currentMultiplier = crashState.multiplier;
+    const payout = Math.round((bet.amount * currentMultiplier) * 1e9) / 1e9;
+    const profit = payout - bet.amount;
 
-    const nextStep = session.current_step + 1;
-    const increment = 0.05 + (nextStep - 1) * 0.02;
-    const nextMultiplier = Math.round((session.current_multiplier + increment) * 100) / 100;
+    bet.cashedOut = true;
+    bet.payout = payout;
 
-    sessionOps.update(u.id, nextStep, nextMultiplier);
-    res.secure({ crash: false, step: nextStep, multiplier: nextMultiplier });
-});
-
-app.post('/api/crossroad/cashout', auth, (req, res) => {
-    const u = req.tgUser;
-    const session = sessionOps.get(u.id);
-    if (!session || session.game_type !== 'crossroad') return res.status(400).secure({ error: 'No active game' });
-    if (session.current_step === 0) return res.status(400).secure({ error: 'Start jumping first' });
-
-    const payout = Math.round((session.bet_amount * session.current_multiplier) * 1e9) / 1e9;
-    const profit = payout - session.bet_amount;
-
-    userOps.updateBalance(u.id, payout, 'crossroad_win', `Crossroad cashout step ${session.current_step}`);
-    userOps.updateStats(u.id, session.bet_amount, true, profit);
+    userOps.updateBalance(u.id, payout, 'crash_win', `Crash cashout ${currentMultiplier}x`);
+    userOps.updateStats(u.id, bet.amount, true, profit);
 
     gameOps.create({
-        telegramId: u.id, betAmount: session.bet_amount, gameType: 'crossroad',
-        playerChoice: `steps:${session.current_step}`, diceResult: 'safe',
-        multiplier: session.current_multiplier, payout: payout, profit: profit,
+        telegramId: u.id, betAmount: bet.amount, gameType: 'crash',
+        playerChoice: 'cashout', diceResult: String(currentMultiplier),
+        multiplier: currentMultiplier, payout: payout, profit: profit,
         won: 1
     });
 
-    sessionOps.delete(u.id);
     const updated = userOps.get(u.id);
-    res.secure({ success: true, payout, newBalance: updated.balance });
+    res.secure({ success: true, payout, multiplier: currentMultiplier, newBalance: updated.balance });
 });
 
 // ротация сидов (показываем старый, генерим новый)
