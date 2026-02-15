@@ -954,25 +954,36 @@ function renderCrash() {
     const isPlaying = crashStatus && crashStatus.phase === 'FLYING';
     const isCrashed = crashStatus && crashStatus.phase === 'CRASHED';
 
-    // ЖЕСТКИЙ ФИКС: Если краш, берем только иксы из статуса
     if (isCrashed) {
         t = Math.log(crashStatus.multiplier || 1) / Math.log(1.07);
     }
 
-    // Звезды
-    crashCtx.fillStyle = '#ffffff';
-    stars.forEach(s => {
-        if (isPlaying) s.y += s.s * 5;
-        else if (!isCrashed) s.y += s.s * 0.5;
+    const currentMult = isPlaying ? Math.pow(1.07, t) : (isCrashed ? (crashStatus.multiplier || 1) : 1);
 
-        if (s.y > h) s.y = 0;
-        if (s.y < 0) s.y = h;
-        if (s.x > w) s.x = Math.random() * w;
+    // 1. КОСМОС С УСКОРЕНИЕМ (WARP EFFECT)
+    const speedFactor = isPlaying ? (1 + currentMult * 0.5) : (isCrashed ? 0 : 0.2);
+    crashCtx.strokeStyle = '#ffffff';
+    crashCtx.fillStyle = '#ffffff';
+
+    stars.forEach(s => {
+        const move = s.s * speedFactor * 10;
+        s.y += move;
+        if (s.y > h) { s.y = 0; s.x = Math.random() * w; }
 
         crashCtx.globalAlpha = s.o;
-        crashCtx.beginPath();
-        crashCtx.arc(s.x, s.y, s.s, 0, Math.PI * 2);
-        crashCtx.fill();
+        if (currentMult > 3 && isPlaying) {
+            // Линии скорости
+            crashCtx.lineWidth = s.s;
+            crashCtx.beginPath();
+            crashCtx.moveTo(s.x, s.y);
+            crashCtx.lineTo(s.x, s.y + move * 0.8);
+            crashCtx.stroke();
+        } else {
+            // Обычные звезды
+            crashCtx.beginPath();
+            crashCtx.arc(s.x, s.y, s.s, 0, Math.PI * 2);
+            crashCtx.fill();
+        }
     });
     crashCtx.globalAlpha = 1;
 
@@ -981,66 +992,87 @@ function renderCrash() {
         const timeFactor = (isPlaying || isCrashed) ? t : (Date.now() / 1000);
 
         if (isPlaying) {
-            const currentMult = Math.pow(1.07, t);
             const multEl = document.getElementById('crash-multiplier');
             if (multEl) multEl.textContent = currentMult.toFixed(2) + 'x';
         }
 
-        const rx = w / 2 + (isCrashed ? 0 : Math.sin(timeFactor * 12) * 1.5);
-        const ry = h / 2 + 10;
+        // Позиция: Центр с нарастающей тряской
+        const shakeAmp = isPlaying ? (1 + currentMult / 8) : 0;
+        const rx = Math.round(w / 2 + Math.sin(timeFactor * 30) * shakeAmp);
+        const ry = Math.round(h / 2 + 10);
 
-        // ПЛАМЯ (только если летим)
-        if (isPlaying) {
-            const fireLen = 50 + Math.random() * 25;
-            const fireGrad = crashCtx.createLinearGradient(rx, ry + 15, rx, ry + fireLen);
-            fireGrad.addColorStop(0, '#f39c12');
-            fireGrad.addColorStop(0.5, '#e67e22');
+        // ПЛАМЯ (увеличивается и белеет при разгоне)
+        if (isPlaying || (isCrashed && t > 0)) {
+            const firePower = 1 + Math.min(2, currentMult / 15);
+            const fireLen = (50 + Math.random() * 40) * firePower;
+            const fireGrad = crashCtx.createLinearGradient(rx, ry + 20, rx, ry + fireLen);
+            fireGrad.addColorStop(0, '#ffffff'); // Очень горячее у сопла
+            fireGrad.addColorStop(0.2, '#f1c40f');
+            fireGrad.addColorStop(0.6, '#e67e22');
             fireGrad.addColorStop(1, 'transparent');
+
             crashCtx.fillStyle = fireGrad;
             crashCtx.beginPath();
-            crashCtx.moveTo(rx - 8, ry + 12);
-            crashCtx.quadraticCurveTo(rx, ry + fireLen + 10, rx + 8, ry + 12);
+            crashCtx.moveTo(rx - 12, ry + 15);
+            crashCtx.quadraticCurveTo(rx, ry + fireLen + 20, rx + 12, ry + 15);
             crashCtx.fill();
         }
 
-        // КОРПУС
-        crashCtx.shadowBlur = (isPlaying || isCrashed) ? 25 : 0;
-        crashCtx.shadowColor = 'rgba(241, 196, 15, 0.4)';
+        // ЭФФЕКТ СВЕЧЕНИЯ (HEAT GLOW)
+        if (isPlaying) {
+            crashCtx.shadowBlur = 15 + currentMult * 3;
+            crashCtx.shadowColor = currentMult > 10 ? '#ff4400' : '#f1c40f';
+        }
 
-        // Тело (Максимальная полнота)
-        crashCtx.fillStyle = '#ffffff';
+        // КОРПУС - ЦЕЛЬНЫЙ МОНОЛИТНЫЙ ДИЗАЙН (без швов)
+        const rocketGrad = crashCtx.createLinearGradient(rx - 15, ry, rx + 15, ry);
+        rocketGrad.addColorStop(0, '#bdc3c7');
+        rocketGrad.addColorStop(0.4, '#ffffff');
+        rocketGrad.addColorStop(1, '#95a5a6');
+
+        crashCtx.fillStyle = rocketGrad;
         crashCtx.beginPath();
-        crashCtx.roundRect(rx - 13, ry - 15, 26, 40, 8);
+        // Ракетный "купол" и тело одним контуром
+        crashCtx.moveTo(rx - 16, ry + 30); // Низ лево
+        crashCtx.lineTo(rx - 16, ry - 5);  // Левый борт
+        crashCtx.bezierCurveTo(rx - 16, ry - 60, rx + 16, ry - 60, rx + 16, ry - 5); // Нос
+        crashCtx.lineTo(rx + 16, ry + 30); // Правый борт
+        crashCtx.quadraticCurveTo(rx, ry + 40, rx - 16, ry + 30); // Закругленное дно
         crashCtx.fill();
 
-        // Нос
+        // Иллюминатор (встроен в монолит)
+        crashCtx.fillStyle = '#1a1a1a';
+        crashCtx.beginPath();
+        crashCtx.arc(rx, ry - 10, 7, 0, Math.PI * 2);
+        crashCtx.fill();
+        // Блик в иллюминаторе
+        const glassGrad = crashCtx.createRadialGradient(rx - 2, ry - 12, 1, rx, ry - 10, 7);
+        glassGrad.addColorStop(0, '#3498db');
+        glassGrad.addColorStop(1, '#2980b9');
+        crashCtx.fillStyle = glassGrad;
+        crashCtx.beginPath();
+        crashCtx.arc(rx, ry - 10, 5, 0, Math.PI * 2);
+        crashCtx.fill();
+
+        // Золотые элементы (плавники) - рисуем поверх, но без щелей
         crashCtx.fillStyle = '#c2a74d';
+        // Левое крыло
         crashCtx.beginPath();
-        crashCtx.moveTo(rx - 13, ry - 14);
-        crashCtx.bezierCurveTo(rx - 13, ry - 50, rx + 13, ry - 50, rx + 13, ry - 14);
+        crashCtx.moveTo(rx - 16, ry + 5);
+        crashCtx.lineTo(rx - 35, ry + 35);
+        crashCtx.lineTo(rx - 16, ry + 25);
+        crashCtx.fill();
+        // Правое крыло
+        crashCtx.beginPath();
+        crashCtx.moveTo(rx + 16, ry + 5);
+        crashCtx.lineTo(rx + 35, ry + 35);
+        crashCtx.lineTo(rx + 16, ry + 25);
         crashCtx.fill();
 
-        // Иллюминатор
-        crashCtx.fillStyle = '#3498db';
-        crashCtx.beginPath();
-        crashCtx.arc(rx, ry - 4, 6, 0, Math.PI * 2);
-        crashCtx.fill();
-        crashCtx.strokeStyle = '#2c3e50';
-        crashCtx.lineWidth = 2.2;
+        // Финальная обводка для четкости
+        crashCtx.strokeStyle = 'rgba(0,0,0,0.1)';
+        crashCtx.lineWidth = 1;
         crashCtx.stroke();
-
-        // Крылья
-        crashCtx.fillStyle = '#c2a74d';
-        crashCtx.beginPath();
-        crashCtx.moveTo(rx - 13, ry + 10);
-        crashCtx.lineTo(rx - 28, ry + 28);
-        crashCtx.lineTo(rx - 13, ry + 24);
-        crashCtx.fill();
-        crashCtx.beginPath();
-        crashCtx.moveTo(rx + 13, ry + 10);
-        crashCtx.lineTo(rx + 28, ry + 28);
-        crashCtx.lineTo(rx + 13, ry + 24);
-        crashCtx.fill();
 
         crashCtx.shadowBlur = 0;
 
