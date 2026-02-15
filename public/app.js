@@ -653,11 +653,11 @@ window.depositRequest = async function () {
 
     if (!amountVal || parseFloat(amountVal) < 0.1) return toast('Мин. сумма 0.1 TON', 'error');
 
-    try {
-        const btn = document.getElementById('dep-btn-go');
-        btn.disabled = true;
-        btn.textContent = '...';
+    const btn = document.getElementById('dep-btn-go');
+    btn.disabled = true;
+    btn.textContent = '...';
 
+    try {
         const res = await api('/api/deposit/request', 'POST', { amount: parseFloat(amountVal) });
 
         if (!res.address || res.address.includes('...')) {
@@ -667,86 +667,55 @@ window.depositRequest = async function () {
         const depositComment = (res.comment || '').trim();
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
+        let payload = null;
         try {
-            let payload = null;
-            try {
-                // Пытаемся создать комментарий для TON (OP 0x00000000 + UTF8)
-                const TW = window.TonWeb || (typeof TonWeb !== 'undefined' ? TonWeb : null);
-                if (TW && TW.boc && TW.boc.Cell) {
-                    const cell = new TW.boc.Cell();
-                    cell.bits.writeUint(0, 32);
-                    const bytes = new TextEncoder().encode(depositComment);
-                    cell.bits.writeBytes(bytes);
-                    const bocRes = cell.toBoc();
-                    const bocBytes = (bocRes instanceof Promise) ? await bocRes : bocRes;
-                    payload = TW.utils.bytesToBase64(bocBytes);
-                }
-            } catch (e) {
-                console.error('Payload generation failed:', e);
+            const TW = window.TonWeb || (typeof TonWeb !== 'undefined' ? TonWeb : null);
+            if (TW && TW.boc && TW.boc.Cell) {
+                const cell = new TW.boc.Cell();
+                cell.bits.writeUint(0, 32);
+                cell.bits.writeBytes(new TextEncoder().encode(depositComment));
+                const bocRes = await cell.toBoc(false);
+                payload = TW.utils.bytesToBase64(bocRes);
             }
-
-            const message = {
-                address: res.address.trim(),
-                amount: (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString(),
-            };
-
-            // Добавляем payload только если он создался (чтобы не было ошибки валидации "invalid payload: null")
-            if (payload) {
-                message.payload = payload;
-            }
-
-            const transaction = {
-                validUntil: Math.floor(Date.now() / 1000) + 360,
-                messages: [message]
-            };
-
-            await tonConnectUI.sendTransaction(transaction);
-
-            // МГНОВЕННОЕ ЗАЧИСЛЕНИЕ (OPTIMISTIC)
-            try {
-                const opt = await api('/api/deposit/optimistic', 'POST', { comment: depositComment });
-                if (opt.success) {
-                    user.balance = opt.newBalance;
-                    setBalance(user.balance, true);
-                    toast('Пополнение зачислено (авансом)!', 'success');
-                    triggerConfetti();
-                }
-            } catch (e) {
-                toast('Транзакция отправлена, ожидаем...', 'success');
-            }
-
-            // Фоновая проверка
-            const waitDeposit = async () => {
-                for (let i = 0; i < 15; i++) {
-                    await new Promise((r) => setTimeout(r, 4000));
-                    const check = await api('/api/deposit/check');
-                    if (!check.pending?.length && !check.optimistic?.length) {
-                        const authState = await api('/api/auth', 'POST');
-                        user = authState.user;
-                        setBalance(user.balance, true);
-                        return;
-                    }
-                }
-            };
-            waitDeposit().catch(() => { });
-
-        } catch (txErr) {
-            console.error('Transaction failed:', txErr);
-            const errMsg = txErr.message || 'Cancelled by user';
-            toast(`[TX] Ошибка транзакции: ${errMsg}`, 'error');
+        } catch (e) {
+            console.error('Payload generation failed:', e);
         }
+
+        const message = {
+            address: res.address.trim(),
+            amount: (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString(),
+        };
+
+        if (payload) {
+            message.payload = payload;
+        }
+
+        const transaction = {
+            validUntil: Math.floor(Date.now() / 1000) + 360,
+            messages: [message]
+        };
+
+        await tonConnectUI.sendTransaction(transaction);
+
+        // Optimistic credit
+        try {
+            const opt = await api('/api/deposit/optimistic', 'POST', { comment: depositComment });
+            if (opt.success) {
+                user.balance = opt.newBalance;
+                setBalance(user.balance, true);
+                toast('Пополнение зачислено (авансом)!', 'success');
+                triggerConfetti();
+            }
+        } catch (e) { }
 
     } catch (e) {
-        console.error('API Error in Deposit:', e);
-        toast(`[REQ] Ошибка запроса: ${e.message}`, 'error');
+        console.error('Deposit flow failed:', e);
+        toast(`Ошибка: ${e.message || 'Cancelled'}`, 'error');
     } finally {
-        const btn = document.getElementById('dep-btn-go');
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = 'ПОПОЛНИТЬ';
-        }
+        btn.disabled = false;
+        btn.textContent = 'ПОПОЛНИТЬ';
     }
-};
+}
 
 // --- АНИМАЦИИ И ЭФФЕКТЫ ---
 

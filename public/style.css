@@ -44,6 +44,13 @@
   --shadow: 0 8px 32px rgba(0, 0, 0, .5);
 }
 
+body {
+  font-family: var(--font);
+  font-weight: 500;
+  background: var(--bg);
+  color: var(--t1);
+}
+
 .wallet-btn {
   background: var(--accent);
   border: none;
@@ -140,13 +147,14 @@
 
 .premium-empty h3 {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 900;
   color: var(--t1);
   margin-bottom: 8px;
 }
 
 .premium-empty p {
   font-size: 13px;
+  font-weight: 500;
   color: var(--t3);
   line-height: 1.5;
 }
@@ -227,7 +235,7 @@
 
 .gift-name {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 4px;
   color: var(--t1);
   white-space: nowrap;
@@ -249,7 +257,7 @@
   background: var(--surface);
   color: var(--t2);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   border-radius: 8px;
   cursor: pointer;
   transition: all .2s;
@@ -298,7 +306,7 @@
 
 .modal-title {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 900;
   margin-bottom: 8px;
 }
 
@@ -492,6 +500,7 @@ body {
   font-family: var(--font);
   background: var(--bg);
   color: var(--t1);
+  font-weight: 600;
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
@@ -635,7 +644,7 @@ body {
   letter-spacing: 5px;
   text-transform: uppercase;
   margin-top: 4px;
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .loading-bar {
@@ -733,7 +742,7 @@ body {
 
 .nav-label {
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .tab-content {
@@ -864,7 +873,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 12px;
   color: var(--t2);
 }
@@ -961,7 +970,7 @@ body {
 }
 
 .balance-amount {
-  font-weight: 700;
+  font-weight: 900;
   font-size: 13px;
   color: var(--gold);
   letter-spacing: -.3px;
