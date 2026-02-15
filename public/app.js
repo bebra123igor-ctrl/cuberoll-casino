@@ -853,7 +853,7 @@ function updateChickenPosition() {
     const player = document.getElementById('cr-player');
     const container = document.getElementById('cr-lanes-container');
 
-    // Прыжок (анимация через CSS класс)
+    // Прыжок
     player.classList.remove('jumping');
     void player.offsetWidth;
     player.classList.add('jumping');
@@ -862,23 +862,21 @@ function updateChickenPosition() {
     const laneHeight = 80;
     container.style.transform = `translateY(${crStep * laneHeight}px)`;
 
-    // Остановка всех машин в текущем ряду (тормозной путь)
+    // Остановка машин в текущем ряду и возобновление в прошлом
     stopCarsInLane(crStep);
+    if (crStep > 0) resumeCarsInLane(crStep - 1);
 }
 
 function stopCarsInLane(step) {
     const lane = document.getElementById(`cr-lane-${step}`);
     if (!lane) return;
-    const cars = lane.querySelectorAll('.cr-obstacle');
-    cars.forEach(car => {
-        const rect = car.getBoundingClientRect();
-        const parentRect = lane.getBoundingClientRect();
-        const currentLeft = ((rect.left - parentRect.left) / parentRect.width) * 100;
+    lane.querySelectorAll('.cr-obstacle').forEach(car => car.classList.add('braking'));
+}
 
-        car.style.animation = 'none';
-        car.style.left = currentLeft + '%';
-        car.classList.add('braking');
-    });
+function resumeCarsInLane(step) {
+    const lane = document.getElementById(`cr-lane-${step}`);
+    if (!lane) return;
+    lane.querySelectorAll('.cr-obstacle').forEach(car => car.classList.remove('braking'));
 }
 
 window.crossroadStart = async function () {
@@ -940,35 +938,37 @@ async function animateCrash(targetStep) {
     const lane = document.getElementById(`cr-lane-${targetStep}`);
     if (!lane) return;
 
-    // 1. Анимируем прыжок куба "в пустоту" или в опасную зону
     const player = document.getElementById('cr-player');
     const container = document.getElementById('cr-lanes-container');
     const laneHeight = 80;
 
+    // 1. Прыжок в ловушку
     player.classList.add('jumping');
     container.style.transform = `translateY(${targetStep * laneHeight}px)`;
 
-    // 2. Спавним "Ламборгини-убийцу"
+    // Возобновляем движение в прошлом ряду, чтобы сзади был трафик
+    if (crStep >= 0) resumeCarsInLane(crStep);
+
+    // 2. Спавним "Скрытую Ламборгини"
     const killer = document.createElement('div');
-    killer.className = 'cr-obstacle killer lamborghini';
+    killer.className = 'cr-obstacle lamborghini killer';
     const exitRight = Math.random() > 0.5;
-    killer.style.left = exitRight ? '-120px' : '110%';
-    killer.style.transition = 'left 0.35s cubic-bezier(0.45, 0.05, 0.55, 0.95)';
+    killer.style.left = exitRight ? '-200px' : '150%';
+    killer.style.transition = 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
     lane.appendChild(killer);
 
-    // 3. Машина вылетает на середину
+    // 3. Резкий вылет и раскрытие (желтый цвет) прямо перед хитом
     await new Promise(r => setTimeout(r, 50));
     killer.style.left = '50%';
+    setTimeout(() => killer.classList.add('revealed'), 100);
 
-    // Ждем удара
+    // Удар
     await new Promise(r => setTimeout(r, 200));
-
-    // Спецэффект удара
     player.style.filter = 'hue-rotate(90deg) brightness(2)';
-    player.style.transform = 'translateX(-50%) scale(0.5) rotate(45deg)';
+    player.style.transform = 'translateX(-50%) scale(0.6) rotate(45deg)';
 
-    // Машина улетает дальше
-    killer.style.left = exitRight ? '120%' : '-120%';
+    // Машина едет дальше, не останавливаясь
+    killer.style.left = exitRight ? '200%' : '-200%';
 
     await new Promise(r => setTimeout(r, 300));
     player.style.filter = '';
