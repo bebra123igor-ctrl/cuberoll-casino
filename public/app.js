@@ -97,6 +97,19 @@ function showBanScreen() {
 // инит
 async function init() {
     initTg();
+
+    // SECURITY: Telegram only check
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!initData && !isDev) {
+        console.warn('Telegram initData not found. Application locked.');
+        return;
+    }
+
+    // Remove lock and show loader
+    document.getElementById('tg-lock')?.remove();
+    const loader = document.getElementById('loading-screen');
+    if (loader) loader.classList.remove('hidden');
+
     buildExactPicker();
 
     // TonConnect
