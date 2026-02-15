@@ -108,17 +108,48 @@ async def sync_inventory(client):
                          struct.pack('<i', self.limit)
                      ))
              
-             # Разрешаем "себя" один раз для всех запросов
-             me = await client.get_input_entity('me')
+             # Разрешаем "себя"
+             me = await client.get_me()
+             if me.bot:
+                 logger.error("КРИТИЧЕСКАЯ ОШИБКА: Вы вошли как БОТ. Подарки могут отправлять только ЮЗЕРЫ (аккаунты с номером).")
+                 return
+
+             me_input = await client.get_input_entity('me')
              
-             # Пробуем вызвать. Если в библиотеке есть метод - отлично, если нет - Invoke по ID
              try:
-                 # Пытаемся импортировать если есть
-                 from telethon.tl.functions.payments import GetUserGiftsRequest
-                 result = await client(GetUserGiftsRequest(user_id=me, limit=100))
+                 # Попытка найти официальный метод в разных местах
+                 req_class = None
+                 from telethon.tl.functions import payments
+                 for name in ["GetUserGiftsRequest", "GetGiftsRequest"]:
+                     if hasattr(payments, name):
+                         req_class = getattr(payments, name)
+                         break
+                 
+                 if req_class:
+                     result = await client(req_class(user_id=me_input, limit=100))
+                 else:
+                     raise ImportError("Method not found in library")
              except:
-                 # Если нет - кидаем Raw
-                 result = await client(GetGiftsReq(user_id=me, limit=100))
+                 # Последний шанс: Raw Invoke с правильной упаковкой
+                 logger.info("Используем Raw Packet Invoke для GetUserGifts...")
+                 class GetGiftsReq(functions.TLRequest):
+                     CONSTRUCTOR_ID = 0xe11da17c
+                     SUBCLASS_OF_ID = 0x14ada4f2
+                     def __init__(self, u_id, offset=0, limit=100):
+                         self.user_id = u_id
+                         self.offset = offset
+                         self.limit = limit
+                     def to_dict(self): return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
+                     def _bytes(self):
+                         import struct
+                         # payments.getUserGifts#e11da17c user_id:InputUser offset:int limit:int
+                         return b''.join((
+                             struct.pack('<I', 0xe11da17c),
+                             self.user_id._bytes(),
+                             struct.pack('<i', self.offset),
+                             struct.pack('<i', self.limit)
+                         ))
+                 result = await client(GetGiftsReq(u_id=me_input, limit=100))
 
         except Exception as e:
              import traceback
