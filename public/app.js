@@ -259,12 +259,8 @@ const sounds = {
 };
 
 function playSound(type) {
-    if (!soundEnabled) return;
-    const s = sounds[type];
-    if (s) {
-        s.currentTime = 0;
-        s.play().catch(e => { });
-    }
+    // Звуки отключены по просьбе пользователя
+    return;
 }
 
 // Игра
@@ -519,7 +515,10 @@ function showResult(res) {
 
     diceDisp.innerHTML = res.dice.map(v => `<div class="result-die-box">${v}</div>`).join('');
 
-    if (res.won && window.haptic) haptic.notificationOccurred('success');
+    if (window.haptic) {
+        if (res.won) haptic.notificationOccurred('success');
+        else haptic.notificationOccurred('error');
+    }
 
     document.getElementById('result-close').onclick = () => ov.classList.add('hidden');
 }
