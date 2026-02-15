@@ -126,17 +126,25 @@ db.exec(`
 
 const userOps = {
   getOrCreate(tgId, username, firstName, lastName) {
-    const startBal = 0; // Начинаем с 0 TON
-    const existing = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
-    if (existing) {
-      db.prepare('UPDATE users SET username = ?, first_name = ?, last_name = ?, last_active = datetime(\'now\') WHERE telegram_id = ?')
-        .run(username, firstName, lastName, tgId);
+    const startBal = 0;
+    try {
+      const existing = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
+      if (existing) {
+        db.prepare('UPDATE users SET username = ?, first_name = ?, last_name = ?, last_active = datetime(\'now\') WHERE telegram_id = ?')
+          .run(username || '', firstName || '', lastName || '', tgId);
+        return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
+      }
+
+      console.log(`[DB] Creating new user: ${tgId} (${username})`);
+      db.prepare('INSERT INTO users (telegram_id, username, first_name, last_name, balance) VALUES (?, ?, ?, ?, ?)')
+        .run(tgId, username || '', firstName || '', lastName || '', startBal);
+
+      return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
+    } catch (err) {
+      console.error(`[DB Error] getOrCreate failed for user ${tgId}:`, err.message);
+      // Если юзер уже есть (параллельный запрос), просто вернем его
       return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
     }
-
-    db.prepare('INSERT INTO users (telegram_id, username, first_name, balance) VALUES (?, ?, ?, ?)')
-      .run(tgId, username, firstName, startBal);
-    return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
   },
 
   get(tgId) {
