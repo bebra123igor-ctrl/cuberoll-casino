@@ -85,66 +85,64 @@ async def sync_inventory(client):
                 # Сериализация вручную если нужно, но Telethon 1.x обычно умеет через Raw
                 return b'' 
 
-        # Используем максимально надежный метод вызова через GenericRequest
-        class GenericRequest(functions.TLRequest):
-            def __init__(self, constructor_id, args):
-                self.CONSTRUCTOR_ID = constructor_id
-                self.args = args
-            def to_dict(self): return self.args
-            def __bytes__(self):
-                # Очень примитивная сериализация, но Telethon 1.x обычно позволяет 
-                # кидать Raw запросы через Invoke если мы просто хотим отправить ID + данные
-                return b''
-
+        # Максимально надежный вызов GetUserGifts
         try:
-             # Динамически пробуем вызвать метод
+             from telethon.tl import core
+             # 0xe11da17c = payments.getUserGifts
+             # Мы создаем максимально совместимый объект запроса
+             class GetGiftsReq(functions.TLRequest):
+                 CONSTRUCTOR_ID = 0xe11da17c
+                 SUBCLASS_OF_ID = 0x14ada4f2
+                 def __init__(self, user_id, offset=0, limit=100):
+                     self.user_id = user_id
+                     self.offset = offset
+                     self.limit = limit
+                 def to_dict(self): return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
+                 def __bytes__(self):
+                     # Ручная упаковка для Telethon 1.x
+                     return b''.join([
+                         self.CONSTRUCTOR_ID.to_bytes(4, 'little'),
+                         client._entity_cache[self.user_id].to_bytes() if hasattr(self.user_id, 'to_bytes') else b'\x00',
+                         self.offset.to_bytes(4, 'little'),
+                         self.limit.to_bytes(4, 'little')
+                     ])
+
+             # Пробуем получить сущность дилера (себя)
+             me = await client.get_me()
+             
+             # Пытаемся вызвать через обычный Invoke, если не выйдет - через Raw
              try:
-                 # Пытаемся получить сущность дилера, чтобы сканировать именно ЕГО подарки
-                 # Если сессия дилера, то 'me' сработает, но для надежности можно передать ID
-                 dealer_entity = await client.get_input_entity('cuberoll_dealer')
-                 
-                 from telethon.tl.tlobject import TLObject
-                 class GetGiftsReq(functions.TLRequest):
-                     CONSTRUCTOR_ID = 0xe11da17c
-                     SUBCLASS_OF_ID = 0x14ada4f2
-                     def __init__(self, user_id, offset=0, limit=100):
-                         self.user_id = user_id
-                         self.offset = offset
-                         self.limit = limit
-                     def to_dict(self): return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
-                 
-                 result = await client(GetGiftsReq(user_id=dealer_entity, limit=100))
-             except Exception as call_err:
-                 logger.error(f"Raw call failed: {call_err}")
-                 return
+                 # В новых версиях Telethon это может сработать просто так
+                 result = await client(functions.payments.GetUserGiftsRequest(user_id=me, limit=100))
+             except:
+                 # Если нет - используем наш кастомный класс
+                 result = await client(GetGiftsReq(user_id=me, limit=100))
         except Exception as e:
-             import traceback
-             logger.error(f"Не удалось получить список подарков: {str(e)}\n{traceback.format_exc()}")
+             logger.error(f"Не удалось получить список подарков: {e}")
              return
 
-        if not hasattr(result, 'gifts'):
-            logger.warning("Результат запроса не содержит список подарков (gifts)")
+        if not result or not hasattr(result, 'gifts'):
             return
 
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Принудительное создание таблиц
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS gifts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT, price REAL, gift_id TEXT UNIQUE, is_active INTEGER DEFAULT 1,
-                link TEXT, model TEXT, background TEXT, symbol TEXT
-            )
-        """)
+        # Миграция: Проверяем наличие колонок (на случай если база старая)
+        try:
+            cursor.execute("ALTER TABLE gifts ADD COLUMN model TEXT")
+            cursor.execute("ALTER TABLE gifts ADD COLUMN background TEXT")
+            cursor.execute("ALTER TABLE gifts ADD COLUMN symbol TEXT")
+            conn.commit()
+        except: pass # Колонки уже есть
 
-        # Помощник для парсинга t.me/nft (из вашего GiftParser)
+        # Помощник для парсинга t.me/nft
         async def parse_nft_meta(slug, gift_id):
+            if not slug: return {}
             url = f"https://t.me/nft/{slug}-{gift_id}"
             try:
                 import re
                 async with aiohttp.ClientSession() as session:
-                    async with session.get(url, timeout=10) as resp:
+                    async with session.get(url, timeout=5) as resp:
                         if resp.status != 200: return {}
                         text = await resp.text()
                         m = re.search(r'og:description["\s]+content="([^"]*)"', text)
@@ -160,43 +158,40 @@ async def sync_inventory(client):
 
         for item in result.gifts:
             tg_gift_id = str(item.id)
+            gift_obj = item.gift
+            slug = getattr(gift_obj, 'slug', '')
             
+            # Название из Телеграма
+            api_title = slug.replace('_', ' ').title() if slug else "NFT Gift"
+            if hasattr(item, 'message') and item.message:
+                api_title = item.message
+
+            # 1. Проверяем, нет ли уже такого подарка по ПРЯМОМУ ID
             cursor.execute("SELECT id FROM gifts WHERE gift_id = ?", (tg_gift_id,))
             if cursor.fetchone():
                 continue
+            
+            # 2. УМНЫЙ ПОИСК: Ищем ручной подарок, которому нужно прописать ID
+            # Мы ищем подарок с NULL в gift_id, чье название СОДЕРЖИТСЯ в названии из API (или наоборот)
+            cursor.execute("SELECT id, title FROM gifts WHERE gift_id IS NULL AND is_active = 1")
+            manual_items = cursor.fetchall()
+            matched_id = None
+            
+            for m_id, m_title in manual_items:
+                # Очищаем от лишних знаков для сравнения: "Holiday Drink #10755" -> "holiday drink"
+                clean_api = api_title.lower().split('#')[0].strip()
+                clean_manual = m_title.lower().split('#')[0].strip()
                 
-            gift_obj = item.gift
-            title = "NFT Gift"
-            slug = getattr(gift_obj, 'slug', '')
+                if clean_api in clean_manual or clean_manual in clean_api:
+                    matched_id = m_id
+                    break
             
-            if slug:
-                title = slug.replace('_', ' ').title()
-            if hasattr(item, 'message') and item.message:
-                title = item.message
-            
-            # Парсим мета-данные (модель, символы) для красоты в магазине
-            meta = await parse_nft_meta(slug, tg_gift_id) if slug else {}
-            
+            # Парсим мета-данные для красоты
+            meta = await parse_nft_meta(slug, tg_gift_id)
             model_url = meta.get("model", "https://i.imgur.com/8YvYyZp.png")
             bg_style = meta.get("backdrop", "radial-gradient(circle, #333, #000)")
             symbol = meta.get("symbol", "🎁")
 
-            # 2. УМНЫЙ ХАК: Если юзер добавил подарок вручную через панель,
-            # мы ищем совпадение. Используем нечеткий поиск (fuzzy match),
-            # чтобы "Holiday Drink #10755" совпало с "Holiday Drink".
-            cursor.execute("SELECT id, title FROM gifts WHERE gift_id IS NULL")
-            manual_matches = cursor.fetchall()
-            manual_linked = False
-            for m_id, m_title in manual_matches:
-                # Если названия похожи (одно входит в другое)
-                if title.lower() in m_title.lower() or m_title.lower() in title.lower():
-                    logger.info(f"Linking manual gift '{m_title}' with technical ID {tg_gift_id}")
-                    cursor.execute("""
-                        UPDATE gifts SET gift_id = ?, is_active = 1, model = ?, background = ?, symbol = ? 
-                        WHERE id = ?
-                    """, (tg_gift_id, model_url, bg_style, symbol, m_id))
-                    manual_linked = True
-                    break
             
             if manual_linked:
                 continue
