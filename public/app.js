@@ -929,12 +929,12 @@ function initCrashCanvas() {
 const stars = [];
 function initStars() {
     stars.length = 0;
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 40; i++) {
         stars.push({
-            x: Math.random() * 1000,
-            y: Math.random() * 600,
+            x: Math.random() * 2000, // Wider range for larger screens
+            y: Math.random() * 2000,
             s: 0.5 + Math.random() * 2,
-            o: 0.3 + Math.random() * 0.7
+            o: 0.4 + Math.random() * 0.6
         });
     }
 }
@@ -953,7 +953,7 @@ function renderCrash() {
     const isCrashed = crashStatus && crashStatus.phase === 'CRASHED';
 
     // 1. Звезды (Фон) - ДВИЖЕНИЕ ВНИЗ (имитация полета вверх)
-    crashCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    crashCtx.fillStyle = '#ffffff';
     stars.forEach(s => {
         if (isPlaying) s.y += s.s * 4.5;
         else s.y += s.s * 0.4;
@@ -961,7 +961,7 @@ function renderCrash() {
         // Обертка (wrap)
         if (s.y > h) s.y = 0;
         if (s.y < 0) s.y = h;
-        if (s.x > w) s.x = Math.random() * w; // Re-distribute if resizing
+        if (s.x > w) s.x = Math.random() * w;
 
         crashCtx.globalAlpha = s.o;
         crashCtx.beginPath();
@@ -970,36 +970,44 @@ function renderCrash() {
     });
     crashCtx.globalAlpha = 1;
 
-    if (isPlaying) {
-        const currentMult = Math.max(1, Math.pow(1.07, t));
-        const multDisplay = currentMult.toFixed(2);
-        const multEl = document.getElementById('crash-multiplier');
-        if (multEl) multEl.textContent = multDisplay + 'x';
+    // РАКЕТА (Visible in PLAYING and WAITING phases)
+    if (isPlaying || (crashStatus && crashStatus.phase === 'WAITING')) {
+        const timeFactor = isPlaying ? t : (Date.now() / 1000); // Continuous shake even in waiting
 
-        // Кнопка
-        const cashBtn = document.getElementById('crash-cashout-btn');
-        if (cashBtn && !cashBtn.classList.contains('hidden') && crashStatus.myBet) {
-            cashBtn.textContent = `ЗАБРАТЬ ${(crashStatus.myBet.amount * currentMult).toFixed(2)}`;
+        if (isPlaying) {
+            const currentMult = Math.max(1, Math.pow(1.07, t));
+            const multDisplay = currentMult.toFixed(2);
+            const multEl = document.getElementById('crash-multiplier');
+            if (multEl) multEl.textContent = multDisplay + 'x';
+
+            // Кнопка
+            const cashBtn = document.getElementById('crash-cashout-btn');
+            if (cashBtn && !cashBtn.classList.contains('hidden') && crashStatus.myBet) {
+                cashBtn.textContent = `ЗАБРАТЬ ${(crashStatus.myBet.amount * currentMult).toFixed(2)}`;
+            }
         }
 
         // РАКЕТА ПО ЦЕНТРУ, ЛЕТИТ ВВЕРХ
-        const rx = w / 2 + Math.sin(t * 15) * 3; // Легкая тряска по горизонтали
-        const ry = h / 2 + 30; // Чуть ниже центра для динамики
+        const rx = w / 2 + Math.sin(timeFactor * 15) * 2.5; // Тряска
+        const ry = h / 2 + 30;
 
-        const fireLen = 50 + Math.random() * 30;
-        const fireGrad = crashCtx.createLinearGradient(rx, ry + 10, rx, ry + fireLen);
-        fireGrad.addColorStop(0, '#f1c40f');
-        fireGrad.addColorStop(1, 'transparent');
-        crashCtx.fillStyle = fireGrad;
-        crashCtx.beginPath();
-        crashCtx.moveTo(rx - 8, ry + 8);
-        crashCtx.lineTo(rx, ry + fireLen);
-        crashCtx.lineTo(rx + 8, ry + 8);
-        crashCtx.fill();
+        // Огонь (только если летим)
+        if (isPlaying) {
+            const fireLen = 50 + Math.random() * 30;
+            const fireGrad = crashCtx.createLinearGradient(rx, ry + 10, rx, ry + fireLen);
+            fireGrad.addColorStop(0, '#f1c40f');
+            fireGrad.addColorStop(1, 'transparent');
+            crashCtx.fillStyle = fireGrad;
+            crashCtx.beginPath();
+            crashCtx.moveTo(rx - 8, ry + 8);
+            crashCtx.lineTo(rx, ry + fireLen);
+            crashCtx.lineTo(rx + 8, ry + 8);
+            crashCtx.fill();
+        }
 
         // Корпус ракеты
         crashCtx.fillStyle = '#c2a74d';
-        crashCtx.shadowBlur = 25;
+        crashCtx.shadowBlur = isPlaying ? 25 : 0;
         crashCtx.shadowColor = '#f1c40f';
 
         // Основное тело
@@ -1029,7 +1037,7 @@ function renderCrash() {
 
         crashCtx.shadowBlur = 0;
 
-        if (window.haptic && hapticEnabled && Math.random() > 0.96) {
+        if (isPlaying && window.haptic && hapticEnabled && Math.random() > 0.96) {
             haptic.impactOccurred('light');
         }
     }
