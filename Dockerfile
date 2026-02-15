@@ -16,9 +16,8 @@ COPY requirements.txt ./
 # Устанавливаем зависимости Node.js
 RUN npm install
 
-# Устанавливаем зависимости Python
-# Используем --break-system-packages так как мы в контейнере и это безопасно
-RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+# Устанавливаем зависимости Python с принудительным обновлением
+RUN pip3 install --no-cache-dir --upgrade --break-system-packages -r requirements.txt
 
 # Копируем остальной код
 COPY . .
