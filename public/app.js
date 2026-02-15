@@ -224,7 +224,7 @@ window.redeemPromo = async function () {
         const res = await api('/api/promocodes/redeem', 'POST', { code });
         toast('✅ ' + res.message);
         input.value = '';
-        if (res.newBalance !== undefined) updateBalanceUI(res.newBalance, true);
+        if (res.newBalance !== undefined) setBalance(res.newBalance, true);
         auth();
     } catch (e) {
         toast('❌ ' + e.message);
@@ -232,9 +232,9 @@ window.redeemPromo = async function () {
 }
 
 const sounds = {
-    roll: new Audio('https://assets.mixkit.co/active_storage/sfx/2005/2005-preview.mp3'), // Placeholder
-    win: new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3'),
-    loss: new Audio('https://assets.mixkit.co/active_storage/sfx/2012/2012-preview.mp3')
+    roll: new Audio('https://assets.mixkit.co/active_storage/sfx/2005/2005-preview.mp3'), // Короткий звук
+    win: new Audio('https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1399c.mp3'),   // Успех, колокольчик
+    loss: new Audio('https://cdn.pixabay.com/audio/2022/03/10/audio_c3527a2333.mp3')   // Неудача, низкий тон
 };
 
 function playSound(type) {
@@ -260,11 +260,12 @@ window.getBetType = (t) => {
 
 function updatePayoutUI() {
     let mult = 0;
-    if (betType === 'high' || betType === 'low' || betType === 'even' || betType === 'odd') mult = 1.95;
-    if (betType === 'seven') mult = 3.5;
-    if (betType === 'doubles') mult = 5.0;
+    if (betType === 'high' || betType === 'low') mult = 1.75;
+    if (betType === 'even' || betType === 'odd') mult = 1.7;
+    if (betType === 'seven') mult = 3.2;
+    if (betType === 'doubles') mult = 4.5;
     if (betType === 'exact') {
-        const mults = { 2: 35, 3: 17, 4: 11, 5: 8.5, 6: 7, 7: 5.8, 8: 7, 9: 8.5, 10: 11, 11: 17, 12: 35 };
+        const mults = { 2: 32, 3: 15, 4: 10, 5: 7.7, 6: 6.3, 7: 5.2, 8: 6.3, 9: 7.7, 10: 10, 11: 15, 12: 32 };
         mult = mults[exactNum] || 0;
     }
     const amt = parseFloat(document.getElementById('bet-amount').value) || 0;

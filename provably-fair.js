@@ -56,27 +56,27 @@ class ProvablyFair {
         switch (betType) {
             case 'high':
                 won = total >= 8;
-                multiplier = won ? 1.95 : 0;
+                multiplier = won ? 1.75 : 0;
                 break;
             case 'low':
                 won = total <= 6;
-                multiplier = won ? 1.95 : 0;
+                multiplier = won ? 1.75 : 0;
                 break;
             case 'seven':
                 won = total === 7;
-                multiplier = won ? 3.5 : 0;
+                multiplier = won ? 3.2 : 0;
                 break;
             case 'even':
                 won = total % 2 === 0;
-                multiplier = won ? 1.9 : 0;
+                multiplier = won ? 1.7 : 0;
                 break;
             case 'odd':
                 won = total % 2 !== 0;
-                multiplier = won ? 1.9 : 0;
+                multiplier = won ? 1.7 : 0;
                 break;
             case 'doubles':
                 won = d1 === d2;
-                multiplier = won ? 5.0 : 0;
+                multiplier = won ? 4.5 : 0;
                 break;
             case 'range':
                 // ставка на диапазон — множитель по вероятности
@@ -88,7 +88,7 @@ class ProvablyFair {
                         if (a + b >= rangeBounds.min && a + b <= rangeBounds.max) combos++;
                     }
                     const prob = combos / 36;
-                    multiplier = won ? parseFloat((0.95 / prob).toFixed(2)) : 0;
+                    multiplier = won ? parseFloat((0.85 / prob).toFixed(2)) : 0;
                 }
                 break;
             default:
@@ -96,7 +96,7 @@ class ProvablyFair {
                 if (betType.startsWith('exact_')) {
                     const target = parseInt(betType.split('_')[1]);
                     won = total === target;
-                    const mults = { 2: 35, 3: 17, 4: 11, 5: 8.5, 6: 7, 7: 5.8, 8: 7, 9: 8.5, 10: 11, 11: 17, 12: 35 };
+                    const mults = { 2: 32, 3: 15, 4: 10, 5: 7.7, 6: 6.3, 7: 5.2, 8: 6.3, 9: 7.7, 10: 10, 11: 15, 12: 32 };
                     multiplier = won ? (mults[target] || 0) : 0;
                 }
                 break;
