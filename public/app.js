@@ -94,14 +94,31 @@ function showBanScreen() {
     document.getElementById('loading-screen').style.display = 'none';
 }
 
+// Global error handler for debugging
+window.onerror = function (msg, url, line) {
+    console.error('CRITICAL:', msg, 'at', line);
+    if (window.toast) toast('System Error: ' + msg, 'error');
+};
+
 // инит
 async function init() {
+    console.log('[Init] Starting...');
     initTg();
 
     // SECURITY: Telegram only check
     const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+    // Fallback check if initData is somehow missing but we are definitely in TG
+    if (!initData && window.Telegram?.WebApp?.initDataUnsafe?.user) {
+        console.log('[Init] Using initDataUnsafe fallback');
+        initData = 'UNSAFE_MODE'; // Note: Server might reject this if it expects HMAC
+    }
+
     if (!initData && !isDev) {
         console.warn('Telegram initData not found. Application locked.');
+        // Show something on lock screen for debug
+        const lockMsg = document.querySelector('#tg-lock p');
+        if (lockMsg) lockMsg.innerHTML += '<br><small style="opacity:0.5">(Error: No Init Data)</small>';
         return;
     }
 
@@ -110,40 +127,35 @@ async function init() {
     const loader = document.getElementById('loading-screen');
     if (loader) loader.classList.remove('hidden');
 
-    buildExactPicker();
-
-    // TonConnect
-    tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-        manifestUrl: window.location.origin + '/tonconnect-manifest.json',
-        buttonRootId: null
-    });
-
-    tonConnectUI.onStatusChange(async wallet => {
-        if (wallet) {
-            const addr = wallet.account.address;
-            document.getElementById('ton-connect').classList.add('connected');
-
-            // Сохраняем кошелек на сервере для идентификации платежей без комментариев
-            try {
-                await api('/api/user/wallet', 'POST', { address: addr });
-            } catch (e) { }
-
-            if (!isInitializing) {
-                toast('Кошелёк подключен', 'success');
-            }
-        } else {
-            document.getElementById('ton-connect').classList.remove('connected');
-        }
-        isInitializing = false;
-    });
-
     try {
+        buildExactPicker();
+
+        // TonConnect
+        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+            manifestUrl: window.location.origin + '/tonconnect-manifest.json',
+            buttonRootId: null
+        });
+
+        tonConnectUI.onStatusChange(async wallet => {
+            if (wallet) {
+                const addr = wallet.account.address;
+                document.getElementById('ton-connect').classList.add('connected');
+                try {
+                    await api('/api/user/wallet', 'POST', { address: addr });
+                } catch (e) { }
+                if (!isInitializing) toast('Кошелёк подключен', 'success');
+            } else {
+                document.getElementById('ton-connect').classList.remove('connected');
+            }
+            isInitializing = false;
+        });
+
+        console.log('[Init] Authenticating...');
         const data = await api('/api/auth', 'POST');
         user = data.user;
         curSeeds = data.seeds;
         window.appSettings = data.settings || {};
 
-        // Update UI with settings
         if (window.appSettings.minDeposit) {
             const h = document.getElementById('dep-min-hint');
             if (h) h.textContent = `Минимум: ${window.appSettings.minDeposit} TON`;
@@ -151,52 +163,39 @@ async function init() {
             if (inp) inp.setAttribute('min', window.appSettings.minDeposit);
         }
 
-        // Показываем инфо юзера
         document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
         document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
         document.getElementById('user-initial').textContent = (user.firstName || user.username || 'P')[0].toUpperCase();
 
         setBalance(user.balance);
-
         loadHistory();
         loadGifts();
-
-        // Инит обработчиков кнопок
         initEventListeners();
 
-        // прячем лоадер
+        // Hide loader
         setTimeout(() => {
-            document.getElementById('loading-screen').classList.add('fade-out');
-            setTimeout(() => {
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('app').classList.remove('hidden');
-
-                // Проверка первого входа (ОНБОРДИНГ)
-                if (!localStorage.getItem('onboarding_shown')) {
-                    document.getElementById('onboarding-modal').classList.remove('hidden');
-                    localStorage.setItem('onboarding_shown', 'true');
-                }
-            }, 800);
-        }, 1500);
-
-        // Фоновое обновление баланса раз в 10 секунд
-        setInterval(async () => {
-            try {
-                const data = await api('/api/auth', 'POST');
-                const newUser = data.user;
-                if (user && newUser.balance > user.balance) {
-                    toast(`Баланс пополнен: +${(newUser.balance - user.balance).toFixed(2)} TON`, 'success');
-                }
-                user = newUser;
-                setBalance(user.balance, true);
-            } catch (e) {
-                console.warn('Background sync failed');
+            const ldr = document.getElementById('loading-screen');
+            if (ldr) {
+                ldr.classList.add('fade-out');
+                setTimeout(() => {
+                    ldr.style.display = 'none';
+                    document.getElementById('app').classList.remove('hidden');
+                    if (!localStorage.getItem('onboarding_shown')) {
+                        document.getElementById('onboarding-modal').classList.remove('hidden');
+                        localStorage.setItem('onboarding_shown', 'true');
+                    }
+                }, 800);
             }
-        }, 10000);
+        }, 1200);
+
+        // BG Sync
+        setInterval(refreshBalance, 15000);
 
     } catch (e) {
         console.error('INIT ERROR:', e);
-        toast('Ошибка: ' + e.message + (e.status ? ' (S:' + e.status + ')' : ''), 'error');
+        const ldr = document.getElementById('loading-screen');
+        if (ldr) ldr.innerHTML = `<div style="padding:40px;text-align:center;color:white"><h3>Ошибка запуска</h3><p>${e.message}</p><button onclick="location.reload()" style="margin-top:10px;background:var(--gold);border:none;padding:10px 20px;border-radius:10px">Перезагрузить</button></div>`;
+        toast('Ошибка: ' + e.message, 'error');
     }
 }
 

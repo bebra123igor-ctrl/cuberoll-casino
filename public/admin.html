@@ -875,7 +875,6 @@
         async function unban(id) { try { await api(`/api/admin/user/${id}/unban`, 'POST'); loadUsers(); } catch (e) { alert(e.message); } }
         document.getElementById('bal-modal').addEventListener('click', e => { if (e.target.id === 'bal-modal') closeModal(); });
     </script>
-    </script>
 </body>
 
 </html>

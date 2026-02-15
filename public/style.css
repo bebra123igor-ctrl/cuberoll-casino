@@ -51,6 +51,11 @@ body {
   color: var(--t1);
 }
 
+.hidden {
+  display: none !important;
+}
+
+
 .wallet-btn {
   background: var(--accent);
   border: none;
