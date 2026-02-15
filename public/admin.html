@@ -658,13 +658,16 @@
 
         async function loadAll() {
             try {
-                await api('/api/auth', 'POST');
+                const data = await api('/api/auth', 'POST');
+                if (!data.isAdmin) {
+                    document.querySelector('.auth-msg').innerHTML = '<div style="color:var(--red);font-weight:900;font-size:18px">⛔️ В ДОСТУПЕ ОТКАЗАНО</div><p style="margin-top:10px">Этот раздел только для администраторов казино.</p>';
+                    return;
+                }
                 document.getElementById('auth-box').classList.add('hidden');
                 document.getElementById('content').classList.remove('hidden');
-                await Promise.all([loadStats(), loadUsers(), loadGames(), loadGifts(), loadPromos(), loadSets()]);
+                await loadAll();
             } catch (e) {
-                if (e.message === 'Access denied') { document.querySelector('.auth-msg').innerHTML = '🚫 <b>Нет доступа.</b>'; }
-                else { document.getElementById('auth-box').classList.add('hidden'); document.getElementById('content').classList.remove('hidden'); await Promise.all([loadStats(), loadUsers(), loadGames(), loadPromos(), loadSets()]).catch(console.error); }
+                document.querySelector('.auth-msg').innerHTML = '<div style="color:var(--red);font-weight:900;font-size:18px">🛑 ОШИБКА АВТОРИЗАЦИИ</div><p style="margin-top:10px">' + e.message + '</p>';
             }
         }
 

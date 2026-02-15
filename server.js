@@ -3,8 +3,16 @@ const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
-const { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps } = require('./database');
+const { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps, setOnChange } = require('./database');
+const syncOps = require('./sync');
 const ProvablyFair = require('./provably-fair');
+
+// Connect Sync
+setOnChange(() => {
+    // Debounced sync or just push
+    syncOps.pushToCloud();
+});
+
 require('./bot');
 
 const { spawn } = require('child_process');
@@ -601,8 +609,20 @@ app.delete('/api/admin/promocodes/:id', auth, adminOnly, (req, res) => {
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`CubeRoll server on 0.0.0.0:${PORT}`);
+app.listen(PORT, '0.0.0.0', async () => {
+    console.log(`\n🚀 [Server] CubeRoll is running on port ${PORT}`);
+
+    // Cloud Restore
+    try {
+        await syncOps.pullFromCloud();
+    } catch (e) {
+        console.error('[Sync] Restore failed:', e.message);
+    }
+
+    // Background Backup (5 min)
+    setInterval(syncOps.pushToCloud, 300000);
+
+    startGiftManager();
 });
 
 module.exports = app;

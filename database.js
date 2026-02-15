@@ -5,6 +5,10 @@ const dbPath = process.env.DB_PATH || path.join(__dirname, 'cuberoll.db');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
+// Hook for sync
+let onChange = () => { };
+const setOnChange = (fn) => { onChange = fn; };
+
 // таблицы
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -197,6 +201,7 @@ const userOps = {
     db.prepare('UPDATE users SET balance = ? WHERE telegram_id = ?').run(after, tgId);
     db.prepare('INSERT INTO transactions (telegram_id, type, amount, balance_before, balance_after, description) VALUES (?, ?, ?, ?, ?, ?)')
       .run(tgId, type, amount, before, after, desc);
+    onChange();
     return { balanceBefore: before, balanceAfter: after };
   },
 
@@ -208,6 +213,7 @@ const userOps = {
     db.prepare('UPDATE users SET balance = ? WHERE telegram_id = ?').run(roundedBal, tgId);
     db.prepare('INSERT INTO transactions (telegram_id, type, amount, balance_before, balance_after, description) VALUES (?, ?, ?, ?, ?, ?)')
       .run(tgId, 'admin_set', roundedBal - before, before, roundedBal, 'Admin set balance');
+    onChange();
     return { balanceBefore: before, balanceAfter: roundedBal };
   },
 
@@ -245,7 +251,9 @@ const gameOps = {
       INSERT INTO games (telegram_id, bet_amount, game_type, player_choice, dice_result, dice_total, multiplier, payout, profit, server_seed, client_seed, nonce, hash, won)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    return stmt.run(data.telegramId, data.betAmount, data.gameType, data.playerChoice, data.diceResult, data.diceTotal, data.multiplier, data.payout, data.profit, data.serverSeed, data.clientSeed, data.nonce, data.hash, data.won ? 1 : 0);
+    const r = stmt.run(data.telegramId, data.betAmount, data.gameType, data.playerChoice, data.diceResult, data.diceTotal, data.multiplier, data.payout, data.profit, data.serverSeed, data.clientSeed, data.nonce, data.hash, data.won ? 1 : 0);
+    onChange();
+    return r;
   },
 
   getByUser(tgId, limit = 50) {
@@ -291,6 +299,7 @@ const settingsOps = {
   },
   set(key, value) {
     db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, String(value));
+    onChange();
   },
   getAll() {
     const rows = db.prepare('SELECT * FROM settings').all();
@@ -420,4 +429,4 @@ const promoOps = {
   }
 };
 
-module.exports = { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps };
+module.exports = { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps, setOnChange };
