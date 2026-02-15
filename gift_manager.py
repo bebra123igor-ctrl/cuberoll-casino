@@ -89,52 +89,55 @@ async def sync_inventory(client):
 
         # Максимально надежный вызов GetUserGifts
         try:
-             # Попытка 1: Стандартный метод
+             # Попытка через Invoke с ручным определением структуры
+             # 0xe11da17c = payments.getUserGifts#e11da17c user_id:InputUser offset:int limit:int = payments.UserGifts;
+             class GetGiftsReq(functions.TLRequest):
+                 CONSTRUCTOR_ID = 0xe11da17c
+                 SUBCLASS_OF_ID = 0x14ada4f2
+                 def __init__(self, user_id, offset=0, limit=100):
+                     self.user_id = user_id
+                     self.offset = offset
+                     self.limit = limit
+                 def to_dict(self): return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
+             
+             # Разрешаем "себя" один раз для всех запросов
+             me = await client.get_input_entity('me')
+             
+             # Пробуем вызвать. Если в библиотеке есть метод - отлично, если нет - Invoke по ID
              try:
+                 # Пытаемся импортировать если есть
                  from telethon.tl.functions.payments import GetUserGiftsRequest
-                 result = await client(GetUserGiftsRequest(user_id='me', limit=100))
-             except (ImportError, AttributeError):
-                 # Попытка 2: Если метода нет в библиотеке, используем Raw Invoke
-                 # 0xe11da17c = payments.getUserGifts
-                 logger.info("GetUserGiftsRequest не найден, используем Raw Invoke...")
-                 
-                 class GetGiftsReq(functions.TLRequest):
-                     CONSTRUCTOR_ID = 0xe11da17c
-                     SUBCLASS_OF_ID = 0x14ada4f2
-                     def __init__(self, user_id, offset=0, limit=100):
-                         self.user_id = user_id
-                         self.offset = offset
-                         self.limit = limit
-                     def to_dict(self): return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
-                     # Убираем __bytes__, Телетон сам попытается собрать объект если мы не мешаем
-                 
-                 result = await client(GetGiftsReq(user_id='me', limit=100))
+                 result = await client(GetUserGiftsRequest(user_id=me, limit=100))
+             except:
+                 # Если нет - кидаем Raw
+                 result = await client(GetGiftsReq(user_id=me, limit=100))
+
         except Exception as e:
-             logger.error(f"Не удалось получить список подарков: {e}")
+             import traceback
+             logger.error(f"Не удалось получить список подарков: {e}\n{traceback.format_exc()}")
              return
 
         if not result or not hasattr(result, 'gifts'):
+            logger.warning("Список подарков пуст или не получен.")
             return
 
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Миграция: Проверяем наличие колонок (на случай если база старая)
-        try:
-            cursor.execute("ALTER TABLE gifts ADD COLUMN model TEXT")
-            cursor.execute("ALTER TABLE gifts ADD COLUMN background TEXT")
-            cursor.execute("ALTER TABLE gifts ADD COLUMN symbol TEXT")
-            conn.commit()
-        except: pass # Колонки уже есть
+        # Миграция колонок на лету
+        for col in ['model', 'background', 'symbol']:
+            try: cursor.execute(f"ALTER TABLE gifts ADD COLUMN {col} TEXT")
+            except: pass
+        conn.commit()
 
-        # Помощник для парсинга t.me/nft
+        # Парсер мета-данных (модель, фон, символ)
         async def parse_nft_meta(slug, gift_id):
-            if not slug: return {}
+            if not slug or not gift_id: return {}
             url = f"https://t.me/nft/{slug}-{gift_id}"
             try:
                 import re
                 async with aiohttp.ClientSession() as session:
-                    async with session.get(url, timeout=5) as resp:
+                    async with session.get(url, timeout=7) as resp:
                         if resp.status != 200: return {}
                         text = await resp.text()
                         m = re.search(r'og:description["\s]+content="([^"]*)"', text)
@@ -153,50 +156,47 @@ async def sync_inventory(client):
             gift_obj = item.gift
             slug = getattr(gift_obj, 'slug', '')
             
-            # Название из Телеграма
+            # Название подарка
             api_title = slug.replace('_', ' ').title() if slug else "NFT Gift"
             if hasattr(item, 'message') and item.message:
                 api_title = item.message
 
-            # 1. Проверяем, нет ли уже такого подарка по ПРЯМОМУ ID
+            # Проверяем наличие
             cursor.execute("SELECT id FROM gifts WHERE gift_id = ?", (tg_gift_id,))
             if cursor.fetchone():
                 continue
             
-            # 2. УМНЫЙ ПОИСК: Ищем ручной подарок, которому нужно прописать ID
-            # Мы ищем подарок с NULL в gift_id, чье название СОДЕРЖИТСЯ в названии из API (или наоборот)
+            # Привязка ручных подарков (по частичному совпадению)
             cursor.execute("SELECT id, title FROM gifts WHERE gift_id IS NULL AND is_active = 1")
             manual_items = cursor.fetchall()
             matched_id = None
             
             for m_id, m_title in manual_items:
-                # Очищаем от лишних знаков для сравнения: "Holiday Drink #10755" -> "holiday drink"
-                clean_api = api_title.lower().split('#')[0].strip()
-                clean_manual = m_title.lower().split('#')[0].strip()
-                
-                if clean_api in clean_manual or clean_manual in clean_api:
+                c_api = api_title.lower().split('#')[0].strip()
+                c_man = m_title.lower().split('#')[0].strip()
+                if c_api in c_man or c_man in c_api:
                     matched_id = m_id
                     break
             
-            # Парсим мета-данные для красоты
+            # Собираем мета-данные
             meta = await parse_nft_meta(slug, tg_gift_id)
-            model_url = meta.get("model", "https://i.imgur.com/8YvYyZp.png")
-            bg_style = meta.get("backdrop", "radial-gradient(circle, #333, #000)")
-            symbol = meta.get("symbol", "🎁")
+            m_url = meta.get("model", "https://i.imgur.com/8YvYyZp.png")
+            b_style = meta.get("backdrop", "radial-gradient(circle, #333, #000)")
+            sym = meta.get("symbol", "🎁")
 
             if matched_id:
-                logger.info(f"MATCH FOUND: Linking '{api_title}' to manual entry ID {matched_id}")
+                logger.info(f"Linking '{api_title}' to existing item #{matched_id}")
                 cursor.execute("""
                     UPDATE gifts SET gift_id = ?, model = ?, background = ?, symbol = ? 
                     WHERE id = ?
-                """, (tg_gift_id, model_url, bg_style, symbol, matched_id))
+                """, (tg_gift_id, m_url, b_style, sym, matched_id))
             else:
-                logger.info(f"New gift found on account: {api_title}. Adding to store...")
+                logger.info(f"Adding new gift from account: {api_title}")
                 price = await fetch_floor_price(api_title)
                 cursor.execute("""
                     INSERT INTO gifts (title, price, gift_id, is_active, model, background, symbol)
                     VALUES (?, ?, ?, 1, ?, ?, ?)
-                """, (api_title, price, tg_gift_id, model_url, bg_style, symbol))
+                """, (api_title, price, tg_gift_id, m_url, b_style, sym))
             
         conn.commit()
         conn.close()
@@ -253,19 +253,18 @@ async def process_transfer_queue(client):
                         logger.error(f"Не могу найти юзера {receiver_id}. Он должен написать боту первым! {entity_err}")
                         continue
 
-                    # Используем Raw API
-                    try:
-                        from telethon.tl.functions.payments import SendGiftRequest
-                        await client(SendGiftRequest(
-                            user_id=receiver,
-                            gift_id=int(tg_gift_id)
-                        ))
-                    except (ImportError, AttributeError):
-                        # Ручная отправка через Raw запрос если метода нет
-                        logger.info("SendGiftRequest не найден, пробуем Raw...")
-                        from telethon.tl.functions import payments
-                        # Если совсем нет - значит слой слишком старый, нужно обновить telethon
-                        raise ImportError("Нужно обновить библиотеку telethon (pip install -U telethon)")
+                    except:
+                        # Ручная отправка через Raw запрос
+                        # 0xc220d9f4 = payments.sendGift#c220d9f4 user_id:InputUser gift_id:long = Updates;
+                        class SendGiftReq(functions.TLRequest):
+                            CONSTRUCTOR_ID = 0xc220d9f4
+                            SUBCLASS_OF_ID = 0x8af52bc9
+                            def __init__(self, u_id, g_id):
+                                self.user_id = u_id
+                                self.gift_id = g_id
+                            def to_dict(self): return {'user_id': self.user_id, 'gift_id': self.gift_id}
+                        
+                        await client(SendGiftReq(receiver, int(tg_gift_id)))
                     
                     cursor.execute("UPDATE gift_transfers SET status = 'sent' WHERE id = ?", (t_id,))
                     logger.info(f"Successfully sent {gift_name} to {receiver_id}")
