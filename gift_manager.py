@@ -99,6 +99,14 @@ async def sync_inventory(client):
                      self.offset = offset
                      self.limit = limit
                  def to_dict(self): return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
+                 def _bytes(self):
+                     import struct
+                     return b''.join((
+                         struct.pack('<I', self.CONSTRUCTOR_ID),
+                         self.user_id._bytes(),
+                         struct.pack('<i', self.offset),
+                         struct.pack('<i', self.limit)
+                     ))
              
              # Разрешаем "себя" один раз для всех запросов
              me = await client.get_input_entity('me')
@@ -263,6 +271,13 @@ async def process_transfer_queue(client):
                                 self.user_id = u_id
                                 self.gift_id = g_id
                             def to_dict(self): return {'user_id': self.user_id, 'gift_id': self.gift_id}
+                            def _bytes(self):
+                                import struct
+                                return b''.join((
+                                    struct.pack('<I', self.CONSTRUCTOR_ID),
+                                    self.user_id._bytes(),
+                                    struct.pack('<q', self.gift_id) # long is q in struct
+                                ))
                         
                         await client(SendGiftReq(receiver, int(tg_gift_id)))
                     
