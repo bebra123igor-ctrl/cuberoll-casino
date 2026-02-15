@@ -171,13 +171,8 @@ async def sync_inventory(client):
             
             if slug:
                 title = slug.replace('_', ' ').title()
-            
             if hasattr(item, 'message') and item.message:
                 title = item.message
-            
-            # УМНЫЙ ХАК: привязка ручных подарков
-            cursor.execute("SELECT id FROM gifts WHERE title = ? AND gift_id IS NULL", (title,))
-            manual_match = cursor.fetchone()
             
             # Парсим мета-данные (модель, символы) для красоты в магазине
             meta = await parse_nft_meta(slug, tg_gift_id) if slug else {}
@@ -186,12 +181,24 @@ async def sync_inventory(client):
             bg_style = meta.get("backdrop", "radial-gradient(circle, #333, #000)")
             symbol = meta.get("symbol", "🎁")
 
-            if manual_match:
-                logger.info(f"Linking manual gift '{title}' with ID {tg_gift_id}")
-                cursor.execute("""
-                    UPDATE gifts SET gift_id = ?, is_active = 1, model = ?, background = ?, symbol = ? 
-                    WHERE id = ?
-                """, (tg_gift_id, model_url, bg_style, symbol, manual_match[0]))
+            # 2. УМНЫЙ ХАК: Если юзер добавил подарок вручную через панель,
+            # мы ищем совпадение. Используем нечеткий поиск (fuzzy match),
+            # чтобы "Holiday Drink #10755" совпало с "Holiday Drink".
+            cursor.execute("SELECT id, title FROM gifts WHERE gift_id IS NULL")
+            manual_matches = cursor.fetchall()
+            manual_linked = False
+            for m_id, m_title in manual_matches:
+                # Если названия похожи (одно входит в другое)
+                if title.lower() in m_title.lower() or m_title.lower() in title.lower():
+                    logger.info(f"Linking manual gift '{m_title}' with technical ID {tg_gift_id}")
+                    cursor.execute("""
+                        UPDATE gifts SET gift_id = ?, is_active = 1, model = ?, background = ?, symbol = ? 
+                        WHERE id = ?
+                    """, (tg_gift_id, model_url, bg_style, symbol, m_id))
+                    manual_linked = True
+                    break
+            
+            if manual_linked:
                 continue
 
             logger.info(f"New gift found: {title}. Detecting price...")
