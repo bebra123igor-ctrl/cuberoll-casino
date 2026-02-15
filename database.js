@@ -138,6 +138,19 @@ try {
   db.exec('ALTER TABLE gifts ADD COLUMN nft_address TEXT');
 } catch (e) { }
 
+// Таблица для активных сессий (Crossroad и др.)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS active_sessions (
+    telegram_id INTEGER PRIMARY KEY,
+    bet_amount REAL,
+    game_type TEXT,
+    current_step INTEGER DEFAULT 0,
+    current_multiplier REAL DEFAULT 1.0,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (telegram_id) REFERENCES users(telegram_id)
+  );
+`);
+
 // Таблица для очереди передачи подарков
 db.exec(`
   CREATE TABLE IF NOT EXISTS gift_transfers (
@@ -151,6 +164,23 @@ db.exec(`
     FOREIGN KEY (receiver_id) REFERENCES users(telegram_id)
   );
 `);
+
+const sessionOps = {
+  get(tgId) {
+    return db.prepare('SELECT * FROM active_sessions WHERE telegram_id = ?').get(tgId);
+  },
+  create(tgId, amount, gameType) {
+    return db.prepare('INSERT INTO active_sessions (telegram_id, bet_amount, game_type, current_step, current_multiplier) VALUES (?, ?, ?, 0, 1.0)')
+      .run(tgId, amount, gameType);
+  },
+  update(tgId, step, multiplier) {
+    return db.prepare('UPDATE active_sessions SET current_step = ?, current_multiplier = ? WHERE telegram_id = ?')
+      .run(step, multiplier, tgId);
+  },
+  delete(tgId) {
+    return db.prepare('DELETE FROM active_sessions WHERE telegram_id = ?').delete ? db.prepare('DELETE FROM active_sessions WHERE telegram_id = ?').run(tgId) : db.prepare('DELETE FROM active_sessions WHERE telegram_id = ?').run(tgId);
+  }
+};
 
 const userOps = {
   getOrCreate(tgId, username, firstName, lastName) {
@@ -429,4 +459,4 @@ const promoOps = {
   }
 };
 
-module.exports = { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps, setOnChange };
+module.exports = { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps, sessionOps, setOnChange };

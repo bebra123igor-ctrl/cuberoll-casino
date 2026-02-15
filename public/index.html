@@ -190,81 +190,122 @@
     </nav>
 
     <!-- игра -->
+    <!-- игра -->
     <div class="tab-content active" id="content-game">
       <div class="tab-scrollable">
 
-        <!-- кубики -->
-        <div class="dice-arena">
-          <div class="dice-table">
-            <div class="dice-shadow shadow-1"></div>
-            <div class="dice-shadow shadow-2"></div>
-            <div class="dice3d" id="die1">
-              <div class="dice-face front">
-                <div class="dots d1"><span></span></div>
-              </div>
-              <div class="dice-face back">
-                <div class="dots d6"><span></span><span></span><span></span><span></span><span></span><span></span>
+        <div class="game-selector">
+          <button class="game-sel-btn active" id="game-tab-dice" onclick="selectGame('dice')">Dice</button>
+          <button class="game-sel-btn" id="game-tab-crossroad" onclick="selectGame('crossroad')">Crossroad</button>
+        </div>
+
+        <!-- КУБИКИ -->
+        <div id="game-view-dice">
+          <div class="dice-arena">
+            <div class="dice-table">
+              <div class="dice-shadow shadow-1"></div>
+              <div class="dice-shadow shadow-2"></div>
+              <div class="dice3d" id="die1">
+                <div class="dice-face front">
+                  <div class="dots d1"><span></span></div>
+                </div>
+                <div class="dice-face back">
+                  <div class="dots d6"><span></span><span></span><span></span><span></span><span></span><span></span>
+                  </div>
+                </div>
+                <div class="dice-face right">
+                  <div class="dots d3"><span></span><span></span><span></span></div>
+                </div>
+                <div class="dice-face left">
+                  <div class="dots d4"><span></span><span></span><span></span><span></span></div>
+                </div>
+                <div class="dice-face top">
+                  <div class="dots d2"><span></span><span></span></div>
+                </div>
+                <div class="dice-face bottom">
+                  <div class="dots d5"><span></span><span></span><span></span><span></span><span></span></div>
                 </div>
               </div>
-              <div class="dice-face right">
-                <div class="dots d3"><span></span><span></span><span></span></div>
-              </div>
-              <div class="dice-face left">
-                <div class="dots d4"><span></span><span></span><span></span><span></span></div>
-              </div>
-              <div class="dice-face top">
-                <div class="dots d2"><span></span><span></span></div>
-              </div>
-              <div class="dice-face bottom">
-                <div class="dots d5"><span></span><span></span><span></span><span></span><span></span></div>
-              </div>
-            </div>
-            <div class="dice3d" id="die2">
-              <div class="dice-face front">
-                <div class="dots d1"><span></span></div>
-              </div>
-              <div class="dice-face back">
-                <div class="dots d6"><span></span><span></span><span></span><span></span><span></span><span></span>
+              <div class="dice3d" id="die2">
+                <div class="dice-face front">
+                  <div class="dots d1"><span></span></div>
+                </div>
+                <div class="dice-face back">
+                  <div class="dots d6"><span></span><span></span><span></span><span></span><span></span><span></span>
+                  </div>
+                </div>
+                <div class="dice-face right">
+                  <div class="dots d3"><span></span><span></span><span></span></div>
+                </div>
+                <div class="dice-face left">
+                  <div class="dots d4"><span></span><span></span><span></span><span></span></div>
+                </div>
+                <div class="dice-face top">
+                  <div class="dots d2"><span></span><span></span></div>
+                </div>
+                <div class="dice-face bottom">
+                  <div class="dots d5"><span></span><span></span><span></span><span></span><span></span></div>
                 </div>
               </div>
-              <div class="dice-face right">
-                <div class="dots d3"><span></span><span></span><span></span></div>
-              </div>
-              <div class="dice-face left">
-                <div class="dots d4"><span></span><span></span><span></span><span></span></div>
-              </div>
-              <div class="dice-face top">
-                <div class="dots d2"><span></span><span></span></div>
-              </div>
-              <div class="dice-face bottom">
-                <div class="dots d5"><span></span><span></span><span></span><span></span><span></span></div>
-              </div>
+            </div>
+            <div class="dice-sum">
+              <span id="dice-label">Выбери ставку</span>
             </div>
           </div>
-          <div class="dice-sum">
-            <span id="dice-label">Выбери ставку</span>
+
+          <div class="roll-section">
+            <div class="streak-multiplier" id="streak-mult">×1.1</div>
+            <button class="roll-button" id="open-bet-modal-btn">
+              <span class="icon"><svg viewBox="0 0 24 24">
+                  <rect x="3" y="3" width="18" height="18" rx="3" />
+                  <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none" />
+                  <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" stroke="none" />
+                </svg></span>
+              <span class="roll-text">СДЕЛАТЬ СТАВКУ</span>
+            </button>
+          </div>
+          <div class="potential-win">
+            Возможный выигрыш: <strong id="potential-amount">1.95</strong>
           </div>
         </div>
 
+        <!-- CROSSROAD -->
+        <div id="game-view-crossroad" class="hidden">
+          <div class="crossroad-board">
+            <div class="cr-lanes" id="cr-lanes-container">
+              <!-- ланы генерятся в JS -->
+            </div>
+            <div class="cr-chicken" id="cr-chicken">🐔</div>
+            <div id="cr-overlay" class="cr-overlay hidden">
+              <div class="cr-status-msg" id="cr-status-text">CRASHED!</div>
+            </div>
+          </div>
 
+          <div class="cr-controls">
+            <div class="cr-stats">
+              <div class="cr-stat-item">
+                <span>Суммарно:</span>
+                <strong id="cr-current-multiplier">1.00x</strong>
+              </div>
+              <div class="cr-stat-item">
+                <span>Выигрыш:</span>
+                <strong id="cr-current-win">0.00</strong>
+              </div>
+            </div>
 
-        <div class="roll-section">
-          <div class="streak-multiplier" id="streak-mult">×1.1</div>
-          <button class="roll-button" id="open-bet-modal-btn">
-            <span class="icon"><svg viewBox="0 0 24 24">
-                <rect x="3" y="3" width="18" height="18" rx="3" />
-                <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none" />
-                <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" stroke="none" />
-              </svg></span>
-            <span class="roll-text">СДЕЛАТЬ СТАВКУ</span>
-          </button>
+            <div id="cr-setup-ui">
+              <div class="cr-bet-input">
+                <input type="text" inputmode="decimal" id="cr-bet-amount" placeholder="Ставка (TON)" value="1">
+              </div>
+              <button class="cr-btn start" onclick="crossroadStart()">ИГРАТЬ</button>
+            </div>
+
+            <div id="cr-play-ui" class="hidden">
+              <button class="cr-btn jump" onclick="crossroadStep()">ПРЫЖОК</button>
+              <button class="cr-btn cashout" onclick="crossroadCashout()">ЗАБРАТЬ</button>
+            </div>
+          </div>
         </div>
-        <div class="potential-win">
-          Возможный выигрыш: <strong id="potential-amount">1.95</strong>
-        </div>
-
-
-
 
         <div style="height: 20px;"></div> <!-- spacer -->
       </div> <!-- end tab-scrollable -->

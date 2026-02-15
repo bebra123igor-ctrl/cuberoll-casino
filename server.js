@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
-const { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps, setOnChange } = require('./database');
+const { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps, sessionOps, setOnChange } = require('./database');
 const syncOps = require('./sync');
 const ProvablyFair = require('./provably-fair');
 
@@ -266,6 +266,80 @@ app.post('/api/bet', auth, (req, res) => {
         },
         fairness: { serverSeedHash: s.hash, clientSeed: s.clientSeed, nonce: s.nonce }
     });
+});
+
+// --- CROSSROAD GAME ---
+
+app.post('/api/crossroad/start', auth, (req, res) => {
+    const u = req.tgUser;
+    const user = userOps.get(u.id);
+    if (!user || user.is_banned) return res.status(403).secure({ error: 'Access denied' });
+    if (settingsOps.get('maintenance_mode') === '1') return res.status(503).secure({ error: 'Maintenance mode' });
+
+    const active = sessionOps.get(u.id);
+    if (active) return res.status(400).secure({ error: 'Finish active game first' });
+
+    const { betAmount } = req.body;
+    const amt = Math.round(parseFloat(betAmount) * 1e9) / 1e9;
+    const minBet = parseFloat(settingsOps.get('min_bet') || '0.1');
+    const maxBet = parseFloat(settingsOps.get('max_bet') || '100');
+
+    if (isNaN(amt) || amt < minBet || amt > maxBet) return res.status(400).secure({ error: `Min: ${minBet}, Max: ${maxBet}` });
+    if (amt > user.balance + 0.000000001) return res.status(400).secure({ error: 'Insufficient balance' });
+
+    userOps.updateBalance(u.id, -amt, 'crossroad_start', 'Crossroad game start');
+    sessionOps.create(u.id, amt, 'crossroad');
+
+    res.secure({ success: true, newBalance: user.balance - amt });
+});
+
+app.post('/api/crossroad/step', auth, (req, res) => {
+    const u = req.tgUser;
+    const session = sessionOps.get(u.id);
+    if (!session || session.game_type !== 'crossroad') return res.status(400).secure({ error: 'No active game' });
+
+    if (Math.random() < 0.3) {
+        const amt = session.bet_amount;
+        gameOps.create({
+            telegramId: u.id, betAmount: amt, gameType: 'crossroad',
+            playerChoice: `steps:${session.current_step}`, diceResult: 'hit',
+            multiplier: 0, payout: 0, profit: -amt,
+            won: 0
+        });
+        sessionOps.delete(u.id);
+        return res.secure({ crash: true, step: session.current_step + 1 });
+    }
+
+    const nextStep = session.current_step + 1;
+    const increment = 0.05 + (nextStep - 1) * 0.02;
+    const nextMultiplier = Math.round((session.current_multiplier + increment) * 100) / 100;
+
+    sessionOps.update(u.id, nextStep, nextMultiplier);
+    res.secure({ crash: false, step: nextStep, multiplier: nextMultiplier });
+});
+
+app.post('/api/crossroad/cashout', auth, (req, res) => {
+    const u = req.tgUser;
+    const session = sessionOps.get(u.id);
+    if (!session || session.game_type !== 'crossroad') return res.status(400).secure({ error: 'No active game' });
+    if (session.current_step === 0) return res.status(400).secure({ error: 'Start jumping first' });
+
+    const payout = Math.round((session.bet_amount * session.current_multiplier) * 1e9) / 1e9;
+    const profit = payout - session.bet_amount;
+
+    userOps.updateBalance(u.id, payout, 'crossroad_win', `Crossroad cashout step ${session.current_step}`);
+    userOps.updateStats(u.id, session.bet_amount, true, profit);
+
+    gameOps.create({
+        telegramId: u.id, betAmount: session.bet_amount, gameType: 'crossroad',
+        playerChoice: `steps:${session.current_step}`, diceResult: 'safe',
+        multiplier: session.current_multiplier, payout: payout, profit: profit,
+        won: 1
+    });
+
+    sessionOps.delete(u.id);
+    const updated = userOps.get(u.id);
+    res.secure({ success: true, payout, newBalance: updated.balance });
 });
 
 // ротация сидов (показываем старый, генерим новый)

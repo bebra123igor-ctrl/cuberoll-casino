@@ -806,4 +806,132 @@ window.copyMemo = function () {
     }
 };
 
+
+// --- CROSSROAD LOGIC ---
+let crActive = false;
+let crStep = 0;
+let crMult = 1.0;
+let crBet = 0;
+
+window.selectGame = function (game) {
+    document.getElementById('game-view-dice').classList.toggle('hidden', game !== 'dice');
+    document.getElementById('game-view-crossroad').classList.toggle('hidden', game !== 'crossroad');
+    document.getElementById('game-tab-dice').classList.toggle('active', game === 'dice');
+    document.getElementById('game-tab-crossroad').classList.toggle('active', game === 'crossroad');
+    if (game === 'crossroad') initCrLanes();
+}
+
+function initCrLanes() {
+    const container = document.getElementById('cr-lanes-container');
+    if (container.children.length > 0) return;
+    for (let i = 0; i < 25; i++) {
+        const lane = document.createElement('div');
+        lane.className = 'cr-lane ' + (i % 3 === 0 ? 'safe' : 'road');
+        lane.id = `cr-lane-${i}`;
+        if (i > 0 && i % 3 !== 0) {
+            addCar(lane);
+        }
+        container.appendChild(lane);
+    }
+    updateChickenPosition();
+}
+
+function addCar(lane) {
+    const cars = ['🚗', '🚕', '🚙', '🚌', '🏎️', '🚛', '🚑', '🚚'];
+    const count = 1;
+    for (let i = 0; i < count; i++) {
+        const car = document.createElement('div');
+        car.className = 'cr-obstacle';
+        car.textContent = cars[Math.floor(Math.random() * cars.length)];
+        car.style.animationDuration = (2 + Math.random() * 2) + 's';
+        car.style.animationDelay = (Math.random() * 4) + 's';
+        // Randomize direction
+        if (Math.random() > 0.5) {
+            car.style.animationDirection = 'reverse';
+        }
+        lane.appendChild(car);
+    }
+}
+
+function updateChickenPosition() {
+    const chicken = document.getElementById('cr-chicken');
+    const container = document.getElementById('cr-lanes-container');
+    const totalLanes = 25;
+    const laneHeightPercent = 100 / totalLanes;
+
+    chicken.style.bottom = (crStep * laneHeightPercent) + '%';
+
+    // Скроллим контейнер, чтобы курица была в поле зрения
+    const translateY = Math.max(0, (crStep - 3) * (100 / 8)); // Условно 8 ланов видно
+    // container.style.transform = `translateY(${translateY}%)`;
+}
+
+window.crossroadStart = async function () {
+    if (crActive) return;
+    const amtStr = document.getElementById('cr-bet-amount').value.replace(',', '.');
+    const amt = parseFloat(amtStr);
+    if (isNaN(amt) || amt < 0.1) return toast('Мин. ставка 0.1 TON', 'error');
+    if (amt > user.balance) return toast('Недостаточно баланса', 'error');
+
+    try {
+        const res = await api('/api/crossroad/start', 'POST', { betAmount: amt });
+        crActive = true;
+        crBet = amt;
+        crStep = 0;
+        crMult = 1.0;
+        setBalance(res.newBalance);
+
+        document.getElementById('cr-setup-ui').classList.add('hidden');
+        document.getElementById('cr-play-ui').classList.remove('hidden');
+        document.getElementById('cr-overlay').classList.add('hidden');
+
+        updateCrUI();
+        updateChickenPosition();
+        if (window.haptic) haptic.impactOccurred('medium');
+    } catch (e) { toast(e.message, 'error'); }
+}
+
+window.crossroadStep = async function () {
+    if (!crActive) return;
+    try {
+        const res = await api('/api/crossroad/step', 'POST');
+        if (res.crash) {
+            crActive = false;
+            document.getElementById('cr-status-text').textContent = 'СБИТА МАШИНОЙ! 💥';
+            document.getElementById('cr-overlay').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('cr-setup-ui').classList.remove('hidden');
+                document.getElementById('cr-play-ui').classList.add('hidden');
+            }, 1000);
+            if (window.haptic) haptic.notificationOccurred('error');
+        } else {
+            crStep = res.step;
+            crMult = res.multiplier;
+            updateCrUI();
+            updateChickenPosition();
+            if (window.haptic) haptic.impactOccurred('light');
+        }
+    } catch (e) { toast(e.message, 'error'); }
+}
+
+window.crossroadCashout = async function () {
+    if (!crActive) return;
+    try {
+        const res = await api('/api/crossroad/cashout', 'POST');
+        crActive = false;
+        setBalance(res.newBalance);
+        triggerConfetti();
+        toast(`Вы выиграли ${res.payout.toFixed(2)} TON!`, 'success');
+
+        document.getElementById('cr-setup-ui').classList.remove('hidden');
+        document.getElementById('cr-play-ui').classList.add('hidden');
+        updateCrUI();
+    } catch (e) { toast(e.message, 'error'); }
+}
+
+function updateCrUI() {
+    document.getElementById('cr-current-multiplier').textContent = crMult.toFixed(2) + 'x';
+    document.getElementById('cr-current-win').textContent = (crBet * crMult).toFixed(2);
+}
+
 document.addEventListener('DOMContentLoaded', init);

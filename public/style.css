@@ -3234,3 +3234,232 @@ input:checked+.toggle-slider:before {
   color: var(--t1);
   border: 1px solid var(--border3);
 }
+
+/* --- GAME SELECTOR --- */
+.game-selector {
+  display: flex;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 20px;
+  gap: 4px;
+}
+
+.game-sel-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  color: var(--t3);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.game-sel-btn.active {
+  background: var(--card1);
+  color: var(--gold);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* --- CROSSROAD GAME --- */
+.crossroad-board {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1/1.2;
+  background: #111;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border2);
+  margin-bottom: 20px;
+}
+
+.cr-lanes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column-reverse;
+  /* 0 is bottom */
+}
+
+.cr-lane {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  position: relative;
+  transition: background 0.3s;
+}
+
+.cr-lane.safe {
+  background: #1a2a1a;
+}
+
+.cr-lane.road {
+  background: #151515;
+  border-top: 1px dashed rgba(255, 255, 255, 0.05);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+}
+
+.cr-lane.road::after {
+  content: "";
+  position: absolute;
+  left: 10%;
+  width: 80%;
+  top: 50%;
+  height: 1px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  transform: translateY(-50%);
+}
+
+.cr-lane.current {
+  background: rgba(255, 215, 0, 0.05);
+}
+
+.cr-chicken {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateX(-50%);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 10;
+}
+
+.cr-obstacle {
+  position: absolute;
+  font-size: 24px;
+  white-space: nowrap;
+  animation: cr-car-move linear infinite;
+  pointer-events: none;
+}
+
+@keyframes cr-car-move {
+  from {
+    left: -100px;
+  }
+
+  to {
+    left: 100%;
+  }
+}
+
+.cr-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.cr-status-msg {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--red);
+  text-shadow: 0 0 20px var(--red-g);
+  text-transform: uppercase;
+}
+
+.cr-controls {
+  background: var(--card1);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.cr-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.cr-stat-item {
+  flex: 1;
+  background: var(--card2);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid var(--border2);
+}
+
+.cr-stat-item span {
+  display: block;
+  font-size: 11px;
+  color: var(--t3);
+  margin-bottom: 4px;
+}
+
+.cr-stat-item strong {
+  font-size: 16px;
+  color: var(--gold);
+}
+
+.cr-bet-input {
+  margin-bottom: 12px;
+}
+
+.cr-bet-input input {
+  width: 100%;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 14px;
+  color: var(--t1);
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  outline: none;
+}
+
+.cr-btn {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cr-btn:active {
+  transform: scale(0.97);
+}
+
+.cr-btn.start {
+  background: var(--grad-gold);
+  color: #000;
+}
+
+.cr-btn.jump {
+  background: var(--grad-gold);
+  color: #000;
+  margin-bottom: 12px;
+}
+
+.cr-btn.cashout {
+  background: var(--card2);
+  color: var(--gold);
+  border: 1px solid var(--gold);
+}
+
+#cr-play-ui {
+  display: flex;
+  flex-direction: column;
+}
