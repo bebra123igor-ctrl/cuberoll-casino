@@ -929,12 +929,12 @@ function initCrashCanvas() {
 const stars = [];
 function initStars() {
     stars.length = 0;
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 25; i++) {
         stars.push({
-            x: Math.random() * 2000, // Wider range for larger screens
+            x: Math.random() * 2000,
             y: Math.random() * 2000,
-            s: 0.5 + Math.random() * 2,
-            o: 0.4 + Math.random() * 0.6
+            s: 0.8 + Math.random() * 1.5,
+            o: 0.8 + Math.random() * 0.2 // Brighter, crisper stars
         });
     }
 }
@@ -952,15 +952,16 @@ function renderCrash() {
     const isPlaying = crashStatus && crashStatus.phase === 'FLYING';
     const isCrashed = crashStatus && crashStatus.phase === 'CRASHED';
 
-    // 1. Звезды (Фон) - ДВИЖЕНИЕ ВНИЗ (имитация полета вверх)
+    // 1. СТРАЗЫ (Звезды) - Теперь их мало и они чисто белые
     crashCtx.fillStyle = '#ffffff';
     stars.forEach(s => {
-        if (isPlaying) s.y += s.s * 4.5;
-        else s.y += s.s * 0.4;
+        if (isPlaying) s.y += s.s * 5;
+        else s.y += s.s * 0.5;
 
-        // Обертка (wrap)
+        // Корректная обертка по текущим границам
         if (s.y > h) s.y = 0;
         if (s.y < 0) s.y = h;
+        // Распределяем по ширине, если вылетели (при ресайзе)
         if (s.x > w) s.x = Math.random() * w;
 
         crashCtx.globalAlpha = s.o;
@@ -970,9 +971,9 @@ function renderCrash() {
     });
     crashCtx.globalAlpha = 1;
 
-    // РАКЕТА (Visible in PLAYING and WAITING phases)
+    // РАКЕТА (Полная детализация)
     if (isPlaying || (crashStatus && crashStatus.phase === 'WAITING')) {
-        const timeFactor = isPlaying ? t : (Date.now() / 1000); // Continuous shake even in waiting
+        const timeFactor = isPlaying ? t : (Date.now() / 1000);
 
         if (isPlaying) {
             const currentMult = Math.max(1, Math.pow(1.07, t));
@@ -980,60 +981,71 @@ function renderCrash() {
             const multEl = document.getElementById('crash-multiplier');
             if (multEl) multEl.textContent = multDisplay + 'x';
 
-            // Кнопка
             const cashBtn = document.getElementById('crash-cashout-btn');
             if (cashBtn && !cashBtn.classList.contains('hidden') && crashStatus.myBet) {
                 cashBtn.textContent = `ЗАБРАТЬ ${(crashStatus.myBet.amount * currentMult).toFixed(2)}`;
             }
         }
 
-        // РАКЕТА ПО ЦЕНТРУ, ЛЕТИТ ВВЕРХ
-        const rx = w / 2 + Math.sin(timeFactor * 15) * 2.5; // Тряска
-        const ry = h / 2 + 30;
+        const rx = w / 2 + Math.sin(timeFactor * 12) * 2;
+        const ry = h / 2 + 15;
 
-        // Огонь (только если летим)
+        // ПЛАМЯ
         if (isPlaying) {
-            const fireLen = 50 + Math.random() * 30;
-            const fireGrad = crashCtx.createLinearGradient(rx, ry + 10, rx, ry + fireLen);
-            fireGrad.addColorStop(0, '#f1c40f');
+            const fireLen = 60 + Math.random() * 30;
+            const fireGrad = crashCtx.createLinearGradient(rx, ry + 15, rx, ry + fireLen);
+            fireGrad.addColorStop(0, '#f39c12');
+            fireGrad.addColorStop(0.4, '#e67e22');
             fireGrad.addColorStop(1, 'transparent');
             crashCtx.fillStyle = fireGrad;
             crashCtx.beginPath();
-            crashCtx.moveTo(rx - 8, ry + 8);
-            crashCtx.lineTo(rx, ry + fireLen);
-            crashCtx.lineTo(rx + 8, ry + 8);
+            crashCtx.moveTo(rx - 9, ry + 10);
+            crashCtx.quadraticCurveTo(rx, ry + fireLen + 10, rx + 9, ry + 10);
             crashCtx.fill();
         }
 
-        // Корпус ракеты
-        crashCtx.fillStyle = '#c2a74d';
-        crashCtx.shadowBlur = isPlaying ? 25 : 0;
+        // КОРПУС (Детальный)
+        crashCtx.shadowBlur = isPlaying ? 30 : 0;
         crashCtx.shadowColor = '#f1c40f';
 
-        // Основное тело
+        // 1. Основной цилиндр
+        crashCtx.fillStyle = '#ffffff'; // Белый корпус для контраста
         crashCtx.beginPath();
-        crashCtx.arc(rx, ry, 12, 0, Math.PI * 2);
+        crashCtx.roundRect(rx - 10, ry - 15, 20, 30, 5);
         crashCtx.fill();
 
-        // Нос ракеты (треугольник вверх)
+        // 2. Носовой обтекатель (Золотой)
+        crashCtx.fillStyle = '#c2a74d';
         crashCtx.beginPath();
-        crashCtx.moveTo(rx - 12, ry - 3);
-        crashCtx.lineTo(rx, ry - 30);
-        crashCtx.lineTo(rx + 12, ry - 3);
+        crashCtx.moveTo(rx - 10, ry - 14);
+        crashCtx.bezierCurveTo(rx - 10, ry - 45, rx + 10, ry - 45, rx + 10, ry - 14);
         crashCtx.fill();
 
-        // Крылья/Плавники (Fins)
+        // 3. Иллюминатор
+        crashCtx.fillStyle = '#2c3e50';
         crashCtx.beginPath();
-        crashCtx.moveTo(rx - 12, ry + 5);
-        crashCtx.lineTo(rx - 20, ry + 15);
-        crashCtx.lineTo(rx - 12, ry + 12);
+        crashCtx.arc(rx, ry - 5, 4, 0, Math.PI * 2);
         crashCtx.fill();
+        crashCtx.strokeStyle = '#bdc3c7';
+        crashCtx.lineWidth = 1;
+        crashCtx.stroke();
 
+        // 4. Крылья (Золотые)
+        crashCtx.fillStyle = '#c2a74d';
+        // Левое
         crashCtx.beginPath();
-        crashCtx.moveTo(rx + 12, ry + 5);
-        crashCtx.lineTo(rx + 20, ry + 15);
-        crashCtx.lineTo(rx + 12, ry + 12);
+        crashCtx.moveTo(rx - 10, ry + 5);
+        crashCtx.lineTo(rx - 22, ry + 20);
+        crashCtx.lineTo(rx - 10, ry + 15);
         crashCtx.fill();
+        // Правое
+        crashCtx.beginPath();
+        crashCtx.moveTo(rx + 10, ry + 5);
+        crashCtx.lineTo(rx + 22, ry + 20);
+        crashCtx.lineTo(rx + 10, ry + 15);
+        crashCtx.fill();
+        // Центральное (небольшой выступ)
+        crashCtx.fillRect(rx - 2, ry + 12, 4, 6);
 
         crashCtx.shadowBlur = 0;
 

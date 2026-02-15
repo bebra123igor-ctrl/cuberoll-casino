@@ -163,12 +163,13 @@
           </svg></span>
         <span class="nav-label">Магазин</span>
       </button>
-      <button class="nav-tab" data-tab="fairness">
-        <span class="icon"><svg viewBox="0 0 24 24">
-            <rect x="3" y="11" width="18" height="11" rx="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      <button class="nav-tab" data-tab="wallet">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="5" width="20" height="14" rx="2" />
+            <line x1="2" y1="10" x2="22" y2="10" />
+            <path d="M16 10c1.1 0 2 .9 2 2s-.9 2-2 2h-4v-4h4z" />
           </svg></span>
-        <span class="nav-label">Fair</span>
+        <span class="nav-label">Пополнение</span>
       </button>
       <button class="nav-tab" data-tab="settings">
         <span class="icon"><svg viewBox="0 0 24 24">
@@ -331,69 +332,6 @@
       </div>
     </div>
 
-    <!-- fair -->
-    <div class="tab-content" id="content-fairness">
-      <div class="tab-scrollable">
-        <h3 class="section-title">Provably Fair</h3>
-        <div class="fairness-info">
-          <div class="fair-card">
-            <h4>Как это работает</h4>
-            <p>HMAC-SHA256 из серверного сида, клиентского сида и нонса. Результат можно проверить после смены
-              серверного
-              сида.</p>
-          </div>
-          <div class="fair-card">
-            <h4>Текущие сиды</h4>
-            <div class="seed-field"><label>Server Seed Hash</label>
-              <div class="seed-value" id="server-seed-hash">—</div>
-            </div>
-            <div class="seed-field">
-              <label>Client Seed</label>
-              <div class="seed-input-row">
-                <input type="text" id="client-seed-input" class="seed-input" placeholder="Твой seed">
-                <button class="seed-btn" id="btn-update-seed"><span class="icon icon-sm"><svg viewBox="0 0 24 24">
-                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                      <polyline points="17 21 17 13 7 13 7 21" />
-                    </svg></span></button>
-              </div>
-            </div>
-            <div class="seed-field"><label>Nonce</label>
-              <div class="seed-value" id="nonce-value">0</div>
-            </div>
-          </div>
-          <button class="rotate-btn" id="btn-rotate-seed">
-            <span class="icon icon-sm"><svg viewBox="0 0 24 24">
-                <polyline points="23 4 23 10 17 10" />
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-              </svg></span>
-            Сменить Server Seed
-          </button>
-          <div class="fair-card" id="old-seed-reveal" style="display:none">
-            <h4>Предыдущий Seed</h4>
-            <div class="seed-field"><label>Seed</label>
-              <div class="seed-value" id="old-server-seed">—</div>
-            </div>
-            <div class="seed-field"><label>Hash</label>
-              <div class="seed-value" id="old-server-hash">—</div>
-            </div>
-          </div>
-          <div class="fair-card">
-            <h4>Проверить игру</h4>
-            <div class="verify-form">
-              <input type="text" id="verify-server-seed" class="verify-input" placeholder="Server Seed">
-              <input type="text" id="verify-client-seed" class="verify-input" placeholder="Client Seed">
-              <input type="number" id="verify-nonce" class="verify-input" placeholder="Nonce">
-              <button class="verify-btn" id="btn-verify">Проверить</button>
-            </div>
-            <div class="verify-result" id="verify-result" style="display:none">
-              <p>Результат: <strong id="verify-dice">—</strong></p>
-              <p>Сумма: <strong id="verify-total">—</strong></p>
-              <p>Hash: <code id="verify-hash">—</code></p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
 
     <div class="tab-content" id="content-shop">
@@ -409,21 +347,58 @@
       <div class="tab-scrollable">
         <div class="wallet-content">
           <div class="deposit-hero">
-            <div class="hero-icon">💎</div>
+            <div class="hero-icon">🏦</div>
             <h2>Пополнение баланса</h2>
-            <p>Укажите сумму и нажмите кнопку. Пополнение происходит мгновенно через ваш TON кошелёк.</p>
+            <p>Выберите удобный способ пополнения игрового счета.</p>
           </div>
 
-          <div class="deposit-input-card premium-dep">
-            <div class="dep-label">Сумма пополнения</div>
-            <div class="dep-input-container">
-              <div class="dep-input-group">
-                <input type="text" inputmode="decimal" id="dep-amount" placeholder="0.00">
-                <span>TON</span>
-              </div>
-              <button class="dep-go-btn main-action" id="dep-btn-go" onclick="depositRequest()">ПОПОЛНИТЬ</button>
+          <div class="settings-group"
+            style="padding: 15px; background: var(--card2); border-radius: var(--r); margin-bottom: 20px; border: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+              <span style="font-size: 24px;">🎁</span>
+              <h4 style="margin: 0; color: var(--gold);">Пополнение через дилера</h4>
             </div>
-            <p class="dep-hint" id="dep-min-hint">Минимум: 0.1 TON</p>
+            <p style="font-size: 13px; color: var(--t3); line-height: 1.5; margin-bottom: 15px;">
+              Вы можете обменять <b>TG Gifts</b> на TON баланс. Для этого напишите дилеру, отправьте ему подарок, и его
+              стоимость будет моментально зачислена на ваш аккаунт.
+            </p>
+            <a href="https://t.me/dealer_cuberoll" target="_blank" class="main-action-btn"
+              style="text-decoration:none; display:block; text-align:center; padding: 12px; font-weight: 800; border-radius: 12px; background: var(--gold); color: black;">
+              СВЯЗАТЬСЯ С ДИЛЕРОМ
+            </a>
+          </div>
+
+          <div class="settings-group"
+            style="padding: 15px; background: var(--card2); border-radius: var(--r); border: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+              <span style="font-size: 24px;">💎</span>
+              <h4 style="margin: 0; color: var(--gold);">Пополнить TON кошельком</h4>
+            </div>
+            <p style="font-size: 13px; color: var(--t3); margin-bottom: 15px;">Прямой перевод с вашего TON кошелька
+              через TonConnect.</p>
+
+            <div id="ton-deposit-ui" style="display: none;">
+              <div class="dep-input-container" style="margin-bottom: 15px;">
+                <div class="dep-input-group"
+                  style="background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px; display: flex; align-items: center; gap: 10px;">
+                  <input type="text" inputmode="decimal" id="dep-amount" placeholder="0.00"
+                    style="background: none; border: none; color: white; flex: 1; outline: none;">
+                  <span style="color: var(--gold); font-weight: 700;">TON</span>
+                </div>
+              </div>
+              <button class="dep-go-btn main-action" id="dep-btn-go" onclick="depositRequest()"
+                style="width: 100%; padding: 12px; border-radius: 10px; background: var(--gold); color: black; border: none; font-weight: 800; cursor: pointer;">
+                ПОДТВЕРДИТЬ ПОПОЛНЕНИЕ
+              </button>
+              <p class="dep-hint" id="dep-min-hint"
+                style="font-size: 11px; color: var(--t4); margin-top: 8px; text-align: center;">Минимум: 0.1 TON</p>
+            </div>
+
+            <button id="show-ton-deposit" class="main-action-btn"
+              onclick="document.getElementById('ton-deposit-ui').style.display = 'block'; this.style.display = 'none';"
+              style="width:100%; padding: 12px; border-radius: 10px; background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold); font-weight: 800;">
+              ОТКРЫТЬ ОКНО ПОПОЛНЕНИЯ ТОНАМИ
+            </button>
           </div>
 
           <div id="memo-display-card" class="memo-card hidden"
@@ -438,10 +413,8 @@
               СКОПИРОВАТЬ
             </button>
             <p style="font-size: 11px; color: var(--t4); margin-top: 12px;">Кошелёк должен добавить его автоматически.
-              Если нет —
-              впишите вручную.</p>
+              Если нет — впишите вручную.</p>
           </div>
-
         </div>
       </div>
     </div>
@@ -495,6 +468,18 @@
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg></span>
             </a>
+
+            <div class="settings-item clickable"
+              onclick="document.getElementById('fairness-modal').classList.remove('hidden')">
+              <div class="settings-info">
+                <span class="settings-name">Provably Fair</span>
+                <span class="settings-desc">Честная игра и проверка сидов</span>
+              </div>
+              <span class="icon"><svg viewBox="0 0 24 24">
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg></span>
+            </div>
           </div>
 
           <div class="settings-group">
@@ -641,6 +626,83 @@
           <div class="onboarding-actions">
             <a href="https://t.me/cubewilltaketheworld" target="_blank" class="onboarding-btn primary">ПОДПИСАТЬСЯ</a>
             <button class="onboarding-btn secondary" onclick="closeModal('onboarding-modal')">НАЧАТЬ ИГРАТЬ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAIRNESS MODAL (moved from tab) -->
+    <div class="modal-overlay hidden" id="fairness-modal">
+      <div class="modal-box premium-modal" style="max-height: 80vh; overflow-y: auto; text-align: left;">
+        <div class="modal-header"
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3 style="margin: 0; color: var(--gold);">Provably Fair</h3>
+          <button class="close-modal-btn" onclick="closeModal('fairness-modal')"
+            style="background: none; border: none; color: white; font-size: 24px;">×</button>
+        </div>
+        <div class="fairness-info">
+          <div class="fair-card"
+            style="background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
+            <h4 style="margin-top: 0;">Как это работает</h4>
+            <p style="font-size: 13px; color: var(--t3);">HMAC-SHA256 из серверного сида, клиентского сида и нонса.
+              Результат можно проверить после смены серверного сида.</p>
+          </div>
+          <div class="fair-card"
+            style="background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
+            <h4 style="margin-top: 0;">Текущие сиды</h4>
+            <div class="seed-field" style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--t4);">Server
+                Seed Hash</label>
+              <div class="seed-value" id="server-seed-hash"
+                style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
+            </div>
+            <div class="seed-field" style="margin-bottom: 8px;">
+              <label style="font-size: 11px; color: var(--t4);">Client Seed</label>
+              <div class="seed-input-row" style="display: flex; gap: 5px;">
+                <input type="text" id="client-seed-input" class="seed-input" placeholder="Твой seed"
+                  style="flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 5px; border-radius: 5px;">
+                <button class="seed-btn" id="btn-update-seed"
+                  style="background: var(--gold); border: none; padding: 5px 10px; border-radius: 5px;">Save</button>
+              </div>
+            </div>
+            <div class="seed-field"><label style="font-size: 11px; color: var(--t4);">Nonce</label>
+              <div class="seed-value" id="nonce-value">0</div>
+            </div>
+          </div>
+          <button class="rotate-btn" id="btn-rotate-seed"
+            style="width: 100%; background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold); padding: 10px; border-radius: 10px; cursor: pointer; margin-bottom: 15px;">
+            Сменить Server Seed
+          </button>
+
+          <div class="fair-card" id="old-seed-reveal"
+            style="display:none; background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
+            <h4 style="margin-top: 0;">Предыдущий Seed</h4>
+            <div class="seed-field" style="margin-bottom: 8px;"><label
+                style="font-size: 11px; color: var(--t4);">Seed</label>
+              <div class="seed-value" id="old-server-seed"
+                style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
+            </div>
+            <div class="seed-field"><label style="font-size: 11px; color: var(--t4);">Hash</label>
+              <div class="seed-value" id="old-server-hash"
+                style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
+            </div>
+          </div>
+
+          <div class="fair-card" style="background: var(--card); padding: 12px; border-radius: 10px;">
+            <h4 style="margin-top: 0;">Проверить игру</h4>
+            <div class="verify-form" style="display: flex; flex-direction: column; gap: 8px;">
+              <input type="text" id="verify-server-seed" class="verify-input" placeholder="Server Seed"
+                style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
+              <input type="text" id="verify-client-seed" class="verify-input" placeholder="Client Seed"
+                style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
+              <input type="number" id="verify-nonce" class="verify-input" placeholder="Nonce"
+                style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
+              <button class="verify-btn" id="btn-verify"
+                style="background: var(--gold); border: none; padding: 10px; border-radius: 5px; color: black; font-weight: 800;">Проверить</button>
+            </div>
+            <div class="verify-result" id="verify-result" style="display:none; margin-top: 10px;">
+              <p style="font-size: 13px;">Результат: <strong id="verify-dice">—</strong></p>
+              <p style="font-size: 13px;">Сумма: <strong id="verify-total">—</strong></p>
+            </div>
           </div>
         </div>
       </div>
