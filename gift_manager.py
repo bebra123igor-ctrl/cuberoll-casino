@@ -298,14 +298,14 @@ async def main():
     logger.info("Initializing gift manager client...")
     
     from telethon.sessions import StringSession
-    from telethon.network import connection
+    from telethon.network import ConnectionTcpIntermediate
     
     try:
         client = TelegramClient(
             StringSession(session_string),
             int(API_ID),
             API_HASH,
-            connection=connection.TcpIntermediate
+            connection=ConnectionTcpIntermediate
         )
     except Exception as e:
         logger.error(f"Ошибка инициализации клиента: {e}")
