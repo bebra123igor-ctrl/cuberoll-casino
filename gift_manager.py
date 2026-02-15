@@ -88,64 +88,54 @@ async def sync_inventory(client):
             logger.error(f"Ошибка проверки аккаунта: {e}")
             return
 
-        # 2. Получение подарков
+        # 2. ПОЛУЧЕНИЕ ПОДАРКОВ (логика из вашего старого кода)
         result = None
         try:
+             from telethon.tl.functions import payments
+             from telethon.tl import types
+             
              me_input = await client.get_input_entity('me')
              
-             # Пробуем найти официальный метод
-             req_class = None
-             from telethon.tl.functions import payments
-             for name in ["GetUserGiftsRequest", "GetGiftsRequest"]:
-                 if hasattr(payments, name):
-                     req_class = getattr(payments, name)
-                     break
-             
-             if req_class:
-                 logger.info(f"Используем официальный метод {req_class.__name__}...")
-                 result = await client(req_class(user_id=me_input, limit=100))
-             else:
-                 # Raw Packet (Layer 191+)
-                 logger.info("Метод не найден в Telethon, используем Raw Packet (0xe11da17c)...")
-                 class GetGiftsReq(functions.TLRequest):
-                     CONSTRUCTOR_ID = 0xe11da17c
-                     SUBCLASS_OF_ID = 0x14ada4f2
-                     def __init__(self, u_id, offset=0, limit=100):
-                         self.user_id = u_id
-                         self.offset = offset
-                         self.limit = limit
-                     def to_dict(self): return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
-                     def _bytes(self):
-                         import struct
-                         return struct.pack('<I', 0xe11da17c) + self.user_id._bytes() + struct.pack('<ii', self.offset, self.limit)
-
-                 result = await client(GetGiftsReq(u_id=me_input, limit=100))
+             # Пробуем разные методы из Telethon 1.38+
+             methods_to_try = ["GetSavedStarGiftsRequest", "GetUserGiftsRequest", "GetStarGiftsRequest"]
+             for m_name in methods_to_try:
+                 if hasattr(payments, m_name):
+                     try:
+                         logger.info(f"Пробую метод {m_name}...")
+                         req = getattr(payments, m_name)
+                         if m_name == "GetStarGiftsRequest":
+                             result = await client(req(hash=0))
+                         else:
+                             result = await client(req(user_id=me_input, limit=100))
+                         if result: break
+                     except Exception as e:
+                         logger.warning(f"Метод {m_name} не сработал: {e}")
 
         except Exception as e:
-             logger.warning(f"Сервер не принял запрос на подарки: {e}")
+             logger.error(f"Не удалось получить инвентарь: {e}")
              return
 
         if not result or not hasattr(result, 'gifts'):
-            logger.warning("Список подарков пуст.")
+            logger.warning("Список подарков от Телеграма пуст.")
             return
 
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Миграция колонок
-        for col in ['model', 'background', 'symbol']:
+        # Миграция колонок (slug критичен для передачи!)
+        for col in ['model', 'background', 'symbol', 'slug']:
             try: cursor.execute(f"ALTER TABLE gifts ADD COLUMN {col} TEXT")
             except: pass
         conn.commit()
 
-        # Парсер мета-данных
+        # Помощник для данных из t.me/nft
         async def parse_nft_meta(slug, gift_id):
             if not slug: return {}
             url = f"https://t.me/nft/{slug}-{gift_id}"
             try:
                 import re
                 async with aiohttp.ClientSession() as session:
-                    async with session.get(url, timeout=7) as resp:
+                    async with session.get(url, timeout=5) as resp:
                         if resp.status != 200: return {}
                         text = await resp.text()
                         m = re.search(r'og:description["\s]+content="([^"]*)"', text)
@@ -249,34 +239,46 @@ async def process_transfer_queue(client):
                     continue
 
                 try:
-                    # Разрешаем сущность получателя, чтобы Телеграм точно знал, кому шлем
-                    # (нужно чтобы юзер уже писал боту)
+                    # 1. Разрешаем сущность получателя
                     try:
                         receiver = await client.get_input_entity(int(receiver_id))
                     except Exception as entity_err:
-                        logger.error(f"Не могу найти юзера {receiver_id}. Он должен написать боту первым! {entity_err}")
+                        logger.error(f"Не могу найти юзера {receiver_id}: {entity_err}")
                         continue
 
-                    except:
-                        # Ручная отправка через Raw запрос
-                        # 0xc220d9f4 = payments.sendGift#c220d9f4 user_id:InputUser gift_id:long = Updates;
-                        class SendGiftReq(functions.TLRequest):
-                            CONSTRUCTOR_ID = 0xc220d9f4
-                            SUBCLASS_OF_ID = 0x8af52bc9
-                            def __init__(self, u_id, g_id):
-                                self.user_id = u_id
-                                self.gift_id = g_id
-                            def to_dict(self): return {'user_id': self.user_id, 'gift_id': self.gift_id}
-                            def _bytes(self):
-                                import struct
-                                return b''.join((
-                                    struct.pack('<I', self.CONSTRUCTOR_ID),
-                                    self.user_id._bytes(),
-                                    struct.pack('<q', self.gift_id) # long is q in struct
-                                ))
-                        
-                        await client(SendGiftReq(receiver, int(tg_gift_id)))
+                    # 2. Ищем slug подарка (он нужен для TransferStarGiftRequest)
+                    cursor.execute("SELECT slug FROM gifts WHERE gift_id = ?", (tg_gift_id,))
+                    row = cursor.fetchone()
+                    slug = row[0] if row and row[0] else None
                     
+                    if not slug:
+                        logger.error(f"Slug not found for gift {tg_gift_id}. Cannot transfer.")
+                        continue
+
+                    from telethon.tl.functions.payments import TransferStarGiftRequest, GetPaymentFormRequest, SendStarsFormRequest
+                    from telethon.tl.types import InputSavedStarGiftSlug, InputInvoiceStarGiftTransfer
+                    
+                    try:
+                        # Попытка прямой передачи
+                        logger.info(f"Передаю подарок {slug} пользователю {receiver_id}...")
+                        await client(TransferStarGiftRequest(
+                            stargift=InputSavedStarGiftSlug(slug=slug),
+                            to_id=receiver
+                        ))
+                    except Exception as gift_err:
+                        if "PAYMENT_REQUIRED" in str(gift_err):
+                            # Если нужна комиссия в звездах - оплачиваем!
+                            logger.info(f"💰 Для передачи {slug} нужна комиссия. Оплачиваю...")
+                            invoice = InputInvoiceStarGiftTransfer(
+                                stargift=InputSavedStarGiftSlug(slug=slug),
+                                to_id=receiver
+                            )
+                            form = await client(GetPaymentFormRequest(invoice=invoice))
+                            await client(SendStarsFormRequest(form_id=form.form_id, invoice=invoice))
+                            logger.info(f"✅ Комиссия оплачена, подарок {slug} отправлен!")
+                        else:
+                            raise gift_err
+
                     cursor.execute("UPDATE gift_transfers SET status = 'sent' WHERE id = ?", (t_id,))
                     logger.info(f"Successfully sent {gift_name} to {receiver_id}")
                     
