@@ -182,23 +182,25 @@ async def sync_inventory(client):
             bg_style = meta.get("backdrop", "radial-gradient(circle, #333, #000)")
             symbol = meta.get("symbol", "🎁")
 
-            
-            if manual_linked:
-                continue
-
-            logger.info(f"New gift found: {title}. Detecting price...")
-            price = await fetch_floor_price(title)
-            
-            cursor.execute("""
-                INSERT INTO gifts (title, price, gift_id, is_active, model, background, symbol)
-                VALUES (?, ?, ?, 1, ?, ?, ?)
-            """, (title, price, tg_gift_id, model_url, bg_style, symbol))
-            logger.info(f"Added to store: {title} for {price} TON")
+            if matched_id:
+                logger.info(f"MATCH FOUND: Linking '{api_title}' to manual entry ID {matched_id}")
+                cursor.execute("""
+                    UPDATE gifts SET gift_id = ?, model = ?, background = ?, symbol = ? 
+                    WHERE id = ?
+                """, (tg_gift_id, model_url, bg_style, symbol, matched_id))
+            else:
+                logger.info(f"New gift found on account: {api_title}. Adding to store...")
+                price = await fetch_floor_price(api_title)
+                cursor.execute("""
+                    INSERT INTO gifts (title, price, gift_id, is_active, model, background, symbol)
+                    VALUES (?, ?, ?, 1, ?, ?, ?)
+                """, (api_title, price, tg_gift_id, model_url, bg_style, symbol))
             
         conn.commit()
         conn.close()
     except Exception as e:
-        logger.error(f"Inventory sync failed: {e}")
+        import traceback
+        logger.error(f"Inventory sync failed: {e}\n{traceback.format_exc()}")
 
 async def process_transfer_queue(client):
     """Следит за новыми покупками в БД и отправляет подарки"""
