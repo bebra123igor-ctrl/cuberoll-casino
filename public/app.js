@@ -853,30 +853,39 @@ function updateChickenPosition() {
     const player = document.getElementById('cr-player');
     const container = document.getElementById('cr-lanes-container');
 
-    // Прыжок
+    // Начинаем анимацию прыжка
     player.classList.remove('jumping');
     void player.offsetWidth;
     player.classList.add('jumping');
 
-    // Куб остается внизу, дорога едет вниз
+    // Двигаем дорогу
     const laneHeight = 80;
     container.style.transform = `translateY(${crStep * laneHeight}px)`;
 
-    // Остановка машин в текущем ряду и возобновление в прошлом
-    stopCarsInLane(crStep);
+    // Машины в старом ряду пускаем СРАЗУ (как только игрок оторвался от земли)
     if (crStep > 0) resumeCarsInLane(crStep - 1);
+
+    // Машины в НОВОМ ряду останавливаем только когда кубик "приземлится" (~300ms)
+    setTimeout(() => {
+        if (!crActive) return; // Если уже разбились, не стопаем
+        stopCarsInLane(crStep);
+    }, 300);
 }
 
 function stopCarsInLane(step) {
     const lane = document.getElementById(`cr-lane-${step}`);
     if (!lane) return;
-    lane.querySelectorAll('.cr-obstacle').forEach(car => car.classList.add('braking'));
+    lane.querySelectorAll('.cr-obstacle').forEach(car => {
+        car.classList.add('braking');
+    });
 }
 
 function resumeCarsInLane(step) {
     const lane = document.getElementById(`cr-lane-${step}`);
     if (!lane) return;
-    lane.querySelectorAll('.cr-obstacle').forEach(car => car.classList.remove('braking'));
+    lane.querySelectorAll('.cr-obstacle').forEach(car => {
+        car.classList.remove('braking');
+    });
 }
 
 window.crossroadStart = async function () {
