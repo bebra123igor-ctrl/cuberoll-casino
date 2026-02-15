@@ -670,10 +670,15 @@ window.depositRequest = async function () {
     }
 
     const amountEl = document.getElementById('dep-amount');
-    const amountVal = amountEl ? amountEl.value : null;
+    let amountValRaw = amountEl ? amountEl.value : '';
+
+    // Заменяем запятую на точку для поддержки всех раскладок (особенно на iOS)
+    amountValRaw = amountValRaw.replace(',', '.');
+    const amountVal = parseFloat(amountValRaw);
+
     const minD = window.appSettings?.minDeposit || 0.1;
 
-    if (!amountVal || parseFloat(amountVal) < minD) return toast(`Мин. сумма ${minD} TON`, 'error');
+    if (isNaN(amountVal) || amountVal < minD) return toast(`Мин. сумма ${minD} TON`, 'error');
 
     const btn = document.getElementById('dep-btn-go');
     btn.disabled = true;
