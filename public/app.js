@@ -892,14 +892,21 @@ window.crossroadStep = async function () {
     if (!crActive) return;
     try {
         const res = await api('/api/crossroad/step', 'POST');
+
         if (res.crash) {
             crActive = false;
-            document.getElementById('cr-status-text').textContent = 'СБИТА МАШИНОЙ! 💥';
+            // Анимация смерти: сначала спавним быструю машину
+            await animateCrash(res.step);
+
+            document.getElementById('cr-status-text').textContent = 'СБИТ ТЕХНИКОЙ! 💥';
             document.getElementById('cr-overlay').classList.remove('hidden');
+
             setTimeout(() => {
+                document.getElementById('cr-setup-ui').classList.remove('manual-hidden');
                 document.getElementById('cr-setup-ui').classList.remove('hidden');
                 document.getElementById('cr-play-ui').classList.add('hidden');
-            }, 1000);
+            }, 1500);
+
             if (window.haptic) haptic.notificationOccurred('error');
         } else {
             crStep = res.step;
@@ -909,6 +916,46 @@ window.crossroadStep = async function () {
             if (window.haptic) haptic.impactOccurred('light');
         }
     } catch (e) { toast(e.message, 'error'); }
+}
+
+async function animateCrash(targetStep) {
+    const lane = document.getElementById(`cr-lane-${targetStep}`);
+    if (!lane) return;
+
+    // 1. Анимируем прыжок куба "в пустоту" или в опасную зону
+    const player = document.getElementById('cr-player');
+    const container = document.getElementById('cr-lanes-container');
+    const laneHeight = 80;
+
+    player.classList.add('jumping');
+    container.style.transform = `translateY(${targetStep * laneHeight}px)`;
+
+    // 2. Спавним "Машину-убийцу"
+    const killer = document.createElement('div');
+    killer.className = 'cr-obstacle killer';
+    // Направление зависит от того, как мы хотим
+    const exitRight = Math.random() > 0.5;
+    killer.style.left = exitRight ? '-100px' : '100%';
+    killer.style.transition = 'left 0.4s linear';
+    lane.appendChild(killer);
+
+    // 3. Машина вылетает на середину (где куб) спустя мгновение
+    await new Promise(r => setTimeout(r, 100));
+    killer.style.left = '50%';
+
+    // Ждем удара
+    await new Promise(r => setTimeout(r, 250));
+
+    // Спецэффект удара
+    player.style.filter = 'hue-rotate(90deg) brightness(2)';
+    player.style.transform = 'translateX(-50%) scale(0.5) rotate(45deg)';
+
+    // Машина улетает дальше
+    killer.style.left = exitRight ? '120%' : '-120%';
+
+    await new Promise(r => setTimeout(r, 300));
+    player.style.filter = '';
+    player.style.transform = '';
 }
 
 window.crossroadCashout = async function () {

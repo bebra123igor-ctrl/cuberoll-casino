@@ -3420,6 +3420,15 @@ input:checked+.toggle-slider:before {
   justify-content: center;
   animation: cr-car-move linear infinite;
   pointer-events: none;
+  z-index: 5;
+}
+
+.cr-obstacle.killer {
+  animation: none;
+  /* Программное управление в JS */
+  border-color: #ff4444;
+  /* Красная машина-убийца */
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
 }
 
 .cr-obstacle::before,

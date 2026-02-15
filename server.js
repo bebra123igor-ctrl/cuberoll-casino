@@ -298,7 +298,7 @@ app.post('/api/crossroad/step', auth, (req, res) => {
     const session = sessionOps.get(u.id);
     if (!session || session.game_type !== 'crossroad') return res.status(400).secure({ error: 'No active game' });
 
-    if (Math.random() < 0.3) {
+    if (Math.random() < 0.1) {
         const amt = session.bet_amount;
         gameOps.create({
             telegramId: u.id, betAmount: amt, gameType: 'crossroad',
