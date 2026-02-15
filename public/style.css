@@ -755,24 +755,43 @@ body {
   display: none;
   flex-direction: column;
   overflow: hidden;
-  /* Important: Tab content itself is a flex container */
-  animation: tabFade .3s ease-out;
+  animation: tabFade .4s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @keyframes tabFade {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px) scale(0.98);
+    filter: blur(4px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+    filter: blur(0);
   }
 }
 
 .tab-content.active {
   display: flex;
+}
+
+[id^="game-view-"] {
+  animation: gameIntro 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+@keyframes gameIntro {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+    filter: brightness(0.5);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1);
+  }
 }
 
 /* Scrollable wrapper inside tab */
@@ -3485,22 +3504,23 @@ input:checked+.toggle-slider:before {
 }
 
 .crash-btn.cashout {
-  background: var(--green);
+  background: linear-gradient(135deg, var(--gold) 0%, #f1c40f 100%);
   color: #000;
-  animation: pulse-green 1.5s infinite;
+  box-shadow: 0 4px 15px rgba(241, 196, 15, 0.3);
+  animation: pulse-gold 1.5s infinite;
 }
 
-@keyframes pulse-green {
+@keyframes pulse-gold {
   0% {
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+    box-shadow: 0 0 0 0 rgba(241, 196, 15, 0.4);
   }
 
   70% {
-    box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+    box-shadow: 0 0 0 10px rgba(241, 196, 15, 0);
   }
 
   100% {
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+    box-shadow: 0 0 0 0 rgba(241, 196, 15, 0);
   }
 }
 
@@ -3512,4 +3532,32 @@ input:checked+.toggle-slider:before {
 .crash-info.crashed .crash-mult {
   color: var(--red);
   text-shadow: 0 0 30px rgba(229, 57, 53, 0.5);
+  animation: none !important;
+}
+
+/* Вибрация иксов */
+.crash-mult.vibrating {
+  animation: crash-vibrate 0.1s infinite linear;
+}
+
+@keyframes crash-vibrate {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  25% {
+    transform: translate(1px, 1px) rotate(0.4deg);
+  }
+
+  50% {
+    transform: translate(-1px, -1px) rotate(-0.4deg);
+  }
+
+  75% {
+    transform: translate(1px, -1px) rotate(0.4deg);
+  }
+
+  100% {
+    transform: translate(-1px, 1px) rotate(-0.4deg);
+  }
 }

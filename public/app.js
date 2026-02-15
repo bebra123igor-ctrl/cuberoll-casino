@@ -12,7 +12,7 @@ let streak = 0;
 let dailyClaimed = false;
 let tonConnectUI = null;
 let isInitializing = true;
-let soundEnabled = localStorage.getItem('settings_sound') !== 'false';
+let hapticEnabled = localStorage.getItem('settings_haptic') !== 'false';
 
 // "Шифрование" для "обычных смертных"
 const _SEC_KEY = 'cuberoll';
@@ -226,14 +226,14 @@ window.switchTab = function (tab) {
     if (tab === 'shop') loadGifts();
     if (tab === 'leaderboard') loadLeaderboard();
     if (tab === 'settings') {
-        document.getElementById('settings-sound').checked = soundEnabled;
+        document.getElementById('settings-haptic').checked = hapticEnabled;
     }
 };
 
-window.toggleSound = function () {
-    soundEnabled = document.getElementById('settings-sound').checked;
-    localStorage.setItem('settings_sound', soundEnabled);
-    if (soundEnabled) toast('Звук включен');
+window.toggleHaptic = function () {
+    hapticEnabled = document.getElementById('settings-haptic').checked;
+    localStorage.setItem('settings_haptic', hapticEnabled);
+    if (hapticEnabled) toast('Вибрация включена');
 };
 
 window.redeemPromo = async function () {
@@ -432,7 +432,7 @@ window.roll = async function () {
 
     rolling = true;
     document.getElementById('open-bet-modal-btn').disabled = true;
-    if (window.haptic) haptic.impactOccurred('medium');
+    if (window.haptic && hapticEnabled) haptic.impactOccurred('medium');
 
     try {
         const payload = { betAmount: amt, betType: betType };
@@ -440,7 +440,7 @@ window.roll = async function () {
 
         const res = await api('/api/bet', 'POST', payload);
 
-        playSound('roll');
+        if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
         animateDice(res.result.dice);
 
         setTimeout(() => {
@@ -506,16 +506,14 @@ function showResult(res) {
 
     if (res.won) {
         amt.textContent = '+' + res.payout.toFixed(2) + ' TON';
-        playSound('win');
     } else {
         amt.textContent = '-' + res.betAmount.toFixed(2) + ' TON';
-        playSound('loss');
     }
     amt.className = 'result-amount ' + (res.won ? 'win' : 'loss');
 
     diceDisp.innerHTML = res.dice.map(v => `<div class="result-die-box">${v}</div>`).join('');
 
-    if (window.haptic) {
+    if (window.haptic && hapticEnabled) {
         if (res.won) haptic.notificationOccurred('success');
         else haptic.notificationOccurred('error');
     }
@@ -721,8 +719,7 @@ window.depositRequest = async function () {
         const message = {
             address: res.address.trim(),
             amount: (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString(),
-            payload: payload, // Binary BOC fallback
-            comment: depositComment // Modern SDK text comment field
+            payload: payload // Binary BOC containing the comment
         };
 
         const transaction = {
@@ -866,13 +863,12 @@ function updateCrashUI() {
     if (crashStatus.phase === 'FLYING') {
         waitingUI.classList.add('hidden');
         statusEl.textContent = 'ПОЛЁТ...';
-        multEl.textContent = crashStatus.multiplier.toFixed(2) + 'x';
+        multEl.classList.add('vibrating');
         document.querySelector('.crash-info').classList.remove('crashed');
 
         if (crashStatus.myBet && !crashStatus.myBet.cashedOut) {
             betBtn.classList.add('hidden');
             cashoutBtn.classList.remove('hidden');
-            cashoutBtn.textContent = `ЗАБРАТЬ ${(crashStatus.myBet.amount * crashStatus.multiplier).toFixed(2)}`;
         } else {
             betBtn.classList.remove('hidden');
             betBtn.disabled = true;
@@ -883,6 +879,7 @@ function updateCrashUI() {
         waitingUI.classList.remove('hidden');
         statusEl.textContent = 'ГОТОВИМСЯ...';
         multEl.textContent = '1.00x';
+        multEl.classList.remove('vibrating');
         document.querySelector('.crash-info').classList.remove('crashed');
 
         const totalWait = 10000;
@@ -899,6 +896,7 @@ function updateCrashUI() {
         waitingUI.classList.add('hidden');
         statusEl.textContent = 'РВАНО! 💥';
         multEl.textContent = crashStatus.multiplier.toFixed(2) + 'x';
+        multEl.classList.remove('vibrating');
         document.querySelector('.crash-info').classList.add('crashed');
 
         betBtn.classList.remove('hidden');
@@ -940,18 +938,37 @@ function renderCrash() {
     crashCtx.clearRect(0, 0, w, h);
 
     if (crashStatus && crashStatus.phase === 'FLYING') {
-        const t = (Date.now() - timeOffset - (crashStatus.startTime || 0)) / 1000;
+        const now = Date.now() - timeOffset;
+        const t = (now - (crashStatus.startTime || 0)) / 1000;
+
+        // Плавная интерполяция икса на клиенте (1.07^t)
+        const currentMult = Math.max(1, Math.pow(1.07, t));
+        const multDisplay = currentMult.toFixed(2);
+        const multEl = document.getElementById('crash-multiplier');
+        if (multEl) multEl.textContent = multDisplay + 'x';
+
+        // Обновляем кнопку наличных
+        const cashBtn = document.getElementById('crash-cashout-btn');
+        if (cashBtn && !cashBtn.classList.contains('hidden') && crashStatus.myBet) {
+            cashBtn.textContent = `ЗАБРАТЬ ${(crashStatus.myBet.amount * currentMult).toFixed(2)}`;
+        }
+
+        // Рандомная вибрация телефона
+        if (window.haptic && hapticEnabled && Math.random() > 0.95) {
+            haptic.impactOccurred('light');
+        }
 
         // Draw path
         crashCtx.beginPath();
-        crashCtx.strokeStyle = 'rgba(194, 167, 77, 0.5)';
-        crashCtx.lineWidth = 3;
+        crashCtx.strokeStyle = 'rgba(194, 167, 77, 0.6)';
+        crashCtx.lineWidth = 4;
+        crashCtx.lineCap = 'round';
         crashCtx.moveTo(40, h - 40);
 
-        const points = 50;
+        const points = 60;
         for (let i = 0; i <= points; i++) {
             const pt = (t * i) / points;
-            const px = 40 + (pt * (w - 80) / 10); // scale speed
+            const px = 40 + (pt * (w - 80) / 10);
             const py = (h - 40) - Math.pow(1.07, pt * 5) * 10;
             if (px < w - 20) crashCtx.lineTo(px, py);
         }
@@ -962,17 +979,29 @@ function renderCrash() {
         const ry = (h - 40) - Math.pow(1.07, t * 5) * 10;
 
         if (rx < w - 20) {
-            crashCtx.fillStyle = '#c2a74d';
+            // Пламя ракеты
+            const fire = crashCtx.createRadialGradient(rx - 8, ry + 2, 0, rx - 8, ry + 2, 15);
+            fire.addColorStop(0, '#f1c40f');
+            fire.addColorStop(1, 'transparent');
+            crashCtx.fillStyle = fire;
             crashCtx.beginPath();
-            crashCtx.arc(rx, ry, 6, 0, Math.PI * 2);
+            crashCtx.arc(rx - 8, ry + 2, 15, 0, Math.PI * 2);
             crashCtx.fill();
 
+            crashCtx.fillStyle = '#c2a74d';
+            crashCtx.shadowBlur = 15;
+            crashCtx.shadowColor = '#c2a74d';
+            crashCtx.beginPath();
+            crashCtx.arc(rx, ry, 7, 0, Math.PI * 2);
+            crashCtx.fill();
+            crashCtx.shadowBlur = 0;
+
             // Glow
-            const trail = crashCtx.createRadialGradient(rx, ry, 0, rx, ry, 30);
-            trail.addColorStop(0, 'rgba(194,167,77,0.4)');
+            const trail = crashCtx.createRadialGradient(rx, ry, 0, rx, ry, 40);
+            trail.addColorStop(0, 'rgba(194,167,77,0.3)');
             trail.addColorStop(1, 'rgba(194,167,77,0)');
             crashCtx.fillStyle = trail;
-            crashCtx.fillRect(rx - 30, ry - 30, 60, 60);
+            crashCtx.fillRect(rx - 40, ry - 40, 80, 80);
         }
     }
 
@@ -990,7 +1019,7 @@ window.crashPlaceBet = async function () {
         const res = await api('/api/crash/bet', 'POST', { betAmount: amt });
         setBalance(res.newBalance);
         toast('Ставка принята!', 'success');
-        if (window.haptic) haptic.impactOccurred('medium');
+        if (window.haptic && hapticEnabled) haptic.impactOccurred('medium');
         pollCrash();
     } catch (e) { toast(e.message, 'error'); }
 };
@@ -1001,7 +1030,7 @@ window.crashCashout = async function () {
         setBalance(res.newBalance);
         triggerConfetti();
         toast(`Вы забрали ${res.payout.toFixed(2)} TON! (${res.multiplier}x)`, 'success');
-        if (window.haptic) haptic.notificationOccurred('success');
+        if (window.haptic && hapticEnabled) haptic.notificationOccurred('success');
         pollCrash();
     } catch (e) { toast(e.message, 'error'); }
 };
