@@ -1000,11 +1000,13 @@ function renderCrash() {
 
         // Адаптивный масштаб для мелких экранов
         // Базовый размер - для экранов > 500px. Если меньше - уменьшаем.
-        const baseScale = Math.min(w, h) / 300;
-        const s = Math.min(1.2, Math.max(0.6, baseScale)); // Ограничиваем от 0.6x до 1.2x
+        const baseScale = Math.min(w, h) / 380; // Было 300, увеличили делитель -> ракета станет меньше
+        const s = Math.min(1.1, Math.max(0.55, baseScale));
 
         const rx = w / 2 + Math.sin(timeFactor * 30) * shakeAmp;
-        const ry = h / 2 + 10 * s; // Чуть ниже центра, с учетом масштаба
+        // Поднимаем ракету выше центра (было h/2 + 10)
+        // На мобилках (маленький s) поднимаем еще сильнее
+        const ry = h / 2 - (20 * (2 - s));
 
         crashCtx.save();
         // Масштабируем всё относительно центра ракеты
@@ -1015,7 +1017,8 @@ function renderCrash() {
         // ПЛАМЯ (увеличивается и белеет при разгоне)
         if (isPlaying || (isCrashed && t > 0)) {
             const firePower = 1 + Math.min(2, currentMult / 15);
-            const fireLen = (50 + Math.random() * 40) * firePower;
+            // Уменьшаем длину пламени на 20%
+            const fireLen = (40 + Math.random() * 30) * firePower;
             const fireGrad = crashCtx.createLinearGradient(rx, ry + 20, rx, ry + fireLen);
             fireGrad.addColorStop(0, '#ffffff'); // Очень горячее у сопла
             fireGrad.addColorStop(0.2, '#f1c40f');

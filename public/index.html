@@ -377,340 +377,345 @@
             <p style="font-size: 13px; color: var(--t3); margin-bottom: 15px;">Прямой перевод с вашего TON кошелька
               через TonConnect.</p>
 
-            <div id="ton-deposit-ui" style="display: none;">
-              <div class="dep-input-container" style="margin-bottom: 15px;">
+            <!-- AUTOMATIC DEPOSIT ONLY (MANUAL HIDDEN) -->
+            <div id="ton-deposit-ui">
+              <div class="dep-input-container" style="margin-bottom: 20px;">
+                <label style="display:block; color:var(--t4); margin-bottom:8px; font-size:12px;">Сумма пополнения
+                  (TON)</label>
                 <div class="dep-input-group"
-                  style="background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px; display: flex; align-items: center; gap: 10px;">
-                  <input type="text" inputmode="decimal" id="dep-amount" placeholder="0.00"
-                    style="background: none; border: none; color: white; flex: 1; outline: none;">
-                  <span style="color: var(--gold); font-weight: 700;">TON</span>
+                  style="background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 10px;">
+                  <input type="number" inputmode="decimal" id="dep-amount" placeholder="0.00" value="1.0"
+                    style="background: none; border: none; color: white; flex: 1; outline: none; font-size: 24px; font-weight: 700;">
+                  <span style="color: var(--gold); font-weight: 700; font-size: 18px;">TON</span>
+                </div>
+                <div class="quick-dep-btns" style="display:flex; gap:8px; margin-top:10px;">
+                  <button onclick="document.getElementById('dep-amount').value='1.0'"
+                    style="flex:1; background:var(--bg); border:1px solid var(--border); color:var(--t3); padding:8px; border-radius:8px; font-weight:600;">1</button>
+                  <button onclick="document.getElementById('dep-amount').value='5.0'"
+                    style="flex:1; background:var(--bg); border:1px solid var(--border); color:var(--t3); padding:8px; border-radius:8px; font-weight:600;">5</button>
+                  <button onclick="document.getElementById('dep-amount').value='10.0'"
+                    style="flex:1; background:var(--bg); border:1px solid var(--border); color:var(--t3); padding:8px; border-radius:8px; font-weight:600;">10</button>
+                  <button onclick="document.getElementById('dep-amount').value='50.0'"
+                    style="flex:1; background:var(--bg); border:1px solid var(--border); color:var(--t3); padding:8px; border-radius:8px; font-weight:600;">50</button>
                 </div>
               </div>
+
               <button class="dep-go-btn main-action" id="dep-btn-go" onclick="depositRequest()"
-                style="width: 100%; padding: 12px; border-radius: 10px; background: var(--gold); color: black; border: none; font-weight: 800; cursor: pointer;">
-                ПОДТВЕРДИТЬ ПОПОЛНЕНИЕ
+                style="width: 100%; padding: 16px; border-radius: 14px; background: var(--gold); color: black; border: none; font-size: 16px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);">
+                <span>💳 ОПЛАТИТЬ ЧЕРЕЗ WALLET</span>
               </button>
-              <p class="dep-hint" id="dep-min-hint"
-                style="font-size: 11px; color: var(--t4); margin-top: 8px; text-align: center;">Минимум: 0.1 TON</p>
+
+              <div
+                style="margin-top: 15px; background: rgba(255, 215, 0, 0.05); padding: 10px; border-radius: 8px; border: 1px solid rgba(255, 215, 0, 0.1);">
+                <p style="font-size: 11px; color: var(--t4); text-align: center; margin: 0;">
+                  Средства зачислятся автоматически в течение 1 минуты после оплаты. <br>
+                  <span style="color: var(--gold);">Никаких лишних действий не требуется.</span>
+                </p>
+              </div>
             </div>
 
-            <button id="show-ton-deposit" class="main-action-btn"
-              onclick="document.getElementById('ton-deposit-ui').style.display = 'block'; this.style.display = 'none';"
-              style="width:100%; padding: 12px; border-radius: 10px; background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold); font-weight: 800;">
-              ОТКРЫТЬ ОКНО ПОПОЛНЕНИЯ ТОНАМИ
-            </button>
-          </div>
-
-          <div id="memo-display-card" class="memo-card hidden"
-            style="margin-top: 20px; background: var(--card2); border: 1px dashed var(--gold); padding: 16px; border-radius: var(--r); text-align: center;">
-            <div style="font-size: 11px; color: var(--t4); text-transform: uppercase; margin-bottom: 8px;">Обязательный
-              комментарий (Memo)</div>
-            <div id="active-memo"
-              style="font-family: monospace; font-size: 20px; font-weight: 800; color: var(--gold); letter-spacing: 2px;">
-              CR-XXXXXXX</div>
-            <button onclick="copyMemo()"
-              style="margin-top: 10px; background: var(--gold-dim); border: 1px solid var(--gold); color: var(--gold); padding: 6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; cursor: pointer;">
-              СКОПИРОВАТЬ
-            </button>
-            <p style="font-size: 11px; color: var(--t4); margin-top: 12px;">Кошелёк должен добавить его автоматически.
-              Если нет — впишите вручную.</p>
+            <!-- MANUAL HIDDEN -->
+            <button id="show-ton-deposit" style="display:none;"></button>
+            <div id="memo-display-card" class="memo-card hidden" style="display:none !important;"></div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- настройки -->
-    <div class="tab-content" id="content-settings">
-      <div class="tab-scrollable">
-        <h3 class="section-title">Настройки</h3>
-        <div class="settings-list">
-          <div class="settings-group">
-            <div class="promo-section">
-              <span class="settings-name">Промокод</span>
-              <div class="promo-input-group">
-                <input type="text" id="promo-input" placeholder="Введите код...">
-                <button onclick="redeemPromo()">АКТИВИРОВАТЬ</button>
+      <!-- настройки -->
+      <div class="tab-content" id="content-settings">
+        <div class="tab-scrollable">
+          <h3 class="section-title">Настройки</h3>
+          <div class="settings-list">
+            <div class="settings-group">
+              <div class="promo-section">
+                <span class="settings-name">Промокод</span>
+                <div class="promo-input-group">
+                  <input type="text" id="promo-input" placeholder="Введите код...">
+                  <button onclick="redeemPromo()">АКТИВИРОВАТЬ</button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="settings-group">
-            <div class="settings-item clickable" onclick="switchTab('leaderboard')">
-              <div class="settings-info">
-                <span class="settings-name">Топ игроков</span>
-                <span class="settings-desc">Глобальный рейтинг лидеров</span>
+            <div class="settings-group">
+              <div class="settings-item clickable" onclick="switchTab('leaderboard')">
+                <div class="settings-info">
+                  <span class="settings-name">Топ игроков</span>
+                  <span class="settings-desc">Глобальный рейтинг лидеров</span>
+                </div>
+                <span class="icon"
+                  style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;">
+                  <svg viewBox="0 0 24 24" fill="var(--gold)" width="20" height="20">
+                    <path
+                      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                </span>
               </div>
-              <span class="icon" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;">
-                <svg viewBox="0 0 24 24" fill="var(--gold)" width="20" height="20">
-                  <path
-                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                </svg>
-              </span>
-            </div>
 
-            <div class="settings-item">
-              <div class="settings-info">
-                <span class="settings-name">Вибрация (Haptic)</span>
-                <span class="settings-desc">Отклик устройства во время игры</span>
+              <div class="settings-item">
+                <div class="settings-info">
+                  <span class="settings-name">Вибрация (Haptic)</span>
+                  <span class="settings-desc">Отклик устройства во время игры</span>
+                </div>
+                <label class="toggle">
+                  <input type="checkbox" id="settings-haptic" checked onchange="toggleHaptic()">
+                  <span class="toggle-slider"></span>
+                </label>
               </div>
-              <label class="toggle">
-                <input type="checkbox" id="settings-haptic" checked onchange="toggleHaptic()">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
 
-            <a href="https://t.me/cuberoll_support" target="_blank" class="settings-item clickable">
-              <div class="settings-info">
-                <span class="settings-name">Поддержка</span>
-                <span class="settings-desc">Связаться с администрацией</span>
-              </div>
-              <span class="icon"><svg viewBox="0 0 24 24">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg></span>
-            </a>
+              <a href="https://t.me/cuberoll_support" target="_blank" class="settings-item clickable">
+                <div class="settings-info">
+                  <span class="settings-name">Поддержка</span>
+                  <span class="settings-desc">Связаться с администрацией</span>
+                </div>
+                <span class="icon"><svg viewBox="0 0 24 24">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg></span>
+              </a>
 
-            <div class="settings-item clickable"
-              onclick="document.getElementById('fairness-modal').classList.remove('hidden')">
-              <div class="settings-info">
-                <span class="settings-name">Provably Fair</span>
-                <span class="settings-desc">Честная игра и проверка сидов</span>
-              </div>
-              <span class="icon"><svg viewBox="0 0 24 24">
-                  <rect x="3" y="11" width="18" height="11" rx="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg></span>
-            </div>
-          </div>
-
-          <div class="settings-group">
-            <div class="settings-item">
-              <div class="settings-info">
-                <span class="settings-name">Версия</span>
-                <span class="settings-desc">Build 1.4.2 Golden Era</span>
+              <div class="settings-item clickable"
+                onclick="document.getElementById('fairness-modal').classList.remove('hidden')">
+                <div class="settings-info">
+                  <span class="settings-name">Provably Fair</span>
+                  <span class="settings-desc">Честная игра и проверка сидов</span>
+                </div>
+                <span class="icon"><svg viewBox="0 0 24 24">
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg></span>
               </div>
             </div>
-          </div>
 
-          <div class="settings-footer"
-            style="text-align: center; margin-top: 20px; font-size: 11px; color: var(--t4); display: flex; justify-content: center; gap: 10px;">
-            <a href="/terms.html" style="color: inherit; text-decoration: none;">Условия использования</a>
-            <span>•</span>
-            <a href="/privacy.html" style="color: inherit; text-decoration: none;">Конфиденциальность</a>
+            <div class="settings-group">
+              <div class="settings-item">
+                <div class="settings-info">
+                  <span class="settings-name">Версия</span>
+                  <span class="settings-desc">Build 1.4.2 Golden Era</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-footer"
+              style="text-align: center; margin-top: 20px; font-size: 11px; color: var(--t4); display: flex; justify-content: center; gap: 10px;">
+              <a href="/terms.html" style="color: inherit; text-decoration: none;">Условия использования</a>
+              <span>•</span>
+              <a href="/privacy.html" style="color: inherit; text-decoration: none;">Конфиденциальность</a>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- подтверждение покупки -->
-    <div class="modal-overlay hidden" id="purchase-modal">
-      <div class="modal-box">
-        <div class="modal-gift-icon" id="modal-gift-icon">🎁</div>
-        <h3 class="modal-title">Подтверждение</h3>
-        <p class="modal-desc">Вы уверены, что хотите купить <strong id="modal-gift-name">...</strong> за <span
-            id="modal-gift-price">...</span> TON?</p>
-        <div class="modal-btns">
-          <button class="modal-btn cancel" onclick="closeModal('purchase-modal')">Отмена</button>
-          <button class="modal-btn confirm" id="modal-confirm-buy">Купить</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- результат -->
-    <div class="result-overlay hidden" id="result-overlay">
-      <div class="result-modal">
-        <div class="result-icon-wrap" id="result-icon-wrap"></div>
-        <h2 class="result-title" id="result-title">Победа!</h2>
-        <div class="result-dice-display" id="result-dice-display"></div>
-        <p class="result-amount" id="result-amount">+100.00</p>
-        <p class="result-streak" id="result-streak"></p>
-        <button class="result-close" id="result-close">Продолжить</button>
-      </div>
-    </div>
-
-    <!-- объявление для выдачи подарков -->
-    <div class="modal-overlay hidden" id="dealer-warning-modal">
-      <div class="modal-box premium-modal dealer-modal">
-        <div class="modal-glow-bg"></div>
-        <div class="modal-gift-icon shiny">🤖</div>
-        <h3 class="modal-title">Важное уведомление!</h3>
-        <p class="modal-desc">Для того чтобы мы могли отправить вам купленный подарок, вам <b>обязательно</b> нужно
-          написать нашему боту-дилеру. <br><br>Без первого сообщения от вас Телеграм запрещает нам отправлять подарки!
-        </p>
-        <div class="modal-btns column">
-          <a href="https://t.me/dealer_cuberoll" target="_blank" class="modal-btn confirm pulse-btn"
-            onclick="closeModal('dealer-warning-modal'); localStorage.setItem('dealer_warned', '1')">НАПИСАТЬ ДИЛЕРУ</a>
-          <button class="modal-btn cancel"
-            onclick="closeModal('dealer-warning-modal'); localStorage.setItem('dealer_warned', '1')">Я ПОНЯЛ</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Модальное окно ставки -->
-    <div class="modal-overlay hidden" id="bet-modal">
-      <div class="modal-box bet-modal-box">
-        <div class="modal-header">
-          <h3>Сделать ставку</h3>
-          <button class="close-modal-btn" onclick="closeModal('bet-modal')">×</button>
-        </div>
-
-        <div class="bet-amount-section-modal">
-          <label>Сумма ставки</label>
-          <div class="bet-input-container">
-            <button class="bet-adjust" id="btn-half">/2</button>
-            <div class="bet-input-wrapper">
-              <input type="number" id="bet-amount" class="bet-input" value="1.0" min="0.1" max="100" step="0.1">
-              <span class="bet-input-unit">TON</span>
-            </div>
-            <button class="bet-adjust" id="btn-double">×2</button>
-          </div>
-          <div class="quick-bets">
-            <button class="quick-bet" data-amount="1">1</button>
-            <button class="quick-bet" data-amount="5">5</button>
-            <button class="quick-bet active" data-amount="10">10</button>
-            <button class="quick-bet" data-amount="20">20</button>
-            <button class="quick-bet" data-amount="max">MAX</button>
-          </div>
-        </div>
-
-        <div class="bet-type-section-modal">
-          <label>Исход</label>
-          <div class="bet-grid">
-            <button class="bet-type-btn active" data-bet="high">
-              <span class="bet-name">Больше (8-12)</span><span class="bet-mult">x1.95</span>
-            </button>
-            <button class="bet-type-btn" data-bet="low">
-              <span class="bet-name">Меньше (2-6)</span><span class="bet-mult">x1.95</span>
-            </button>
-            <button class="bet-type-btn" data-bet="even">
-              <span class="bet-name">Чётное</span><span class="bet-mult">x1.95</span>
-            </button>
-            <button class="bet-type-btn" data-bet="odd">
-              <span class="bet-name">Нечёт</span><span class="bet-mult">x1.95</span>
-            </button>
-            <button class="bet-type-btn" data-bet="seven">
-              <span class="bet-name">Семёрка (7)</span><span class="bet-mult">x5.8</span>
-            </button>
-            <button class="bet-type-btn" data-bet="doubles">
-              <span class="bet-name">Дубль</span><span class="bet-mult">x5.0</span>
-            </button>
-            <button class="bet-type-btn" data-bet="exact">
-              <span class="bet-name">Точное</span><span class="bet-mult">x11</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="exact-picker-container" id="exact-picker" style="display:none;">
-          <label class="picker-label">Выберите точное число</label>
-          <div class="exact-nums" id="exact-nums"></div>
-        </div>
-
-        <button class="roll-button main-action" id="roll-btn-confirm">
-          БРОСИТЬ КОСТИ
-        </button>
-      </div>
-    </div>
-    <!-- ONBOARDING MODAL -->
-    <div class="modal-overlay hidden" id="onboarding-modal">
-      <div class="onboarding-box">
-        <button class="close-cross" onclick="closeModal('onboarding-modal')">×</button>
-        <div class="onboarding-media">
-          <div class="cube-media-container">
-            <div class="cube-wireframe"></div>
-          </div>
-        </div>
-        <div class="onboarding-body">
-          <h2 class="onboarding-title">Добро пожаловать в <span class="text-gold">CubeRoll</span></h2>
-          <p class="onboarding-text">Испытай удачу в самом честном казино на TON. Бросай кости и выигрывай!</p>
-          <p class="onboarding-subtext">Подпишись на наш канал, чтобы не пропустить бонусы и обновления.</p>
-
-          <div class="onboarding-actions">
-            <a href="https://t.me/cubewilltaketheworld" target="_blank" class="onboarding-btn primary">ПОДПИСАТЬСЯ</a>
-            <button class="onboarding-btn secondary" onclick="closeModal('onboarding-modal')">НАЧАТЬ ИГРАТЬ</button>
+      <!-- подтверждение покупки -->
+      <div class="modal-overlay hidden" id="purchase-modal">
+        <div class="modal-box">
+          <div class="modal-gift-icon" id="modal-gift-icon">🎁</div>
+          <h3 class="modal-title">Подтверждение</h3>
+          <p class="modal-desc">Вы уверены, что хотите купить <strong id="modal-gift-name">...</strong> за <span
+              id="modal-gift-price">...</span> TON?</p>
+          <div class="modal-btns">
+            <button class="modal-btn cancel" onclick="closeModal('purchase-modal')">Отмена</button>
+            <button class="modal-btn confirm" id="modal-confirm-buy">Купить</button>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- FAIRNESS MODAL (moved from tab) -->
-    <div class="modal-overlay hidden" id="fairness-modal">
-      <div class="modal-box premium-modal" style="max-height: 80vh; overflow-y: auto; text-align: left;">
-        <div class="modal-header"
-          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-          <h3 style="margin: 0; color: var(--gold);">Provably Fair</h3>
-          <button class="close-modal-btn" onclick="closeModal('fairness-modal')"
-            style="background: none; border: none; color: white; font-size: 24px;">×</button>
+      <!-- результат -->
+      <div class="result-overlay hidden" id="result-overlay">
+        <div class="result-modal">
+          <div class="result-icon-wrap" id="result-icon-wrap"></div>
+          <h2 class="result-title" id="result-title">Победа!</h2>
+          <div class="result-dice-display" id="result-dice-display"></div>
+          <p class="result-amount" id="result-amount">+100.00</p>
+          <p class="result-streak" id="result-streak"></p>
+          <button class="result-close" id="result-close">Продолжить</button>
         </div>
-        <div class="fairness-info">
-          <div class="fair-card"
-            style="background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
-            <h4 style="margin-top: 0;">Как это работает</h4>
-            <p style="font-size: 13px; color: var(--t3);">HMAC-SHA256 из серверного сида, клиентского сида и нонса.
-              Результат можно проверить после смены серверного сида.</p>
+      </div>
+
+      <!-- объявление для выдачи подарков -->
+      <div class="modal-overlay hidden" id="dealer-warning-modal">
+        <div class="modal-box premium-modal dealer-modal">
+          <div class="modal-glow-bg"></div>
+          <div class="modal-gift-icon shiny">🤖</div>
+          <h3 class="modal-title">Важное уведомление!</h3>
+          <p class="modal-desc">Для того чтобы мы могли отправить вам купленный подарок, вам <b>обязательно</b> нужно
+            написать нашему боту-дилеру. <br><br>Без первого сообщения от вас Телеграм запрещает нам отправлять подарки!
+          </p>
+          <div class="modal-btns column">
+            <a href="https://t.me/dealer_cuberoll" target="_blank" class="modal-btn confirm pulse-btn"
+              onclick="closeModal('dealer-warning-modal'); localStorage.setItem('dealer_warned', '1')">НАПИСАТЬ
+              ДИЛЕРУ</a>
+            <button class="modal-btn cancel"
+              onclick="closeModal('dealer-warning-modal'); localStorage.setItem('dealer_warned', '1')">Я ПОНЯЛ</button>
           </div>
-          <div class="fair-card"
-            style="background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
-            <h4 style="margin-top: 0;">Текущие сиды</h4>
-            <div class="seed-field" style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--t4);">Server
-                Seed Hash</label>
-              <div class="seed-value" id="server-seed-hash"
-                style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
-            </div>
-            <div class="seed-field" style="margin-bottom: 8px;">
-              <label style="font-size: 11px; color: var(--t4);">Client Seed</label>
-              <div class="seed-input-row" style="display: flex; gap: 5px;">
-                <input type="text" id="client-seed-input" class="seed-input" placeholder="Твой seed"
-                  style="flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 5px; border-radius: 5px;">
-                <button class="seed-btn" id="btn-update-seed"
-                  style="background: var(--gold); border: none; padding: 5px 10px; border-radius: 5px;">Save</button>
+        </div>
+      </div>
+
+      <!-- Модальное окно ставки -->
+      <div class="modal-overlay hidden" id="bet-modal">
+        <div class="modal-box bet-modal-box">
+          <div class="modal-header">
+            <h3>Сделать ставку</h3>
+            <button class="close-modal-btn" onclick="closeModal('bet-modal')">×</button>
+          </div>
+
+          <div class="bet-amount-section-modal">
+            <label>Сумма ставки</label>
+            <div class="bet-input-container">
+              <button class="bet-adjust" id="btn-half">/2</button>
+              <div class="bet-input-wrapper">
+                <input type="number" id="bet-amount" class="bet-input" value="1.0" min="0.1" max="100" step="0.1">
+                <span class="bet-input-unit">TON</span>
               </div>
+              <button class="bet-adjust" id="btn-double">×2</button>
             </div>
-            <div class="seed-field"><label style="font-size: 11px; color: var(--t4);">Nonce</label>
-              <div class="seed-value" id="nonce-value">0</div>
+            <div class="quick-bets">
+              <button class="quick-bet" data-amount="1">1</button>
+              <button class="quick-bet" data-amount="5">5</button>
+              <button class="quick-bet active" data-amount="10">10</button>
+              <button class="quick-bet" data-amount="20">20</button>
+              <button class="quick-bet" data-amount="max">MAX</button>
             </div>
           </div>
-          <button class="rotate-btn" id="btn-rotate-seed"
-            style="width: 100%; background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold); padding: 10px; border-radius: 10px; cursor: pointer; margin-bottom: 15px;">
-            Сменить Server Seed
+
+          <div class="bet-type-section-modal">
+            <label>Исход</label>
+            <div class="bet-grid">
+              <button class="bet-type-btn active" data-bet="high">
+                <span class="bet-name">Больше (8-12)</span><span class="bet-mult">x1.95</span>
+              </button>
+              <button class="bet-type-btn" data-bet="low">
+                <span class="bet-name">Меньше (2-6)</span><span class="bet-mult">x1.95</span>
+              </button>
+              <button class="bet-type-btn" data-bet="even">
+                <span class="bet-name">Чётное</span><span class="bet-mult">x1.95</span>
+              </button>
+              <button class="bet-type-btn" data-bet="odd">
+                <span class="bet-name">Нечёт</span><span class="bet-mult">x1.95</span>
+              </button>
+              <button class="bet-type-btn" data-bet="seven">
+                <span class="bet-name">Семёрка (7)</span><span class="bet-mult">x5.8</span>
+              </button>
+              <button class="bet-type-btn" data-bet="doubles">
+                <span class="bet-name">Дубль</span><span class="bet-mult">x5.0</span>
+              </button>
+              <button class="bet-type-btn" data-bet="exact">
+                <span class="bet-name">Точное</span><span class="bet-mult">x11</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="exact-picker-container" id="exact-picker" style="display:none;">
+            <label class="picker-label">Выберите точное число</label>
+            <div class="exact-nums" id="exact-nums"></div>
+          </div>
+
+          <button class="roll-button main-action" id="roll-btn-confirm">
+            БРОСИТЬ КОСТИ
           </button>
-
-          <div class="fair-card" id="old-seed-reveal"
-            style="display:none; background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
-            <h4 style="margin-top: 0;">Предыдущий Seed</h4>
-            <div class="seed-field" style="margin-bottom: 8px;"><label
-                style="font-size: 11px; color: var(--t4);">Seed</label>
-              <div class="seed-value" id="old-server-seed"
-                style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
-            </div>
-            <div class="seed-field"><label style="font-size: 11px; color: var(--t4);">Hash</label>
-              <div class="seed-value" id="old-server-hash"
-                style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
+        </div>
+      </div>
+      <!-- ONBOARDING MODAL -->
+      <div class="modal-overlay hidden" id="onboarding-modal">
+        <div class="onboarding-box">
+          <button class="close-cross" onclick="closeModal('onboarding-modal')">×</button>
+          <div class="onboarding-media">
+            <div class="cube-media-container">
+              <div class="cube-wireframe"></div>
             </div>
           </div>
+          <div class="onboarding-body">
+            <h2 class="onboarding-title">Добро пожаловать в <span class="text-gold">CubeRoll</span></h2>
+            <p class="onboarding-text">Испытай удачу в самом честном казино на TON. Бросай кости и выигрывай!</p>
+            <p class="onboarding-subtext">Подпишись на наш канал, чтобы не пропустить бонусы и обновления.</p>
 
-          <div class="fair-card" style="background: var(--card); padding: 12px; border-radius: 10px;">
-            <h4 style="margin-top: 0;">Проверить игру</h4>
-            <div class="verify-form" style="display: flex; flex-direction: column; gap: 8px;">
-              <input type="text" id="verify-server-seed" class="verify-input" placeholder="Server Seed"
-                style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
-              <input type="text" id="verify-client-seed" class="verify-input" placeholder="Client Seed"
-                style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
-              <input type="number" id="verify-nonce" class="verify-input" placeholder="Nonce"
-                style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
-              <button class="verify-btn" id="btn-verify"
-                style="background: var(--gold); border: none; padding: 10px; border-radius: 5px; color: black; font-weight: 800;">Проверить</button>
+            <div class="onboarding-actions">
+              <a href="https://t.me/cubewilltaketheworld" target="_blank" class="onboarding-btn primary">ПОДПИСАТЬСЯ</a>
+              <button class="onboarding-btn secondary" onclick="closeModal('onboarding-modal')">НАЧАТЬ ИГРАТЬ</button>
             </div>
-            <div class="verify-result" id="verify-result" style="display:none; margin-top: 10px;">
-              <p style="font-size: 13px;">Результат: <strong id="verify-dice">—</strong></p>
-              <p style="font-size: 13px;">Сумма: <strong id="verify-total">—</strong></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAIRNESS MODAL (moved from tab) -->
+      <div class="modal-overlay hidden" id="fairness-modal">
+        <div class="modal-box premium-modal" style="max-height: 80vh; overflow-y: auto; text-align: left;">
+          <div class="modal-header"
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0; color: var(--gold);">Provably Fair</h3>
+            <button class="close-modal-btn" onclick="closeModal('fairness-modal')"
+              style="background: none; border: none; color: white; font-size: 24px;">×</button>
+          </div>
+          <div class="fairness-info">
+            <div class="fair-card"
+              style="background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
+              <h4 style="margin-top: 0;">Как это работает</h4>
+              <p style="font-size: 13px; color: var(--t3);">HMAC-SHA256 из серверного сида, клиентского сида и нонса.
+                Результат можно проверить после смены серверного сида.</p>
+            </div>
+            <div class="fair-card"
+              style="background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
+              <h4 style="margin-top: 0;">Текущие сиды</h4>
+              <div class="seed-field" style="margin-bottom: 8px;"><label
+                  style="font-size: 11px; color: var(--t4);">Server
+                  Seed Hash</label>
+                <div class="seed-value" id="server-seed-hash"
+                  style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
+              </div>
+              <div class="seed-field" style="margin-bottom: 8px;">
+                <label style="font-size: 11px; color: var(--t4);">Client Seed</label>
+                <div class="seed-input-row" style="display: flex; gap: 5px;">
+                  <input type="text" id="client-seed-input" class="seed-input" placeholder="Твой seed"
+                    style="flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 5px; border-radius: 5px;">
+                  <button class="seed-btn" id="btn-update-seed"
+                    style="background: var(--gold); border: none; padding: 5px 10px; border-radius: 5px;">Save</button>
+                </div>
+              </div>
+              <div class="seed-field"><label style="font-size: 11px; color: var(--t4);">Nonce</label>
+                <div class="seed-value" id="nonce-value">0</div>
+              </div>
+            </div>
+            <button class="rotate-btn" id="btn-rotate-seed"
+              style="width: 100%; background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold); padding: 10px; border-radius: 10px; cursor: pointer; margin-bottom: 15px;">
+              Сменить Server Seed
+            </button>
+
+            <div class="fair-card" id="old-seed-reveal"
+              style="display:none; background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
+              <h4 style="margin-top: 0;">Предыдущий Seed</h4>
+              <div class="seed-field" style="margin-bottom: 8px;"><label
+                  style="font-size: 11px; color: var(--t4);">Seed</label>
+                <div class="seed-value" id="old-server-seed"
+                  style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
+              </div>
+              <div class="seed-field"><label style="font-size: 11px; color: var(--t4);">Hash</label>
+                <div class="seed-value" id="old-server-hash"
+                  style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
+              </div>
+            </div>
+
+            <div class="fair-card" style="background: var(--card); padding: 12px; border-radius: 10px;">
+              <h4 style="margin-top: 0;">Проверить игру</h4>
+              <div class="verify-form" style="display: flex; flex-direction: column; gap: 8px;">
+                <input type="text" id="verify-server-seed" class="verify-input" placeholder="Server Seed"
+                  style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
+                <input type="text" id="verify-client-seed" class="verify-input" placeholder="Client Seed"
+                  style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
+                <input type="number" id="verify-nonce" class="verify-input" placeholder="Nonce"
+                  style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
+                <button class="verify-btn" id="btn-verify"
+                  style="background: var(--gold); border: none; padding: 10px; border-radius: 5px; color: black; font-weight: 800;">Проверить</button>
+              </div>
+              <div class="verify-result" id="verify-result" style="display:none; margin-top: 10px;">
+                <p style="font-size: 13px;">Результат: <strong id="verify-dice">—</strong></p>
+                <p style="font-size: 13px;">Сумма: <strong id="verify-total">—</strong></p>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div id="toast" class="toast"></div>
-  <script src="app.js?v=1.4"></script>
+    <div id="toast" class="toast"></div>
+    <script src="app.js?v=1.4"></script>
 </body>
 
 </html>
