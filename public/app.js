@@ -215,6 +215,22 @@ window.toggleSound = function () {
     if (soundEnabled) toast('Звук включен');
 };
 
+window.redeemPromo = async function () {
+    const input = document.getElementById('promo-input');
+    const code = input.value.trim();
+    if (!code) return toast('Введите промокод');
+
+    try {
+        const res = await api('/api/promocodes/redeem', 'POST', { code });
+        toast('✅ ' + res.message);
+        input.value = '';
+        if (res.newBalance !== undefined) updateBalanceUI(res.newBalance, true);
+        auth();
+    } catch (e) {
+        toast('❌ ' + e.message);
+    }
+}
+
 const sounds = {
     roll: new Audio('https://assets.mixkit.co/active_storage/sfx/2005/2005-preview.mp3'), // Placeholder
     win: new Audio('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3'),

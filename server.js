@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
-const { db, userOps, gameOps, settingsOps, giftOps, depositOps } = require('./database');
+const { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps } = require('./database');
 const ProvablyFair = require('./provably-fair');
 require('./bot');
 
@@ -493,6 +493,21 @@ function rollbackExpiredOptimisticDeposits() {
 setInterval(rollbackExpiredOptimisticDeposits, 60000); // каждые 60 сек
 
 
+// --- ПРОМОКОДЫ ---
+
+app.post('/api/promocodes/redeem', auth, (req, res) => {
+    const { code } = req.body;
+    if (!code) return res.status(400).secure({ error: 'Введите промокод' });
+    try {
+        promoOps.redeem(req.tgUser.id, code);
+        const updated = userOps.get(req.tgUser.id);
+        res.secure({ success: true, message: 'Промокод активирован!', newBalance: updated.balance });
+    } catch (e) {
+        res.status(400).secure({ error: e.message });
+    }
+});
+
+
 // --- админка ---
 
 app.post('/api/admin/parse-gift', auth, adminOnly, async (req, res) => {
@@ -561,6 +576,22 @@ app.post('/api/admin/gifts', auth, adminOnly, (req, res) => {
 
 app.delete('/api/admin/gifts/:id', auth, adminOnly, (req, res) => {
     giftOps.delete(parseInt(req.params.id));
+    res.secure({ success: true });
+});
+
+app.get('/api/admin/promocodes', auth, adminOnly, (req, res) => {
+    res.secure({ promocodes: promoOps.getAll() });
+});
+
+app.post('/api/admin/promocodes', auth, adminOnly, (req, res) => {
+    const { code, amount, maxActivations } = req.body;
+    if (!code || !amount || !maxActivations) return res.status(400).secure({ error: 'Missing data' });
+    promoOps.create(code, parseFloat(amount), parseInt(maxActivations));
+    res.secure({ success: true });
+});
+
+app.delete('/api/admin/promocodes/:id', auth, adminOnly, (req, res) => {
+    promoOps.delete(parseInt(req.params.id));
     res.secure({ success: true });
 });
 

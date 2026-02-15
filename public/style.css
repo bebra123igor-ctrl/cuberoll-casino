@@ -2952,6 +2952,48 @@ body {
   color: var(--t1);
 }
 
+.promo-section {
+  padding: 16px 20px;
+}
+
+.promo-input-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.promo-input-group input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border3);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  color: var(--t1);
+  font-family: var(--font);
+  font-size: 14px;
+  outline: none;
+}
+
+.promo-input-group input:focus {
+  border-color: var(--gold);
+}
+
+.promo-input-group button {
+  background: var(--gold);
+  color: black;
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 0 16px;
+  font-weight: 800;
+  font-size: 11px;
+  cursor: pointer;
+  transition: transform .2s;
+}
+
+.promo-input-group button:active {
+  transform: scale(0.95);
+}
+
 .settings-desc {
   font-size: 11px;
   color: var(--t3);

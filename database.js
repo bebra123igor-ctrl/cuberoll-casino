@@ -86,6 +86,26 @@ db.exec(`
     FOREIGN KEY (telegram_id) REFERENCES users(telegram_id)
   );
 
+  CREATE TABLE IF NOT EXISTS promocodes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE,
+    amount REAL,
+    max_activations INTEGER,
+    current_activations INTEGER DEFAULT 0,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS promocode_activations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    promocode_id INTEGER,
+    telegram_id INTEGER,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(promocode_id, telegram_id),
+    FOREIGN KEY(promocode_id) REFERENCES promocodes(id),
+    FOREIGN KEY(telegram_id) REFERENCES users(telegram_id)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_games_tgid ON games(telegram_id);
   CREATE INDEX IF NOT EXISTS idx_trans_tgid ON transactions(telegram_id);
 `);
@@ -357,4 +377,47 @@ const depositOps = {
   }
 };
 
-module.exports = { db, userOps, gameOps, settingsOps, giftOps, depositOps };
+const promoOps = {
+  create(code, amount, maxActivations) {
+    return db.prepare('INSERT INTO promocodes (code, amount, max_activations) VALUES (?, ?, ?)')
+      .run(code.toUpperCase(), amount, maxActivations);
+  },
+
+  getAll() {
+    return db.prepare('SELECT * FROM promocodes ORDER BY created_at DESC').all();
+  },
+
+  get(code) {
+    return db.prepare('SELECT * FROM promocodes WHERE code = ? AND is_active = 1').get(code.toUpperCase());
+  },
+
+  redeem(tgId, code) {
+    const promo = this.get(code);
+    if (!promo) throw new Error('Промокод не найден или неактивен');
+    if (promo.current_activations >= promo.max_activations) throw new Error('Промокод закончился');
+
+    // Проверка на повторную активацию
+    const alreadyUsed = db.prepare('SELECT id FROM promocode_activations WHERE promocode_id = ? AND telegram_id = ?').get(promo.id, tgId);
+    if (alreadyUsed) throw new Error('Вы уже активировали этот промокод');
+
+    const transaction = db.transaction(() => {
+      // 1. Записываем активацию
+      db.prepare('INSERT INTO promocode_activations (promocode_id, telegram_id) VALUES (?, ?)').run(promo.id, tgId);
+
+      // 2. Увеличиваем счетчик на промокоде
+      db.prepare('UPDATE promocodes SET current_activations = current_activations + 1 WHERE id = ?').run(promo.id);
+
+      // 3. Начисляем баланс
+      userOps.updateBalance(tgId, promo.amount, 'promocode', `Redeemed promo: ${code.toUpperCase()}`);
+    });
+
+    transaction();
+    return promo;
+  },
+
+  delete(id) {
+    db.prepare('UPDATE promocodes SET is_active = 0 WHERE id = ?').run(id);
+  }
+};
+
+module.exports = { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps };

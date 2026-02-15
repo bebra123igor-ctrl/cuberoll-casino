@@ -533,6 +533,7 @@
                 <button class="tab active" data-p="users">👥 Игроки</button>
                 <button class="tab" data-p="games">🎮 Игры</button>
                 <button class="tab" data-p="gifts">🎁 Подарки</button>
+                <button class="tab" data-p="promos">🎫 Промо</button>
                 <button class="tab" data-p="settings">⚙️ Настройки</button>
             </div>
 
@@ -543,6 +544,7 @@
                 <div id="tbl-games"></div>
             </div>
             <div class="pnl" id="p-gifts">
+                <!-- gifts content -->
                 <div class="si" style="margin-bottom:12px;display:block">
                     <h3 style="font-size:14px;margin-bottom:10px">Добавить подарок</h3>
                     <div style="display:flex;flex-direction:column;gap:8px">
@@ -565,6 +567,22 @@
                     </div>
                 </div>
                 <div id="tbl-gifts"></div>
+            </div>
+            <div class="pnl" id="p-promos">
+                <div class="si" style="margin-bottom:12px;display:block">
+                    <h3 style="font-size:14px;margin-bottom:10px">Создать промокод</h3>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+                        <input type="text" id="promo-code" class="si-i" style="width:100%;text-align:left"
+                            placeholder="КОД">
+                        <input type="number" id="promo-amt" class="si-i" style="width:100%;text-align:left"
+                            placeholder="Сумма (TON)">
+                        <input type="number" id="promo-max" class="si-i" style="width:100%;text-align:left"
+                            placeholder="Активаций">
+                    </div>
+                    <button class="btn btn-s" style="width:100%;margin-top:10px"
+                        onclick="createPromo()">СОЗДАТЬ</button>
+                </div>
+                <div id="tbl-promos"></div>
             </div>
             <div class="pnl" id="p-settings">
                 <div class="sgrp" id="sgrp"></div>
@@ -643,10 +661,10 @@
                 await api('/api/auth', 'POST');
                 document.getElementById('auth-box').classList.add('hidden');
                 document.getElementById('content').classList.remove('hidden');
-                await Promise.all([loadStats(), loadUsers(), loadGames(), loadGifts(), loadSets()]);
+                await Promise.all([loadStats(), loadUsers(), loadGames(), loadGifts(), loadPromos(), loadSets()]);
             } catch (e) {
                 if (e.message === 'Access denied') { document.querySelector('.auth-msg').innerHTML = '🚫 <b>Нет доступа.</b>'; }
-                else { document.getElementById('auth-box').classList.add('hidden'); document.getElementById('content').classList.remove('hidden'); await Promise.all([loadStats(), loadUsers(), loadGames(), loadSets()]).catch(console.error); }
+                else { document.getElementById('auth-box').classList.add('hidden'); document.getElementById('content').classList.remove('hidden'); await Promise.all([loadStats(), loadUsers(), loadGames(), loadPromos(), loadSets()]).catch(console.error); }
             }
         }
 
@@ -715,6 +733,46 @@
           </div>
         </div>`).join('');
             } catch (e) { console.error(e); }
+        }
+
+        async function loadPromos() {
+            try {
+                const d = await api('/api/admin/promocodes');
+                const t = document.getElementById('tbl-promos');
+                if (!d.promocodes?.length) { t.innerHTML = '<p style="text-align:center;color:var(--t4);padding:20px">Нет промокодов</p>'; return; }
+                t.innerHTML = d.promocodes.map(p => `
+                    <div class="row ${p.is_active ? '' : 'hidden'}">
+                        <div class="cname"><strong>${p.code}</strong> — ${p.amount} TON</div>
+                        <div style="width:100px;font-size:11px;color:var(--t3)">${p.current_activations}/${p.max_activations}</div>
+                        <div class="cact">
+                            <button class="btn btn-sm btn-d" onclick="deletePromo(${p.id})">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function createPromo() {
+            const code = document.getElementById('promo-code').value;
+            const amount = document.getElementById('promo-amt').value;
+            const max = document.getElementById('promo-max').value;
+            if (!code || !amount || !max) return alert('Заполните всё');
+            try {
+                await api('/api/admin/promocodes', 'POST', { code, amount: parseFloat(amount), maxActivations: parseInt(max) });
+                alert('Промокод создан');
+                loadPromos();
+                document.getElementById('promo-code').value = '';
+                document.getElementById('promo-amt').value = '';
+                document.getElementById('promo-max').value = '';
+            } catch (e) { alert(e.message); }
+        }
+
+        async function deletePromo(id) {
+            if (!confirm('Удалить промокод?')) return;
+            try {
+                await api('/api/admin/promocodes/' + id, 'DELETE');
+                loadPromos();
+            } catch (e) { alert(e.message); }
         }
 
         let parsedData = null;
