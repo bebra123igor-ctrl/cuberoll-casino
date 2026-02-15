@@ -856,14 +856,15 @@ function addCar(lane) {
 function updateChickenPosition() {
     const chicken = document.getElementById('cr-chicken');
     const container = document.getElementById('cr-lanes-container');
-    const totalLanes = 25;
-    const laneHeightPercent = 100 / totalLanes;
 
-    chicken.style.bottom = (crStep * laneHeightPercent) + '%';
+    // Добавляем класс прыжка для анимации
+    chicken.classList.remove('jumping');
+    void chicken.offsetWidth; // trigger reflow
+    chicken.classList.add('jumping');
 
-    // Скроллим контейнер, чтобы курица была в поле зрения
-    const translateY = Math.max(0, (crStep - 3) * (100 / 8)); // Условно 8 ланов видно
-    // container.style.transform = `translateY(${translateY}%)`;
+    // Курица всегда внизу, а дорога едет вниз на 60px за каждый шаг
+    const laneHeight = 60;
+    container.style.transform = `translateY(${crStep * laneHeight}px)`;
 }
 
 window.crossroadStart = async function () {
