@@ -5,6 +5,8 @@ import logging
 import random
 import aiohttp
 from telethon import TelegramClient, functions, types
+from telethon.network import connection
+from telethon.sessions import StringSession
 from dotenv import load_dotenv
 
 # Настройка логирования
@@ -296,6 +298,7 @@ async def main():
     logger.info("Initializing gift manager client...")
     
     from telethon.sessions import StringSession
+    from telethon.network import connection
     
     try:
         client = TelegramClient(
