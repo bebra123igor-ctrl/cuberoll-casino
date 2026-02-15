@@ -87,51 +87,43 @@ async def sync_inventory(client):
                 # Сериализация вручную если нужно, но Telethon 1.x обычно умеет через Raw
                 return b'' 
 
-        # Максимально надежный вызов GetUserGifts
+    try:
+        # 0. ЛОГИРОВАНИЕ ОКРУЖЕНИЯ
         try:
-             # Попытка через Invoke с ручным определением структуры
-             # 0xe11da17c = payments.getUserGifts#e11da17c user_id:InputUser offset:int limit:int = payments.UserGifts;
-             class GetGiftsReq(functions.TLRequest):
-                 CONSTRUCTOR_ID = 0xe11da17c
-                 SUBCLASS_OF_ID = 0x14ada4f2
-                 def __init__(self, user_id, offset=0, limit=100):
-                     self.user_id = user_id
-                     self.offset = offset
-                     self.limit = limit
-                 def to_dict(self): return {'user_id': self.user_id, 'offset': self.offset, 'limit': self.limit}
-                 def _bytes(self):
-                     import struct
-                     return b''.join((
-                         struct.pack('<I', self.CONSTRUCTOR_ID),
-                         self.user_id._bytes(),
-                         struct.pack('<i', self.offset),
-                         struct.pack('<i', self.limit)
-                     ))
-             
-             # Разрешаем "себя"
-             me = await client.get_me()
-             if me.bot:
-                 logger.error("КРИТИЧЕСКАЯ ОШИБКА: Вы вошли как БОТ. Подарки могут отправлять только ЮЗЕРЫ (аккаунты с номером).")
-                 return
+            import telethon
+            import sys
+            logger.info(f"Environment: Python {sys.version.split()[0]}, Telethon {telethon.__version__}")
+        except: pass
 
+        # 1. ПРОВЕРКА АККАУНТА
+        try:
+            me = await client.get_me()
+            if me.bot:
+                logger.error(f"!!! ОШИБКА: Аккаунт '{me.first_name}' (ID: {me.id}) - это БОТ. Подарки могут слать только ЮЗЕРЫ. Смените API_ID/HASH/SESSION на аккаунт человека.")
+                return 
+        except Exception as e:
+            logger.error(f"Ошибка проверки аккаунта: {e}")
+            return
+
+        # 2. ПОПЫТКА ПОЛУЧИТЬ ПОДАРКИ
+        result = None
+        try:
              me_input = await client.get_input_entity('me')
              
-             try:
-                 # Попытка найти официальный метод в разных местах
-                 req_class = None
-                 from telethon.tl.functions import payments
-                 for name in ["GetUserGiftsRequest", "GetGiftsRequest"]:
-                     if hasattr(payments, name):
-                         req_class = getattr(payments, name)
-                         break
-                 
-                 if req_class:
-                     result = await client(req_class(user_id=me_input, limit=100))
-                 else:
-                     raise ImportError("Method not found in library")
-             except:
-                 # Последний шанс: Raw Invoke с правильной упаковкой
-                 logger.info("Используем Raw Packet Invoke для GetUserGifts...")
+             # Пробуем найти официальный метод в библиотеке
+             req_class = None
+             from telethon.tl.functions import payments
+             for name in ["GetUserGiftsRequest", "GetGiftsRequest"]:
+                 if hasattr(payments, name):
+                     req_class = getattr(payments, name)
+                     break
+             
+             if req_class:
+                 logger.info(f"Используем официальный метод {req_class.__name__}...")
+                 result = await client(req_class(user_id=me_input, limit=100))
+             else:
+                 # Последний шанс: Raw Invoke
+                 logger.info("Метод не найден в Telethon, используем Raw Packet (Layer 191+)...")
                  class GetGiftsReq(functions.TLRequest):
                      CONSTRUCTOR_ID = 0xe11da17c
                      SUBCLASS_OF_ID = 0x14ada4f2
@@ -143,21 +135,17 @@ async def sync_inventory(client):
                      def _bytes(self):
                          import struct
                          # payments.getUserGifts#e11da17c user_id:InputUser offset:int limit:int
-                         return b''.join((
-                             struct.pack('<I', 0xe11da17c),
-                             self.user_id._bytes(),
-                             struct.pack('<i', self.offset),
-                             struct.pack('<i', self.limit)
-                         ))
+                         return struct.pack('<I', 0xe11da17c) + self.user_id._bytes() + struct.pack('<ii', self.offset, self.limit)
+
                  result = await client(GetGiftsReq(u_id=me_input, limit=100))
 
         except Exception as e:
-             import traceback
-             logger.error(f"Не удалось получить список подарков: {e}\n{traceback.format_exc()}")
+             logger.warning(f"Сервер не принял запрос на подарки: {e}")
+             logger.info("Если ошибка INPUT_METHOD_INVALID - значит библиотека Telethon на сервере слишком старая (нужно Layer 191+).")
              return
 
         if not result or not hasattr(result, 'gifts'):
-            logger.warning("Список подарков пуст или не получен.")
+            logger.warning("Список подарков от Телеграма пуст.")
             return
 
         conn = get_db_connection()

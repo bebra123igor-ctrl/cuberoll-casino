@@ -1,3 +1,3 @@
-telethon>=1.38.0
+telethon==1.38.1 # CRITICAL_UPDATE_REQUIRED_V381
 aiohttp
 python-dotenv
