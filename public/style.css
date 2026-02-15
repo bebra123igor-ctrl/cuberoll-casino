@@ -2964,6 +2964,7 @@ body {
 
 .promo-input-group input {
   flex: 1;
+  min-width: 0;
   background: var(--bg);
   border: 1px solid var(--border3);
   border-radius: var(--r-sm);
@@ -2983,10 +2984,12 @@ body {
   color: black;
   border: none;
   border-radius: var(--r-sm);
-  padding: 0 16px;
+  padding: 0 12px;
+  min-width: 100px;
   font-weight: 800;
-  font-size: 11px;
+  font-size: 10px;
   cursor: pointer;
+  white-space: nowrap;
   transition: transform .2s;
 }
 
