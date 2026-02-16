@@ -3534,6 +3534,21 @@ input:checked+.toggle-slider:before {
   margin-bottom: 20px;
 }
 
+@media (max-width: 600px) {
+  .crash-container {
+    padding: 8px;
+    /* Less padding to fit more content */
+    margin-bottom: 10px;
+    border: none;
+    /* Cleaner look on mobile */
+    background: transparent;
+  }
+
+  .tab-scrollable {
+    padding: 8px 5px !important;
+  }
+}
+
 .crash-stats-bar {
   display: flex;
   gap: 6px;
@@ -3573,8 +3588,10 @@ input:checked+.toggle-slider:before {
 
 @media (max-width: 600px) {
   .crash-main {
-    aspect-ratio: 1 / 1;
-    /* Квадрат на мобиле, чтобы точно влезла ракета */
+    aspect-ratio: 4 / 5;
+    /* More vertical for mobile to feel "fuller" */
+    height: 60vh;
+    /* Take more vertical space */
   }
 }
 
@@ -3785,7 +3802,8 @@ input:checked+.toggle-slider:before {
 
 #plinko-canvas {
   width: 100%;
-  height: 400px;
+  aspect-ratio: 4 / 5;
+  /* Dynamic height */
   background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0f0f1a 100%);
   border-radius: 12px;
   touch-action: none;

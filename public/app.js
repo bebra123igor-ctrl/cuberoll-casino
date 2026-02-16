@@ -1069,10 +1069,10 @@ function renderCrash() {
         const shakeAmp = isPlaying ? (1 + currentMult / 8) : 0;
 
         // Адаптивный масштаб для мелких экранов
-        // База: на экране 400px масштаб 1.0. На 200px - 0.5.
-        const s = Math.min(1.0, Math.max(0.4, w / 450));
+        // Увеличиваем масштаб, чтобы на телефонах ракета была "на весь экран"
+        const s = Math.min(1.5, Math.max(0.6, w / 350));
         const rx = w / 2 + Math.sin(timeFactor * 30) * shakeAmp;
-        const ry = h * 0.44;
+        const ry = h * 0.5; // Смещаем чуть ниже к центру
 
         crashCtx.save();
         // Масштабируем всё относительно центра ракеты
@@ -1230,7 +1230,10 @@ function initPlinko() {
         });
     }
 
-    requestAnimationFrame(renderPlinko);
+    if (!window._pRunning) {
+        window._pRunning = true;
+        requestAnimationFrame(renderPlinko);
+    }
 }
 
 async function plinkoDrop() {
@@ -1259,9 +1262,9 @@ async function plinkoDrop() {
         };
         plinkoBalls.push(ball);
 
-        // Update balance immediately? No, wait for ball
+        // Update balance after ball reaches bottom (approx 3s)
         setTimeout(() => {
-            updateBalanceUI(res.result.newBalance);
+            setBalance(res.result.newBalance, true);
         }, 3000);
 
     } catch (e) {
@@ -1277,9 +1280,10 @@ function renderPlinko() {
         return;
     }
 
-    const w = plinkoCanvas.width = plinkoCanvas.offsetWidth;
-    const h = plinkoCanvas.height = plinkoCanvas.offsetHeight;
+    const w = plinkoCanvas.width = plinkoCanvas.offsetWidth || 300;
+    const h = plinkoCanvas.height = plinkoCanvas.offsetHeight || 400;
 
+    if (w < 10) return requestAnimationFrame(renderPlinko); // Wait for visibility
     plinkoCtx.clearRect(0, 0, w, h);
 
     // Draw Pegs
