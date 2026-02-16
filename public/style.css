@@ -2491,18 +2491,41 @@ button:active,
   transform: scale(0.96);
 }
 
-/* Bet Modal Specifics */
-.bet-modal-box {
-  max-width: 400px;
+/* ═══ МОДАЛЬНЫЕ ОКНА ═══ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 5000;
+  /* Перекрывает всё */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 20px;
-  text-align: left;
+  animation: oFade 0.2s ease;
+}
+
+.modal-box {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 400px;
+  padding: 24px;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  animation: mPop 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.bet-modal-box {
+  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   max-height: 90vh;
-  /* Ensure it fits on screen */
   overflow-y: auto;
-  /* Scrollable if content is tall */
 }
 
 .modal-header {

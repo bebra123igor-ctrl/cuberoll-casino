@@ -367,16 +367,28 @@ function initEventListeners() {
 
     // Кнопки открытия/закрытия модалки
     const openBtn = document.getElementById('open-bet-modal-btn');
-    if (openBtn) openBtn.onclick = () => {
-        document.getElementById('bet-modal').classList.remove('hidden');
-        updatePayoutUI();
+    if (openBtn) {
+        openBtn.onclick = () => {
+            console.log('[Modal] Opening bet-modal');
+            const m = document.getElementById('bet-modal');
+            if (m) {
+                m.classList.remove('hidden');
+                updatePayoutUI();
+            }
+        };
+    }
+
+    // Универсальная кнопка закрытия
+    window.closeModal = (id) => {
+        const m = document.getElementById(id);
+        if (m) m.classList.add('hidden');
     };
 
     // Кнопка подтверждения ставки (внутри модалки)
     const confirmBtn = document.getElementById('roll-btn-confirm');
     if (confirmBtn) confirmBtn.onclick = roll;
 
-    // Инпуты
+    // Инпуты...
     document.getElementById('bet-amount').oninput = updatePayoutUI;
 
     // Seeds & Verify
