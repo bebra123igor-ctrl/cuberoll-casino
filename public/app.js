@@ -767,15 +767,19 @@ window.depositRequest = async function () {
 
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
-        // Generate payload using user's suggested method
-        let payloadEncoded = undefined;
+        // Generate BOC payload for TonConnect (Standard Text Comment)
+        let payloadBoc = undefined;
         if (depositComment) {
             try {
-                // btoa(unescape(encodeURIComponent(str))) - safe UTF-8 to Base64
-                payloadEncoded = btoa(unescape(encodeURIComponent(depositComment)));
-                console.log('[Deposit] User-style Payload:', payloadEncoded);
+                if (window.TonWeb) {
+                    const cell = new window.TonWeb.boc.Cell();
+                    cell.bits.writeUint(0, 32); // Opcode 0 for text comment
+                    cell.bits.writeBytes(new TextEncoder().encode(depositComment));
+                    const bytes = await cell.toBoc();
+                    payloadBoc = window.TonWeb.utils.bytesToBase64(bytes);
+                }
             } catch (e) {
-                console.warn('[Deposit] Encoding failed:', e);
+                console.warn('[Deposit] BOC generation failed:', e);
             }
         }
 
@@ -785,8 +789,7 @@ window.depositRequest = async function () {
                 {
                     address: res.address.trim(),
                     amount: (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString(),
-                    payload: payloadEncoded, // Suggested encoding method
-                    message: depositComment // Plain text fallback
+                    payload: payloadBoc
                 }
             ]
         };
