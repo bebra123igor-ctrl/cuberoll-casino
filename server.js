@@ -538,10 +538,16 @@ function parseTonComment(msg) {
 async function checkTonTransactions() {
     const settings = settingsOps.getAll();
     let addr = settings.ton_wallet;
-    if (!addr || addr.includes('UQ...') || addr.includes('your-')) {
+
+    // Пул адреса из настроек или ENV
+    if (!addr || addr.length < 10 || addr.includes('...') || addr.includes('your-')) {
         addr = process.env.TON_WALLET;
     }
-    if (!addr || addr.includes('your-') || addr.includes('UQ...')) return;
+
+    // Если всё еще нет адреса или это плейсхолдер - выходим
+    if (!addr || addr.length < 10 || addr.includes('...') || addr.includes('your-')) {
+        return;
+    }
 
     // console.log(`[Monitor] Scanning ${addr}...`);
 

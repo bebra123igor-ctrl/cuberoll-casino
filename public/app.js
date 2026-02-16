@@ -341,9 +341,35 @@ function buildExactPicker() {
 }
 
 function initEventListeners() {
+    console.log('[Init] Setting up listeners...');
+
     // Вкладки
     document.querySelectorAll('.nav-tab').forEach(btn => {
-        btn.onclick = () => switchTab(btn.dataset.tab);
+        if (btn) btn.onclick = () => switchTab(btn.dataset.tab);
+    });
+
+    // Безопасное назначение обработчиков
+    const safeSetClick = (id, fn) => {
+        const el = document.getElementById(id);
+        if (el) el.onclick = fn;
+    };
+
+    // Суммы (в модалке)
+    safeSetClick('btn-half', () => adjustBet('half'));
+    safeSetClick('btn-double', () => adjustBet('double'));
+
+    document.querySelectorAll('.quick-bet').forEach(btn => {
+        btn.onclick = () => {
+            const val = btn.getAttribute('data-amount');
+            const inp = document.getElementById('bet-amount');
+            if (inp && user) {
+                if (val === 'max') inp.value = user.balance.toFixed(1);
+                else inp.value = parseFloat(val).toFixed(1);
+            }
+            document.querySelectorAll('.quick-bet').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            updatePayoutUI();
+        };
     });
 
     // Типы ставок (в модалке)
@@ -351,32 +377,14 @@ function initEventListeners() {
         btn.onclick = () => getBetType(btn.getAttribute('data-bet'));
     });
 
-    // Суммы (в модалке)
-    document.getElementById('btn-half').onclick = () => adjustBet('half');
-    document.getElementById('btn-double').onclick = () => adjustBet('double');
-    document.querySelectorAll('.quick-bet').forEach(btn => {
-        btn.onclick = () => {
-            const val = btn.getAttribute('data-amount');
-            if (val === 'max') document.getElementById('bet-amount').value = user.balance.toFixed(1);
-            else document.getElementById('bet-amount').value = parseFloat(val).toFixed(1);
-            document.querySelectorAll('.quick-bet').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+    // Модалка открытия ставки
+    safeSetClick('open-bet-modal-btn', () => {
+        const m = document.getElementById('bet-modal');
+        if (m) {
+            m.classList.remove('hidden');
             updatePayoutUI();
-        };
+        }
     });
-
-    // Кнопки открытия/закрытия модалки
-    const openBtn = document.getElementById('open-bet-modal-btn');
-    if (openBtn) {
-        openBtn.onclick = () => {
-            console.log('[Modal] Opening bet-modal');
-            const m = document.getElementById('bet-modal');
-            if (m) {
-                m.classList.remove('hidden');
-                updatePayoutUI();
-            }
-        };
-    }
 
     // Универсальная кнопка закрытия
     window.closeModal = (id) => {
@@ -384,22 +392,17 @@ function initEventListeners() {
         if (m) m.classList.add('hidden');
     };
 
-    // Кнопка подтверждения ставки (внутри модалки)
-    const confirmBtn = document.getElementById('roll-btn-confirm');
-    if (confirmBtn) confirmBtn.onclick = roll;
+    // Подтверждение
+    safeSetClick('roll-btn-confirm', roll);
 
-    // Инпуты...
-    document.getElementById('bet-amount').oninput = updatePayoutUI;
+    // Инпуты
+    const betAmt = document.getElementById('bet-amount');
+    if (betAmt) betAmt.oninput = updatePayoutUI;
 
     // Seeds & Verify
-    const rotateBtn = document.getElementById('btn-rotate-seed');
-    if (rotateBtn) rotateBtn.onclick = rotateServerSeed;
-
-    const updateSeedBtn = document.getElementById('btn-update-seed');
-    if (updateSeedBtn) updateSeedBtn.onclick = updateClientSeed;
-
-    const verifyBtn = document.getElementById('btn-verify');
-    if (verifyBtn) verifyBtn.onclick = verifyGame;
+    safeSetClick('btn-rotate-seed', rotateServerSeed);
+    safeSetClick('btn-update-seed', updateClientSeed);
+    safeSetClick('btn-verify', verifyGame);
 }
 
 window.rotateServerSeed = async function () {
