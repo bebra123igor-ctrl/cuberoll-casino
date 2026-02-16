@@ -82,15 +82,10 @@ window.selectGame = function (game) {
     } else if (game === 'plinko') {
         plinkoView?.classList.remove('hidden');
         bPlinko?.classList.add('active');
-        initPlinko();
-        // Use a small delay to ensure DOM has updated and offsetWidth/Height are available
+        // Small delay to let browser show the element (needed for offsetWidth)
         setTimeout(() => {
-            if (plinkoCanvas) {
-                plinkoCanvas.width = plinkoCanvas.offsetWidth || 300;
-                plinkoCanvas.height = plinkoCanvas.offsetHeight || 380;
-                console.log('[Plinko] Resized to:', plinkoCanvas.width, plinkoCanvas.height);
-            }
-        }, 50);
+            initPlinko();
+        }, 10);
     }
 };
 
@@ -1222,9 +1217,12 @@ const PLINKO_ROWS = 8;
 const PLINKO_MULTIS = [15, 4, 1.5, 0.5, 0.2, 0.5, 1.5, 4, 15];
 
 function initPlinko() {
-    if (!plinkoCanvas) plinkoCanvas = document.getElementById('plinko-canvas');
+    plinkoCanvas = document.getElementById('plinko-canvas');
     if (!plinkoCanvas) return;
     plinkoCtx = plinkoCanvas.getContext('2d');
+
+    // Reset loop flag to be sure it restarts if it ever hangs
+    // window._pRunning = false; 
 
     // Fill multipliers UI
     const multsDiv = document.getElementById('plinko-mults');
@@ -1239,12 +1237,16 @@ function initPlinko() {
         });
     }
 
-    // Force size
-    plinkoCanvas.width = plinkoCanvas.offsetWidth || 300;
-    plinkoCanvas.height = plinkoCanvas.offsetHeight || 340;
+    // Measure and set initial size
+    const rect = plinkoCanvas.getBoundingClientRect();
+    if (rect.width > 0) {
+        plinkoCanvas.width = rect.width;
+        plinkoCanvas.height = rect.height || 340;
+    }
 
     if (!window._pRunning) {
         window._pRunning = true;
+        console.log('[Plinko] Loop started');
         requestAnimationFrame(renderPlinko);
     }
 }
@@ -1295,13 +1297,22 @@ async function plinkoDrop() {
 }
 
 function renderPlinko() {
+    if (!plinkoCanvas || !plinkoCtx) return requestAnimationFrame(renderPlinko);
+
     if (activeTab !== 'game' || currentGame !== 'plinko') {
         requestAnimationFrame(renderPlinko);
         return;
     }
 
-    const w = plinkoCanvas.width = plinkoCanvas.offsetWidth || 300;
-    const h = plinkoCanvas.height = plinkoCanvas.offsetHeight || 400;
+    // Only resize if offset changed significantly to avoid constant state resets
+    const curW = plinkoCanvas.offsetWidth || 300;
+    const curH = plinkoCanvas.offsetHeight || 340;
+
+    if (plinkoCanvas.width !== curW) plinkoCanvas.width = curW;
+    if (plinkoCanvas.height !== curH) plinkoCanvas.height = curH;
+
+    const w = plinkoCanvas.width;
+    const h = plinkoCanvas.height;
 
     if (w < 10) return requestAnimationFrame(renderPlinko); // Wait for visibility
     plinkoCtx.clearRect(0, 0, w, h);
