@@ -3588,11 +3588,14 @@ input:checked+.toggle-slider:before {
 
 @media (max-width: 600px) {
   .crash-main {
-    aspect-ratio: 16 / 9;
-    height: auto;
-    max-height: 160px;
-    /* Reduced for smaller phones to prevent scrolling */
-    border-radius: 8px;
+    aspect-ratio: 1 / 1.1;
+    /* Slightly vertical for better visibility */
+    height: 380px;
+    max-height: 50vh;
+    width: calc(100% + 16px);
+    border-radius: 0;
+    margin: -8px -8px 15px -8px;
+    border: none;
   }
 }
 
@@ -3803,11 +3806,20 @@ input:checked+.toggle-slider:before {
 
 #plinko-canvas {
   width: 100%;
-  aspect-ratio: 16 / 11;
-  /* More compact for mobile */
+  height: 340px;
   background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0f0f1a 100%);
   border-radius: 12px;
   touch-action: none;
+}
+
+@media (max-width: 600px) {
+  .plinko-arena {
+    padding: 0;
+    border-radius: 0;
+    margin: -8px -8px 12px -8px;
+    background: transparent;
+    border: none;
+  }
 }
 
 .plinko-multipliers {

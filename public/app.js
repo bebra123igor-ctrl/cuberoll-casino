@@ -62,20 +62,28 @@ window.selectGame = function (game) {
     [diceView, crashView, plinkoView].forEach(v => v?.classList.add('hidden'));
     [bDice, bCrash, bPlinko].forEach(b => b?.classList.remove('active'));
 
+    currentGame = game;
+
     if (game === 'dice') {
         diceView?.classList.remove('hidden');
         bDice?.classList.add('active');
-        currentGame = 'dice';
     } else if (game === 'crash') {
         crashView?.classList.remove('hidden');
         bCrash?.classList.add('active');
-        currentGame = 'crash';
         if (!window.crashRunning) initCrash();
+        else renderCrash(); // Poke it
     } else if (game === 'plinko') {
         plinkoView?.classList.remove('hidden');
         bPlinko?.classList.add('active');
-        currentGame = 'plinko';
         initPlinko();
+        // Use a small delay to ensure DOM has updated and offsetWidth/Height are available
+        setTimeout(() => {
+            if (plinkoCanvas) {
+                plinkoCanvas.width = plinkoCanvas.offsetWidth || 300;
+                plinkoCanvas.height = plinkoCanvas.offsetHeight || 380;
+                console.log('[Plinko] Resized to:', plinkoCanvas.width, plinkoCanvas.height);
+            }
+        }, 50);
     }
 };
 
@@ -757,13 +765,13 @@ window.depositRequest = async function () {
 
         const depositComment = (res.comment || '').trim();
 
-        // Показываем мемо в UI
-        const memoCard = document.getElementById('memo-display-card');
-        const activeMemo = document.getElementById('active-memo');
-        if (memoCard && activeMemo) {
-            activeMemo.textContent = depositComment;
-            memoCard.classList.remove('hidden');
+        // NEW STRATEGY: Address-based tracking (No comment needed!)
+        if (!userWalletAddress) {
+            toast('Сначала подключите кошелёк!', 'error');
+            return;
         }
+
+        // Показываем мемо в UI (всё еще полезно как доп. способ)
 
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
@@ -1069,9 +1077,9 @@ function renderCrash() {
 
         // Адаптивный масштаб для мелких экранов
         // Увеличиваем масштаб, чтобы на телефонах ракета была "на весь экран"
-        const s = Math.min(1.5, Math.max(0.6, w / 350));
+        const s = Math.min(2.2, Math.max(1.0, w / 220)); // Massive rocket for mobile
         const rx = w / 2 + Math.sin(timeFactor * 30) * shakeAmp;
-        const ry = h * 0.5; // Смещаем чуть ниже к центру
+        const ry = h * 0.45; // Centered
 
         crashCtx.save();
         // Масштабируем всё относительно центра ракеты
@@ -1229,9 +1237,12 @@ function initPlinko() {
         });
     }
 
+    // Force size
+    plinkoCanvas.width = plinkoCanvas.offsetWidth || 300;
+    plinkoCanvas.height = plinkoCanvas.offsetHeight || 340;
+
     if (!window._pRunning) {
         window._pRunning = true;
-        console.log('[Plinko] Loop started');
         requestAnimationFrame(renderPlinko);
     }
 }
