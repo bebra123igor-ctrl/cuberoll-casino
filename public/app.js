@@ -26,6 +26,12 @@ window.closeModal = (id) => {
 window.switchTab = function (tab) {
     console.log('[Tab] Switching to', tab);
     activeTab = tab;
+
+    // Auto-hide manual deposit info when leaving wallet tab
+    if (tab !== 'wallet') {
+        const details = document.getElementById('manual-deposit-details');
+        if (details) details.classList.add('hidden');
+    }
     const content = document.getElementById('content-' + tab);
     const navBtn = document.querySelector(`[data-tab="${tab}"]`);
 
@@ -737,19 +743,10 @@ async function loadLeaderboard() {
 }
 
 window.depositRequest = async function () {
-    if (!tonConnectUI.connected) {
-        toast('Сначала подключите кошелёк', 'info');
-        await tonConnectUI.openModal();
-        return;
-    }
-
     const amountEl = document.getElementById('dep-amount');
     let amountValRaw = amountEl ? amountEl.value : '';
-
-    // Заменяем запятую на точку для поддержки всех раскладок (особенно на iOS)
     amountValRaw = amountValRaw.replace(',', '.');
     const amountVal = parseFloat(amountValRaw);
-
     const minD = window.appSettings?.minDeposit || 0.1;
 
     if (isNaN(amountVal) || amountVal < minD) return toast(`Мин. сумма ${minD} TON`, 'error');
@@ -760,58 +757,53 @@ window.depositRequest = async function () {
 
     try {
         const res = await api('/api/deposit/request', 'POST', { amount: parseFloat(amountVal) });
-
-        if (!res.address || res.address.includes('...')) {
-            throw new Error('Адрес не настроен. Попробуйте позже.');
-        }
+        if (!res.address) throw new Error('Адрес не настроен.');
 
         const depositComment = (res.comment || '').trim();
 
-        // NEW STRATEGY: Address-based tracking (No comment needed!)
-        if (!userWalletAddress) {
-            toast('Сначала подключите кошелёк!', 'error');
-            return;
+        // Показываем данные для РУЧНОЙ оплаты (всегда)
+        const details = document.getElementById('manual-deposit-details');
+        const addrText = document.getElementById('dep-address-text');
+        const memoText = document.getElementById('dep-memo-text');
+        if (details && addrText && memoText) {
+            addrText.textContent = res.address;
+            memoText.textContent = depositComment;
+            details.classList.remove('hidden');
         }
 
-        // Показываем мемо в UI (всё еще полезно как доп. способ)
+        // Если кошелек подключен, пробуем АВТОМАТИЧЕСКУЮ оплату
+        if (tonConnectUI.connected) {
+            toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
-        toast('Заявка создана. Подтвердите в кошельке!', 'success');
-
-        // Generate BOC payload for TonConnect (Standard Text Comment)
-        let payloadBoc = undefined;
-        if (depositComment) {
-            try {
-                if (window.TonWeb) {
+            // Standard BOC Payload (compatible with most wallets)
+            let payloadBoc = undefined;
+            if (depositComment && window.TonWeb) {
+                try {
                     const cell = new window.TonWeb.boc.Cell();
-                    cell.bits.writeUint(0, 32); // Opcode 0 for text comment
+                    cell.bits.writeUint(0, 32); // Text comment opcode
                     cell.bits.writeBytes(new TextEncoder().encode(depositComment));
                     const bytes = await cell.toBoc();
                     payloadBoc = window.TonWeb.utils.bytesToBase64(bytes);
-                }
-            } catch (e) {
-                console.warn('[Deposit] BOC generation failed:', e);
+                } catch (e) { console.warn('BOC error:', e); }
             }
+
+            const transaction = {
+                validUntil: Math.floor(Date.now() / 1000) + 600,
+                messages: [{
+                    address: res.address.trim(),
+                    amount: (BigInt(Math.round(amountVal * 1e9))).toString(),
+                    payload: payloadBoc
+                }]
+            };
+            await tonConnectUI.sendTransaction(transaction);
+            toast('Ждём подтверждения в сети TON...', 'info');
+        } else {
+            toast('Скопируйте адрес и комментарий для оплаты!', 'info');
         }
 
-        const transaction = {
-            validUntil: Math.floor(Date.now() / 1000) + 600,
-            messages: [
-                {
-                    address: res.address.trim(),
-                    amount: (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString(),
-                    payload: payloadBoc
-                }
-            ]
-        };
-
-        await tonConnectUI.sendTransaction(transaction);
-
-        // Теперь вместо мгновенного зачисления ждем подтверждения от блокчейна
-        toast('Ждём подтверждения в сети TON...', 'info');
-        btn.textContent = 'ОЖИДАНИЕ...';
-
+        // Monitor deposit
         const checkDeposit = async () => {
-            for (let i = 0; i < 30; i++) { // Проверяем 5 минут
+            for (let i = 0; i < 40; i++) {
                 await new Promise(r => setTimeout(r, 10000));
                 try {
                     const status = await api('/api/deposit/check');
@@ -819,25 +811,33 @@ window.depositRequest = async function () {
                         toast('Пополнение подтверждено!', 'success');
                         triggerConfetti();
                         refreshBalance();
-                        return true;
+                        if (details) details.classList.add('hidden');
+                        return;
                     }
                 } catch (e) { }
             }
-            toast('Платеж все еще не найден. Он зачислится автоматически позже.', 'info');
-            return false;
         };
         checkDeposit();
 
     } catch (e) {
-        console.error('Deposit flow failed:', e);
+        console.error('Deposit failed:', e);
         const errMsg = e.message || 'Cancelled';
         if (errMsg.includes('User reject')) toast('Транзакция отменена', 'info');
         else toast(`Ошибка: ${errMsg}`, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'ПОПОЛНИТЬ';
+        btn.textContent = 'ОПЛАТИТЬ ЧЕРЕЗ WALLET';
     }
 }
+
+window.copyToClipboard = function (id) {
+    const text = document.getElementById(id).textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        toast('Скопировано!', 'success');
+    }).catch(() => {
+        toast('Не удалось скопировать', 'error');
+    });
+};
 
 // --- АНИМАЦИИ И ЭФФЕКТЫ ---
 

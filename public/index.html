@@ -429,16 +429,34 @@
               </button>
 
               <div class="dep-info-box">
-                <p>⚠️ <b>Автоматическое зачисление:</b></p>
-                <p>Система узнает вас по адресу кошелька. <span class="highlight">Комментарий больше не
-                    обязателен!</span></p>
-                <p>Просто подтвердите транзакцию в кошельке.</p>
+                <p>⚠️ <b>Два способа оплаты:</b></p>
+                <p>1. <b>Кнопка выше</b> — если кошелек на этом же устройстве.</p>
+                <p>2. <b>Вручную</b> — если платите с биржи или другого телефона.</p>
+              </div>
+
+              <!-- Manual Details (Hidden by default, shown after request) -->
+              <div id="manual-deposit-details" class="manual-details hidden">
+                <div class="manual-item">
+                  <label>Адрес получателя:</label>
+                  <div class="copy-box">
+                    <span id="dep-address-text">UQ...</span>
+                    <button onclick="copyToClipboard('dep-address-text')">📋</button>
+                  </div>
+                </div>
+                <div class="manual-item">
+                  <label>Комментарий (ОБЯЗАТЕЛЬНО):</label>
+                  <div class="copy-box highlighted">
+                    <span id="dep-memo-text">deposit_XXXXXX</span>
+                    <button onclick="copyToClipboard('dep-memo-text')">📋</button>
+                  </div>
+                </div>
+                <p class="manual-warning">Если не укажете комментарий, платеж придется искать вручную через поддержку!
+                </p>
               </div>
             </div>
 
             <!-- Hidden stuff for JS logic -->
             <button id="show-ton-deposit" style="display:none;"></button>
-            <div id="memo-display-card" class="memo-card hidden" style="display:none !important;"></div>
           </div>
         </div>
       </div>
