@@ -194,6 +194,7 @@
         <div class="game-selector">
           <button class="game-sel-btn active" id="game-tab-dice" onclick="selectGame('dice')">Dice</button>
           <button class="game-sel-btn" id="game-tab-crash" onclick="selectGame('crash')">Rocket</button>
+          <button class="game-sel-btn" id="game-tab-plinko" onclick="selectGame('plinko')">Plinko</button>
         </div>
 
         <!-- КУБИКИ -->
@@ -305,6 +306,26 @@
                   onclick="crashCashout()">ЗАБРАТЬ</button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- PLINKO -->
+        <div id="game-view-plinko" class="hidden">
+          <div class="plinko-arena">
+            <canvas id="plinko-canvas"></canvas>
+            <div class="plinko-multipliers" id="plinko-mults">
+              <!-- JS will fill this -->
+            </div>
+          </div>
+          <div class="roll-section">
+            <div class="bet-input-wrap" style="margin-bottom: 12px;">
+              <input type="number" id="plinko-bet-amount" placeholder="Ставка" value="1.0" step="0.1">
+              <button class="bet-max"
+                onclick="document.getElementById('plinko-bet-amount').value = userBalance.toFixed(2)">MAX</button>
+            </div>
+            <button class="roll-button" id="plinko-drop-btn" onclick="plinkoDrop()">
+              <span class="roll-text">БРОСИТЬ КУБИК</span>
+            </button>
           </div>
         </div>
 

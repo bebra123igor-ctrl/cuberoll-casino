@@ -13,6 +13,8 @@ let dailyClaimed = false;
 let tonConnectUI = null;
 let isInitializing = true;
 let hapticEnabled = localStorage.getItem('settings_haptic') !== 'false';
+let activeTab = 'game';
+let currentGame = 'dice';
 
 // Глобальные UI функции должны быть доступны СРАЗУ
 window.closeModal = (id) => {
@@ -22,6 +24,7 @@ window.closeModal = (id) => {
 
 window.switchTab = function (tab) {
     console.log('[Tab] Switching to', tab);
+    activeTab = tab;
     const content = document.getElementById('content-' + tab);
     const navBtn = document.querySelector(`[data-tab="${tab}"]`);
 
@@ -51,21 +54,28 @@ window.switchTab = function (tab) {
 window.selectGame = function (game) {
     const diceView = document.getElementById('game-view-dice');
     const crashView = document.getElementById('game-view-crash');
+    const plinkoView = document.getElementById('game-view-plinko');
     const bDice = document.getElementById('game-tab-dice');
     const bCrash = document.getElementById('game-tab-crash');
+    const bPlinko = document.getElementById('game-tab-plinko');
+
+    [diceView, crashView, plinkoView].forEach(v => v?.classList.add('hidden'));
+    [bDice, bCrash, bPlinko].forEach(b => b?.classList.remove('active'));
 
     if (game === 'dice') {
-        if (diceView) diceView.classList.remove('hidden');
-        if (crashView) crashView.classList.add('hidden');
-        if (bDice) bDice.classList.add('active');
-        if (bCrash) bCrash.classList.remove('active');
-    } else {
-        if (diceView) diceView.classList.add('hidden');
-        if (crashView) crashView.classList.remove('hidden');
-        if (bDice) bDice.classList.remove('active');
-        if (bCrash) bCrash.classList.add('active');
-        // Рестарт канваса если нужно
+        diceView?.classList.remove('hidden');
+        bDice?.classList.add('active');
+        currentGame = 'dice';
+    } else if (game === 'crash') {
+        crashView?.classList.remove('hidden');
+        bCrash?.classList.add('active');
+        currentGame = 'crash';
         if (!window.crashRunning) initCrash();
+    } else if (game === 'plinko') {
+        plinkoView?.classList.remove('hidden');
+        bPlinko?.classList.add('active');
+        currentGame = 'plinko';
+        initPlinko();
     }
 };
 
@@ -228,6 +238,7 @@ async function init() {
         try { await loadGifts(); } catch (e) { console.error('[Init] Gifts failed', e); }
         try { initEventListeners(); } catch (e) { console.error('[Init] Listeners failed', e); }
         try { buildExactPicker(); } catch (e) { console.error('[Init] Picker failed', e); }
+        try { initPlinko(); } catch (e) { console.error('[Init] Plinko failed', e); }
         setTimeout(() => {
             const ldr = document.getElementById('loading-screen');
             if (ldr) {
@@ -776,7 +787,7 @@ window.depositRequest = async function () {
         const message = {
             address: res.address.trim(),
             amount: (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString(),
-            payload: payload
+            payload: payload || undefined // Standard BOC
         };
 
         const transaction = {
@@ -1195,3 +1206,146 @@ window.setMaxCrashBet = function () {
 };
 
 document.addEventListener('DOMContentLoaded', init);
+// --- PLINKO GAME LOGIC ---
+let plinkoCanvas, plinkoCtx;
+let plinkoBalls = [];
+const PLINKO_ROWS = 8;
+const PLINKO_MULTIS = [15, 4, 1.5, 0.5, 0.2, 0.5, 1.5, 4, 15];
+
+function initPlinko() {
+    plinkoCanvas = document.getElementById('plinko-canvas');
+    if (!plinkoCanvas) return;
+    plinkoCtx = plinkoCanvas.getContext('2d');
+
+    // Fill multipliers UI
+    const multsDiv = document.getElementById('plinko-mults');
+    if (multsDiv) {
+        multsDiv.innerHTML = '';
+        PLINKO_MULTIS.forEach(m => {
+            const slot = document.createElement('div');
+            slot.className = 'plinko-multiplier-slot';
+            slot.dataset.mult = m;
+            slot.textContent = m + 'x';
+            multsDiv.appendChild(slot);
+        });
+    }
+
+    requestAnimationFrame(renderPlinko);
+}
+
+async function plinkoDrop() {
+    const btn = document.getElementById('plinko-drop-btn');
+    const amountVal = document.getElementById('plinko-bet-amount').value;
+
+    if (btn.disabled) return;
+    btn.disabled = true;
+
+    try {
+        const res = await api('/api/plinko/bet', 'POST', { betAmount: parseFloat(amountVal) });
+
+        // Start animation
+        const ball = {
+            x: plinkoCanvas.width / 2,
+            y: 20,
+            vx: (Math.random() - 0.5) * 2,
+            vy: 2,
+            radius: 8,
+            path: res.result.path,
+            step: 0,
+            targetSlot: res.result.slot,
+            payout: res.result.payout,
+            multiplier: res.result.multiplier,
+            color: '#ffcc00'
+        };
+        plinkoBalls.push(ball);
+
+        // Update balance immediately? No, wait for ball
+        setTimeout(() => {
+            updateBalanceUI(res.result.newBalance);
+        }, 3000);
+
+    } catch (e) {
+        toast(e.message, 'error');
+    } finally {
+        setTimeout(() => { btn.disabled = false; }, 500);
+    }
+}
+
+function renderPlinko() {
+    if (activeTab !== 'game' || currentGame !== 'plinko') {
+        requestAnimationFrame(renderPlinko);
+        return;
+    }
+
+    const w = plinkoCanvas.width = plinkoCanvas.offsetWidth;
+    const h = plinkoCanvas.height = plinkoCanvas.offsetHeight;
+
+    plinkoCtx.clearRect(0, 0, w, h);
+
+    // Draw Pegs
+    const rowGap = (h - 60) / (PLINKO_ROWS + 1);
+    const colGap = w / (PLINKO_ROWS + 2);
+
+    plinkoCtx.fillStyle = 'rgba(255,255,255,0.2)';
+    for (let r = 1; r <= PLINKO_ROWS; r++) {
+        const rowY = 40 + r * rowGap;
+        const rowCols = r + 1;
+        const startX = (w - (rowCols - 1) * colGap) / 2;
+        for (let c = 0; c < rowCols; c++) {
+            plinkoCtx.beginPath();
+            plinkoCtx.arc(startX + c * colGap, rowY, 3, 0, Math.PI * 2);
+            plinkoCtx.fill();
+        }
+    }
+
+    // Update and Draw Balls
+    const gravity = 0.15;
+    const friction = 0.98;
+
+    plinkoBalls = plinkoBalls.filter(ball => {
+        ball.vy += gravity;
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        // Peg collision logic (Simplified for "True" server side path)
+        const currentRow = Math.floor((ball.y - 40) / rowGap);
+        if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
+            const move = ball.path[ball.step];
+            ball.vx = (move === 1 ? 1 : -1) * (colGap / 12);
+            ball.vy = 2; // Bounce up/down reset
+            ball.step++;
+        }
+
+        // Draw ball as a small cube (as requested)
+        plinkoCtx.save();
+        plinkoCtx.translate(ball.x, ball.y);
+        plinkoCtx.rotate(ball.y / 20);
+        plinkoCtx.fillStyle = ball.color;
+        plinkoCtx.shadowBlur = 10;
+        plinkoCtx.shadowColor = ball.color;
+        plinkoCtx.fillRect(-6, -6, 12, 12);
+
+        // Dots on cube
+        plinkoCtx.fillStyle = '#000';
+        plinkoCtx.fillRect(-2, -2, 4, 4);
+        plinkoCtx.restore();
+
+        if (ball.y > h - 10) {
+            // Hit bottom
+            highlightSlot(ball.targetSlot);
+            if (ball.payout > 0) toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success');
+            return false;
+        }
+        return true;
+    });
+
+    requestAnimationFrame(renderPlinko);
+}
+
+function highlightSlot(idx) {
+    const slots = document.querySelectorAll('.plinko-multiplier-slot');
+    if (slots[idx]) {
+        slots[idx].classList.add('win');
+        setTimeout(() => slots[idx].classList.remove('win'), 1500);
+    }
+}

@@ -269,6 +269,64 @@ app.post('/api/bet', auth, (req, res) => {
     });
 });
 
+// --- PLINKO GAME ---
+const PLINKO_ROWS = 8;
+const PLINKO_MULTIS = [15, 4, 1.5, 0.5, 0.2, 0.5, 1.5, 4, 15];
+
+app.post('/api/plinko/bet', auth, (req, res) => {
+    const u = req.tgUser;
+    const user = userOps.get(u.id);
+    if (!user) return res.status(404).secure({ error: 'User not found' });
+    if (user.is_banned) return res.status(403).secure({ error: 'Account is banned' });
+    if (settingsOps.get('maintenance_mode') === '1') return res.status(503).secure({ error: 'Casino is under maintenance' });
+
+    const { betAmount } = req.body;
+    const amt = Math.round(parseFloat(betAmount) * 1e9) / 1e9;
+    const minBet = parseFloat(settingsOps.get('min_bet') || '0.1');
+    const maxBet = parseFloat(settingsOps.get('max_bet') || '10000');
+
+    if (isNaN(amt) || amt < minBet || amt > maxBet) return res.status(400).secure({ error: `Bet must be between ${minBet} and ${maxBet}` });
+    if (amt > user.balance + 1e-9) return res.status(400).secure({ error: 'Insufficient balance' });
+
+    const s = getSeed(u.id);
+    s.nonce++;
+
+    const hash = crypto.createHash('sha256').update(`${s.serverSeed}:${s.clientSeed}:${s.nonce}`).digest('hex');
+    let rightMoves = 0;
+    const path = [];
+
+    for (let i = 0; i < PLINKO_ROWS; i++) {
+        const byte = parseInt(hash.substring(i * 2, i * 2 + 2), 16);
+        const move = byte % 2;
+        if (move === 1) rightMoves++;
+        path.push(move);
+    }
+
+    const multiplier = PLINKO_MULTIS[rightMoves];
+    const payout = Math.round(amt * multiplier * 1e9) / 1e9;
+    const won = multiplier > 1;
+    const profit = payout - amt;
+
+    userOps.updateBalance(u.id, profit, won ? 'win_plinko' : 'loss_plinko', `Plinko: Slot ${rightMoves}`);
+    userOps.updateStats(u.id, amt, won, profit);
+
+    gameOps.create({
+        telegramId: u.id, betAmount: amt, gameType: 'plinko', playerChoice: `rows_${PLINKO_ROWS}`,
+        diceResult: path.join(','), diceTotal: rightMoves,
+        multiplier, payout, profit,
+        serverSeed: s.serverSeed, clientSeed: s.clientSeed, nonce: s.nonce, hash, won
+    });
+
+    const updated = userOps.get(u.id);
+    res.secure({
+        result: {
+            path, slot: rightMoves, won, multiplier, payout, profit,
+            newBalance: updated.balance
+        },
+        fairness: { serverSeedHash: s.hash, clientSeed: s.clientSeed, nonce: s.nonce }
+    });
+});
+
 // --- CRASH (ROCKET) GAME (GLOBAL SYNC) ---
 
 const crashState = {

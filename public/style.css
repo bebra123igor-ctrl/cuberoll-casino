@@ -3770,6 +3770,85 @@ input:checked+.toggle-slider:before {
   cursor: not-allowed;
 }
 
+/* Plinko Game Styles */
+.plinko-arena {
+  background: var(--bg2);
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+}
+
+#plinko-canvas {
+  width: 100%;
+  height: 400px;
+  background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0f0f1a 100%);
+  border-radius: 12px;
+  touch-action: none;
+}
+
+.plinko-multipliers {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.plinko-multiplier-slot {
+  flex: 1;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 6px 0;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 900;
+  color: #fff;
+  transition: all 0.3s;
+}
+
+.plinko-multiplier-slot.win {
+  background: var(--gold-g);
+  color: #000;
+  box-shadow: 0 0 15px var(--gold);
+  transform: scale(1.1);
+  z-index: 10;
+}
+
+.plinko-multiplier-slot[data-mult="15"] {
+  border-color: #ff3d00;
+  color: #ff3d00;
+}
+
+.plinko-multiplier-slot[data-mult="4"] {
+  border-color: #ff9100;
+  color: #ff9100;
+}
+
+.plinko-multiplier-slot[data-mult="1.5"] {
+  border-color: #ffd600;
+  color: #ffd600;
+}
+
+.plinko-multiplier-slot[data-mult="0.5"] {
+  border-color: #757575;
+  color: #757575;
+}
+
+.plinko-multiplier-slot[data-mult="0.2"] {
+  border-color: #424242;
+  color: #424242;
+}
+
+.plinko-multiplier-slot.win {
+  color: #000 !important;
+  border-color: transparent !important;
+}
+
 .crash-info.crashed .crash-mult {
   color: var(--red);
   text-shadow: 0 0 30px rgba(229, 57, 53, 0.5);
