@@ -642,7 +642,7 @@ async function checkTonTransactions() {
 }
 
 function processSuccessDeposit(tgId, amount, memo, txHash) {
-    if (depositOps.isCompleted(txHash)) return; // Защита от дублей
+    if (depositOps.isHashUsed(txHash)) return; // Защита от дублей
     userOps.updateBalance(tgId, amount, 'deposit', `TON Deposit (${memo})`);
     depositOps.markCompleted(memo, txHash);
 
