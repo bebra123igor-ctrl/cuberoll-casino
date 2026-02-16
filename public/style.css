@@ -2517,6 +2517,52 @@ button:active,
   position: relative;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
   animation: mPop 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+  z-index: 5001;
+  /* Выше оверлея */
+}
+
+/* ═══ DICE GAME FIXES ═══ */
+.roll-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 0;
+  width: 100%;
+  position: relative;
+  z-index: 100;
+}
+
+.roll-button {
+  width: 100%;
+  max-width: 300px;
+  padding: 18px;
+  background: var(--gold-g);
+  border: none;
+  border-radius: 18px;
+  color: black;
+  font-size: 16px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(255, 204, 0, 0.3);
+  transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto !important;
+}
+
+.roll-button:active {
+  transform: scale(0.96);
+  box-shadow: 0 4px 10px rgba(255, 204, 0, 0.2);
+}
+
+.roll-button .icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: black;
 }
 
 .bet-modal-box {
