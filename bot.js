@@ -2,6 +2,7 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const { userOps, gameOps, settingsOps } = require('./database');
 
+const { logMonitor, monitoringLogs } = require('./logger');
 const TOKEN = process.env.BOT_TOKEN;
 const ADMINS = (process.env.ADMIN_IDS || '').split(',').map(id => parseInt(id.trim()));
 let WEBAPP = process.env.WEBAPP_URL || 'https://your-domain.com';
@@ -122,6 +123,14 @@ bot.onText(/\/setlogchannel (.+)/, async (msg, match) => {
     const cid = match[1].trim();
     settingsOps.set('log_channel_id', cid);
     bot.sendMessage(msg.chat.id, `✅ ID канала для логов установлен:\n\n\`${cid}\``, { parse_mode: 'Markdown' });
+});
+
+bot.onText(/\/logs/, async (msg) => {
+    if (!isAdmin(msg.from.id)) return;
+    if (monitoringLogs.length === 0) return bot.sendMessage(msg.chat.id, '📭 Логи мониторинга пусты.');
+
+    const text = `📋 *Последние события мониторинга:*\n\n` + monitoringLogs.slice(0, 20).join('\n');
+    bot.sendMessage(msg.chat.id, text.substring(0, 4000), { parse_mode: 'Markdown' });
 });
 
 bot.onText(/\/testlog/, async (msg) => {

@@ -163,7 +163,7 @@ function getSeed(tgId) {
     }
     return seeds[tgId];
 }
-
+const { logMonitor, monitoringLogs } = require('./logger');
 
 // --- роуты ---
 
@@ -512,24 +512,34 @@ const https = require('https');
 function parseTonComment(msg) {
     if (!msg) return null;
 
+    // 1. Прямой текст в сообщении
     if (typeof msg.message === 'string' && msg.message.trim()) {
         return msg.message.trim();
     }
 
-    if (msg.msg_data && typeof msg.msg_data.text === 'string' && msg.msg_data.text.trim()) {
-        return msg.msg_data.text.trim();
-    }
+    // 2. Текст в msg_data
+    if (msg.msg_data) {
+        if (typeof msg.msg_data.text === 'string' && msg.msg_data.text.trim()) {
+            return msg.msg_data.text.trim();
+        }
 
-    if (msg.msg_data && msg.msg_data['@type'] === 'msg.dataRaw' && typeof msg.msg_data.body === 'string') {
-        try {
-            const body = Buffer.from(msg.msg_data.body, 'base64');
-            if (body.length <= 4) return null;
-            const opcode = body.readUInt32BE(0);
-            if (opcode !== 0) return null;
-            const text = body.subarray(4).toString('utf8').replace(/\0+$/, '').trim();
-            return text || null;
-        } catch (e) {
-            return null;
+        // 3. Бинарные данные (msg.dataRaw)
+        if (msg.msg_data['@type'] === 'msg.dataRaw' && typeof msg.msg_data.body === 'string') {
+            try {
+                const body = Buffer.from(msg.msg_data.body, 'base64');
+                if (body.length < 5) return null;
+
+                // Проверяем OpCode (0x00000000 - обычный текстовый комментарий)
+                const opcode = body.readUInt32BE(0);
+                if (opcode === 0) {
+                    const text = body.subarray(4).toString('utf8').replace(/\0+$/, '').trim();
+                    return text || null;
+                }
+
+                // Если нет OpCode, возможно это просто текст (некоторые кошельки так шлют)
+                const plainText = body.toString('utf8').replace(/\0+$/, '').trim();
+                if (/^[a-zA-Z0-9_-]+$/.test(plainText)) return plainText;
+            } catch (e) { }
         }
     }
 
@@ -537,92 +547,97 @@ function parseTonComment(msg) {
 }
 
 async function checkTonTransactions() {
-    const settings = settingsOps.getAll();
-    let addr = settings.ton_wallet;
-
-    if (addr) addr = addr.trim();
-
-    // Гибкая регулярка для TON адресов (стандартные 48 символов или HEX 64 символа)
-    const tonRegex = /^([UE]Q[a-zA-Z0-9_-]{46}|[0-9a-fA-F]{64})$/;
-
-    if (!addr || !tonRegex.test(addr)) {
-        addr = process.env.TON_WALLET;
+    try {
+        const settings = settingsOps.getAll();
+        let addr = settings.ton_wallet;
         if (addr) addr = addr.trim();
-    }
 
-    if (!addr || !tonRegex.test(addr)) {
-        if (!settings.ton_wallet?.includes('...')) {
-            console.warn(`[Monitor] Invalid or missing TON wallet: "${addr || 'None'}". Please use /setwallet in bot.`);
+        const tonRegex = /^([UE]Q[a-zA-Z0-9_-]{46}|[0-9a-fA-F]{64})$/;
+        if (!addr || !tonRegex.test(addr)) {
+            addr = process.env.TON_WALLET;
+            if (addr) addr = addr.trim();
         }
-        return;
-    }
 
-    const apiKey = process.env.TONCENTER_API_KEY || ''; // Optional API Key
-    const options = {
-        headers: apiKey ? { 'X-API-Key': apiKey } : {}
-    };
+        if (!addr || !tonRegex.test(addr)) {
+            if (!settings.ton_wallet?.includes('...')) {
+                logMonitor(`Error: Invalid wallet configured: ${addr}`);
+            }
+            return;
+        }
 
-    console.log(`[Monitor] Scanning TON wallet: ${addr}`);
+        const apiKey = process.env.TONCENTER_API_KEY || '';
+        const url = `https://toncenter.com/api/v2/getTransactions?address=${addr}&limit=20`;
 
-    https.get(`https://toncenter.com/api/v2/getTransactions?address=${addr}&limit=20`, options, (resp) => {
-        let data = '';
-        resp.on('data', (c) => data += c);
-        resp.on('end', () => {
-            try {
-                const json = JSON.parse(data);
-                if (!json.ok) {
-                    console.error('[Monitor] TonCenter API error:', json);
-                    return;
-                }
-                const txs = json.result;
-                txs.forEach(tx => {
-                    const msg = tx.in_msg;
-                    if (!msg) return;
+        const reqOptions = {
+            timeout: 8000,
+            headers: {
+                'User-Agent': 'CubeRoll-Monitor/1.0',
+                ...(apiKey ? { 'X-API-Key': apiKey } : {})
+            }
+        };
 
-                    const comment = parseTonComment(msg);
-                    const amountTON = parseInt(msg.value) / 1e9;
-                    const txHash = tx.transaction_id.hash;
-
-                    if (!comment) return;
-
-                    // Match by comment
-                    let pending = depositOps.getByComment(comment);
-                    if (pending && pending.status === 'pending') {
-                        // Allow slight variation in amount (e.g. fees or user error)
-                        if (amountTON >= pending.amount * 0.98) {
-                            console.log(`[Monitor] SUCCESS: Found tx for ${comment}, amount: ${amountTON} TON, hash: ${txHash}`);
-                            userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `TON Deposit (Memo: ${comment})`);
-                            depositOps.markCompleted(comment, txHash);
-
-                            // Log to console for dev
-                            console.log(`[Monitor] Deposited ${amountTON} to User ${pending.telegram_id}`);
-
-                            // Log to channel
-                            const logChannel = process.env.LOG_CHANNEL_ID || settingsOps.get('log_channel_id');
-                            if (logChannel && bot) {
-                                const user = userOps.get(pending.telegram_id);
-                                const userLink = user.username ? `@${user.username}` : `[${user.first_name}](tg://user?id=${user.telegram_id})`;
-                                bot.sendMessage(logChannel,
-                                    `💰 *НОВОЕ ПОПОЛНЕНИЕ*\n\n` +
-                                    `👤 Игрок: ${userLink}\n` +
-                                    `💵 Сумма: *${amountTON.toFixed(2)} TON*\n` +
-                                    `📝 Мемо: \`${comment}\`\n` +
-                                    `🔗 [Транзакция](https://tonviewer.com/transaction/${txHash})`,
-                                    { parse_mode: 'Markdown' }
-                                ).catch(e => console.error('[Log] Failed to send deposit log:', e.message));
-                            }
-                        } else {
-                            console.warn(`[Monitor] Amount mismatch for ${comment}: expected ${pending.amount}, got ${amountTON}`);
-                        }
-                    }
+        const fetchTxs = () => new Promise((resolve, reject) => {
+            const req = https.get(url, reqOptions, (res) => {
+                let body = '';
+                res.on('data', c => body += c);
+                res.on('end', () => {
+                    try {
+                        const json = JSON.parse(body);
+                        if (!json.ok) return reject(new Error(json.error || 'API Error'));
+                        resolve(json.result);
+                    } catch (e) { reject(e); }
                 });
-            } catch (e) {
-                console.error('[Monitor] Parse error:', e.message);
+            });
+            req.on('error', reject);
+            req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
+        });
+
+        const txs = await fetchTxs();
+        if (!txs || txs.length === 0) {
+            // logMonitor('No transactions found in latest batch.');
+            return;
+        }
+
+        txs.forEach(tx => {
+            const msg = tx.in_msg;
+            if (!msg || !msg.value) return;
+
+            const comment = parseTonComment(msg);
+            const amountTON = Number(msg.value) / 1e9;
+            const txHash = tx.transaction_id.hash;
+
+            if (!comment) return;
+
+            // Ищем заявку
+            let pending = depositOps.getByComment(comment);
+            if (pending && pending.status === 'pending') {
+                if (amountTON >= pending.amount * 0.95) { // Более мягкий порог (5%) на случай комиссий кошелька
+                    logMonitor(`MATCH! Comment: ${comment}, Amount: ${amountTON} TON`);
+                    const result = userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `TON Deposit (Memo: ${comment})`);
+                    depositOps.markCompleted(comment, txHash);
+
+                    // Уведомление в лог-канал
+                    const logChannel = process.env.LOG_CHANNEL_ID || settingsOps.get('log_channel_id');
+                    if (logChannel && bot) {
+                        const user = userOps.get(pending.telegram_id);
+                        const userLink = user.username ? `@${user.username}` : `[${user.first_name}](tg://user?id=${user.telegram_id})`;
+                        bot.sendMessage(logChannel,
+                            `💰 *НОВОЕ ПОПОЛНЕНИЕ (АВТО)*\n\n` +
+                            `👤 Игрок: ${userLink}\n` +
+                            `💵 Сумма: *${amountTON.toFixed(2)} TON*\n` +
+                            `📝 Мемо: \`${comment}\`\n` +
+                            `🔗 [Транзакция](https://tonviewer.com/transaction/${txHash})`,
+                            { parse_mode: 'Markdown' }
+                        ).catch(e => console.error('[Log] Channel error:', e.message));
+                    }
+                } else {
+                    logMonitor(`Mismatch: ${comment} expected ${pending.amount}, got ${amountTON}`);
+                }
             }
         });
-    }).on('error', (err) => {
-        console.error('[Monitor] Network error:', err.message);
-    });
+    } catch (e) {
+        logMonitor(`Critical: ${e.message}`);
+    }
 }
 
 // Поллинг каждые 10 секунд для скорости подтверждения
@@ -809,6 +824,10 @@ app.post('/api/admin/parse-gift', auth, adminOnly, async (req, res) => {
             } catch (e) { res.status(500).secure({ error: e.message }); }
         });
     }).on("error", (e) => res.status(500).secure({ error: e.message }));
+});
+
+app.get('/api/admin/monitor-logs', auth, adminOnly, (req, res) => {
+    res.secure({ logs: monitoringLogs });
 });
 
 app.get('/api/admin/stats', auth, adminOnly, (req, res) => {
