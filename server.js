@@ -539,17 +539,23 @@ async function checkTonTransactions() {
     const settings = settingsOps.getAll();
     let addr = settings.ton_wallet;
 
+    if (addr) addr = addr.trim();
+
     // Пул адреса из настроек или ENV
-    if (!addr || addr.length < 10 || addr.includes('...') || addr.includes('your-')) {
+    // Регулярка проверяет на типичный TON адрес (UQ... или EQ... длиной ~48 символов)
+    const tonRegex = /^[UE]Q[a-zA-Z0-9_-]{46}$/;
+
+    if (!addr || !tonRegex.test(addr)) {
         addr = process.env.TON_WALLET;
+        if (addr) addr = addr.trim();
     }
 
-    // Если всё еще нет адреса или это плейсхолдер - выходим
-    if (!addr || addr.length < 10 || addr.includes('...') || addr.includes('your-')) {
+    if (!addr || !tonRegex.test(addr)) {
+        // console.warn('[Monitor] No valid TON wallet configured. Skipping check.');
         return;
     }
 
-    // console.log(`[Monitor] Scanning ${addr}...`);
+    console.log(`[Monitor] Scanning TON wallet: ${addr}`);
 
     https.get(`https://toncenter.com/api/v2/getTransactions?address=${addr}&limit=15`, (resp) => {
         let data = '';

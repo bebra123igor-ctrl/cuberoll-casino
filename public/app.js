@@ -2,7 +2,7 @@
 
 const API = '';
 let tg = null, initData = '';
-var user = null; // var makes it window.user
+var user = null;
 let settings = {}, curSeeds = {};
 let betType = 'high';
 let exactNum = 7;
@@ -13,6 +13,61 @@ let dailyClaimed = false;
 let tonConnectUI = null;
 let isInitializing = true;
 let hapticEnabled = localStorage.getItem('settings_haptic') !== 'false';
+
+// Глобальные UI функции должны быть доступны СРАЗУ
+window.closeModal = (id) => {
+    const m = document.getElementById(id);
+    if (m) m.classList.add('hidden');
+};
+
+window.switchTab = function (tab) {
+    console.log('[Tab] Switching to', tab);
+    const content = document.getElementById('content-' + tab);
+    const navBtn = document.querySelector(`[data-tab="${tab}"]`);
+
+    if (!content) {
+        console.error('[Tab] Content not found for', tab);
+        return;
+    }
+
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+
+    content.classList.add('active');
+    if (navBtn) navBtn.classList.add('active');
+
+    if (tab === 'history') loadHistory();
+    if (tab === 'shop') loadGifts();
+    if (tab === 'leaderboard') loadLeaderboard();
+    if (tab === 'settings') {
+        const toggle = document.getElementById('settings-haptic');
+        if (toggle) toggle.checked = hapticEnabled;
+    }
+
+    const scrollable = content.querySelector('.tab-scrollable') || content;
+    if (scrollable) scrollable.scrollTop = 0;
+};
+
+window.selectGame = function (game) {
+    const diceView = document.getElementById('game-view-dice');
+    const crashView = document.getElementById('game-view-crash');
+    const bDice = document.getElementById('game-tab-dice');
+    const bCrash = document.getElementById('game-tab-crash');
+
+    if (game === 'dice') {
+        if (diceView) diceView.classList.remove('hidden');
+        if (crashView) crashView.classList.add('hidden');
+        if (bDice) bDice.classList.add('active');
+        if (bCrash) bCrash.classList.remove('active');
+    } else {
+        if (diceView) diceView.classList.add('hidden');
+        if (crashView) crashView.classList.remove('hidden');
+        if (bDice) bDice.classList.remove('active');
+        if (bCrash) bCrash.classList.add('active');
+        // Рестарт канваса если нужно
+        if (!window.crashRunning) initCrash();
+    }
+};
 
 // "Шифрование" для "обычных смертных"
 const _SEC_KEY = 'cuberoll';
@@ -218,34 +273,6 @@ function setBalance(val, anim = false) {
     }
 }
 
-window.switchTab = function (tab) {
-    console.log('[Tab] Switching to', tab);
-    const content = document.getElementById('content-' + tab);
-    const navBtn = document.querySelector(`[data-tab="${tab}"]`);
-
-    if (!content) {
-        console.error('[Tab] Content not found for', tab);
-        return;
-    }
-
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
-
-    content.classList.add('active');
-    if (navBtn) navBtn.classList.add('active');
-
-    if (tab === 'history') loadHistory();
-    if (tab === 'shop') loadGifts();
-    if (tab === 'leaderboard') loadLeaderboard();
-    if (tab === 'settings') {
-        const toggle = document.getElementById('settings-haptic');
-        if (toggle) toggle.checked = hapticEnabled;
-    }
-
-    // Scroll to top of the content
-    const scrollable = content.querySelector('.tab-scrollable') || content;
-    scrollable.scrollTop = 0;
-};
 
 window.toggleHaptic = function () {
     hapticEnabled = document.getElementById('settings-haptic').checked;
@@ -385,12 +412,6 @@ function initEventListeners() {
             updatePayoutUI();
         }
     });
-
-    // Универсальная кнопка закрытия
-    window.closeModal = (id) => {
-        const m = document.getElementById(id);
-        if (m) m.classList.add('hidden');
-    };
 
     // Подтверждение
     safeSetClick('roll-btn-confirm', roll);
