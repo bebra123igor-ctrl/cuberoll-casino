@@ -1058,9 +1058,8 @@ function renderCrash() {
         const shakeAmp = isPlaying ? (1 + currentMult / 8) : 0;
 
         // Адаптивный масштаб для мелких экранов
-        // Базовый размер - для экранов > 500px. Если меньше - уменьшаем.
-        const baseScale = Math.min(w, h) / 410;
-        const s = Math.min(1.1, Math.max(0.48, baseScale));
+        // База: на экране 400px масштаб 1.0. На 200px - 0.5.
+        const s = Math.min(1.0, Math.max(0.4, w / 450));
         const rx = w / 2 + Math.sin(timeFactor * 30) * shakeAmp;
         const ry = h * 0.44;
 

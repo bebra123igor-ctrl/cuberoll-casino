@@ -2526,10 +2526,10 @@ button:active,
 .roll-button {
   width: 100%;
   padding: 14px;
-  background: var(--gold-g);
+  background: var(--gold-g) !important;
   border: none;
   border-radius: 12px;
-  color: #000;
+  color: #000 !important;
   font-weight: 800;
   font-size: 14px;
   display: flex;
@@ -2538,6 +2538,14 @@ button:active,
   gap: 8px;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(255, 204, 0, 0.2);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.roll-button:active {
+  background: var(--gold-g) !important;
+  color: #000 !important;
+  transform: scale(0.98);
 }
 
 .bet-modal-box {
@@ -3591,13 +3599,19 @@ input:checked+.toggle-slider:before {
 }
 
 .crash-btn.bet {
-  background: var(--accent);
-  color: #000;
+  background: var(--accent) !important;
+  color: #000 !important;
+}
+
+.crash-btn.bet:active {
+  background: var(--accent) !important;
+  color: #000 !important;
+  transform: scale(0.98);
 }
 
 .crash-btn.cashout {
-  background: linear-gradient(135deg, var(--gold) 0%, #f1c40f 100%);
-  color: #000;
+  background: linear-gradient(135deg, var(--gold) 0%, #f1c40f 100%) !important;
+  color: #000 !important;
   box-shadow: 0 4px 15px rgba(241, 196, 15, 0.3);
   animation: pulse-gold 1.5s infinite;
 }

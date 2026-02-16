@@ -132,4 +132,5 @@ bot.onText(/\/broadcast (.+)/, async (msg, match) => {
     bot.sendMessage(msg.chat.id, `📢 Отправлено: ${ok}, ошибок: ${fail}`);
 });
 
-// bot initialized
+// Export bot to use in server.js
+module.exports = bot;

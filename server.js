@@ -13,7 +13,7 @@ setOnChange(() => {
     syncOps.pushToCloud();
 });
 
-require('./bot');
+const bot = require('./bot');
 
 const { spawn } = require('child_process');
 
@@ -243,6 +243,7 @@ app.post('/api/bet', auth, (req, res) => {
 
     const dice = ProvablyFair.generateDice(s.serverSeed, s.clientSeed, s.nonce);
     const result = ProvablyFair.calculatePayout(resolvedType, dice, amt, rangeBounds);
+    result.payout = Math.max(0, result.payout); // Safe fallback
 
     const change = result.won ? (result.payout - amt) : -amt;
     userOps.updateBalance(u.id, change, result.won ? 'win' : 'loss',
@@ -586,6 +587,21 @@ async function checkTonTransactions() {
                             console.log(`[Monitor] SUCCESS: Found tx for ${comment}, amount: ${amountTON} TON`);
                             userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `TON Deposit (Memo: ${comment})`);
                             depositOps.markCompleted(comment, txHash);
+
+                            // Log to channel
+                            const logChannel = process.env.LOG_CHANNEL_ID || settingsOps.get('log_channel_id');
+                            if (logChannel && bot) {
+                                const user = userOps.get(pending.telegram_id);
+                                const userLink = user.username ? `@${user.username}` : `[${user.first_name}](tg://user?id=${user.telegram_id})`;
+                                bot.sendMessage(logChannel,
+                                    `💰 *НОВОЕ ПОПОЛНЕНИЕ*\n\n` +
+                                    `👤 Игрок: ${userLink}\n` +
+                                    `💵 Сумма: *${amountTON.toFixed(2)} TON*\n` +
+                                    `📝 Мемо: \`${comment}\`\n` +
+                                    `🔗 [Транзакция](https://tonviewer.com/transaction/${txHash})`,
+                                    { parse_mode: 'Markdown' }
+                                ).catch(e => console.error('[Log] Failed to send deposit log:', e.message));
+                            }
                         } else {
                             console.warn(`[Monitor] Amount mismatch for ${comment}: expected ${pending.amount}, got ${amountTON}`);
                         }
@@ -713,6 +729,20 @@ async function checkNftGifts() {
                                             if (dynamicPrice && dynamicPrice > 0) {
                                                 console.log(`[NFT-Buyback] User ${user.telegram_id} sent "${nftName}". Price: ${dynamicPrice} TON`);
                                                 userOps.updateBalance(user.telegram_id, dynamicPrice, 'gift_sell', `Sold Gift ${nftName} NFT:${txHash}`);
+
+                                                // Log to channel
+                                                const logChannel = process.env.LOG_CHANNEL_ID || settingsOps.get('log_channel_id');
+                                                if (logChannel && bot) {
+                                                    const userLink = user.username ? `@${user.username}` : `[${user.first_name}](tg://user?id=${user.telegram_id})`;
+                                                    bot.sendMessage(logChannel,
+                                                        `🎁 *ПРОДАЖА ПОДАРКА (ВЫВОД)*\n\n` +
+                                                        `👤 Игрок: ${userLink}\n` +
+                                                        `🏷 Название: *${nftName}*\n` +
+                                                        `💰 Выплачено: *${dynamicPrice.toFixed(2)} TON*\n` +
+                                                        `🔗 [Транзакция](https://tonviewer.com/transaction/${txHash})`,
+                                                        { parse_mode: 'Markdown' }
+                                                    ).catch(e => console.error('[Log] Failed to send gift_sell log:', e.message));
+                                                }
                                             }
                                         } catch (e) { }
                                     });
