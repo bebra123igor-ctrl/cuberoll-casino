@@ -543,37 +543,53 @@ async function checkTonTransactions() {
     }
     if (!addr || addr.includes('your-') || addr.includes('UQ...')) return;
 
-    https.get(`https://toncenter.com/api/v2/getTransactions?address=${addr}&limit=10`, (resp) => {
+    // console.log(`[Monitor] Scanning ${addr}...`);
+
+    https.get(`https://toncenter.com/api/v2/getTransactions?address=${addr}&limit=15`, (resp) => {
         let data = '';
         resp.on('data', (c) => data += c);
         resp.on('end', () => {
             try {
                 const json = JSON.parse(data);
-                if (!json.ok) return;
+                if (!json.ok) {
+                    console.error('[Monitor] TonCenter API error:', json);
+                    return;
+                }
                 const txs = json.result;
                 txs.forEach(tx => {
                     const msg = tx.in_msg;
                     if (!msg) return;
+
                     const comment = parseTonComment(msg);
                     const amountTON = parseInt(msg.value) / 1e9;
                     const txHash = tx.transaction_id.hash;
 
+                    if (!comment) return;
+
                     // Match by comment
-                    let pending = comment ? depositOps.getByComment(comment) : null;
+                    let pending = depositOps.getByComment(comment);
                     if (pending && pending.status === 'pending') {
-                        if (amountTON >= pending.amount * 0.99) {
+                        // Allow slight variation in amount (e.g. fees or user error)
+                        if (amountTON >= pending.amount * 0.98) {
+                            console.log(`[Monitor] SUCCESS: Found tx for ${comment}, amount: ${amountTON} TON`);
                             userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `TON Deposit (Memo: ${comment})`);
                             depositOps.markCompleted(comment, txHash);
-                            console.log(`[Monitor] Credited ${amountTON} TON to ${pending.telegram_id}`);
+                        } else {
+                            console.warn(`[Monitor] Amount mismatch for ${comment}: expected ${pending.amount}, got ${amountTON}`);
                         }
                     }
                 });
-            } catch (e) { }
+            } catch (e) {
+                console.error('[Monitor] Parse error:', e.message);
+            }
         });
-    }).on('error', () => { });
+    }).on('error', (err) => {
+        console.error('[Monitor] Network error:', err.message);
+    });
 }
 
-setInterval(checkTonTransactions, 15000);
+// Поллинг каждые 10 секунд для скорости подтверждения
+setInterval(checkTonTransactions, 10000);
 
 // --- GIFT BUYBACK (NFT) DYNAMIC PARSER ---
 

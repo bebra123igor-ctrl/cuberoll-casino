@@ -431,7 +431,10 @@ window.roll = async function () {
     document.getElementById('bet-modal').classList.add('hidden');
 
     rolling = true;
-    document.getElementById('open-bet-modal-btn').disabled = true;
+    const rollBtn = document.getElementById('roll-btn-confirm');
+    const originalBtnText = rollBtn.textContent;
+    rollBtn.disabled = true;
+    rollBtn.innerHTML = '<span class="loader-inline"></span> БРОСАЕМ...';
     if (window.haptic && hapticEnabled) haptic.impactOccurred('medium');
 
     try {
@@ -448,19 +451,19 @@ window.roll = async function () {
             setBalance(user.balance, true);
             showResult(res.result);
             rolling = false;
+            rollBtn.disabled = false;
+            rollBtn.textContent = originalBtnText;
             document.getElementById('open-bet-modal-btn').disabled = false;
-
-            if (res.fairness) {
-                document.getElementById('server-seed-hash').textContent = res.fairness.serverSeedHash;
-                document.getElementById('nonce-value').textContent = res.fairness.nonce;
-            }
-
-        }, 1500);
-
+        }, 1200);
     } catch (e) {
-        toast(e.message, 'error');
         rolling = false;
+        const rb = document.getElementById('roll-btn-confirm');
+        if (rb) {
+            rb.disabled = false;
+            rb.textContent = 'ОШИБКА. ЕЩЕ РАЗ?';
+        }
         document.getElementById('open-bet-modal-btn').disabled = false;
+        toast(e.message, 'error');
     }
 };
 
@@ -930,12 +933,15 @@ function initCrashCanvas() {
 const stars = [];
 function initStars() {
     stars.length = 0;
-    for (let i = 0; i < 25; i++) {
+    const w = crashCanvas ? crashCanvas.clientWidth : window.innerWidth;
+    const h = crashCanvas ? crashCanvas.clientHeight : 400;
+    // Even fewer stars (8) for a natural, deep-space look
+    for (let i = 0; i < 8; i++) {
         stars.push({
-            x: Math.random() * 2000,
-            y: Math.random() * 2000,
-            s: 0.8 + Math.random() * 1.5,
-            o: 0.8 + Math.random() * 0.2 // Brighter, crisper stars
+            x: Math.random() * w,
+            y: Math.random() * h,
+            s: 0.4 + Math.random() * 1.2,
+            o: 0.3 + Math.random() * 0.5
         });
     }
 }
@@ -1000,13 +1006,10 @@ function renderCrash() {
 
         // Адаптивный масштаб для мелких экранов
         // Базовый размер - для экранов > 500px. Если меньше - уменьшаем.
-        const baseScale = Math.min(w, h) / 380; // Было 300, увеличили делитель -> ракета станет меньше
-        const s = Math.min(1.1, Math.max(0.55, baseScale));
-
+        const baseScale = Math.min(w, h) / 410;
+        const s = Math.min(1.1, Math.max(0.48, baseScale));
         const rx = w / 2 + Math.sin(timeFactor * 30) * shakeAmp;
-        // Поднимаем ракету выше центра (было h/2 + 10)
-        // На мобилках (маленький s) поднимаем еще сильнее
-        const ry = h / 2 - (20 * (2 - s));
+        const ry = h * 0.44;
 
         crashCtx.save();
         // Масштабируем всё относительно центра ракеты

@@ -773,7 +773,16 @@ body {
 }
 
 .tab-content.active {
-  display: flex;
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 10;
+}
+
+button:active,
+.clickable:active {
+  transform: scale(0.96);
+  opacity: 0.8;
 }
 
 [id^="game-view-"] {
