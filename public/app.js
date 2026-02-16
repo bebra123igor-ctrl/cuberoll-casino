@@ -219,15 +219,32 @@ function setBalance(val, anim = false) {
 }
 
 window.switchTab = function (tab) {
-    document.querySelectorAll('.tab-content, .nav-tab').forEach(el => el.classList.remove('active'));
-    document.getElementById('content-' + tab).classList.add('active');
-    document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
+    console.log('[Tab] Switching to', tab);
+    const content = document.getElementById('content-' + tab);
+    const navBtn = document.querySelector(`[data-tab="${tab}"]`);
+
+    if (!content) {
+        console.error('[Tab] Content not found for', tab);
+        return;
+    }
+
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+
+    content.classList.add('active');
+    if (navBtn) navBtn.classList.add('active');
+
     if (tab === 'history') loadHistory();
     if (tab === 'shop') loadGifts();
     if (tab === 'leaderboard') loadLeaderboard();
     if (tab === 'settings') {
-        document.getElementById('settings-haptic').checked = hapticEnabled;
+        const toggle = document.getElementById('settings-haptic');
+        if (toggle) toggle.checked = hapticEnabled;
     }
+
+    // Scroll to top of the content
+    const scrollable = content.querySelector('.tab-scrollable') || content;
+    scrollable.scrollTop = 0;
 };
 
 window.toggleHaptic = function () {

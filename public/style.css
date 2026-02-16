@@ -716,6 +716,10 @@ body {
   padding: 6px;
   border-bottom: 1px solid var(--border);
   gap: 4px;
+  position: relative;
+  z-index: 200;
+  /* Очень высокий приоритет для навигации */
+  pointer-events: auto !important;
 }
 
 .nav-tab {
