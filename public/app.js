@@ -13,6 +13,9 @@ let dailyClaimed = false;
 let tonConnectUI = null;
 let isInitializing = true;
 let hapticEnabled = localStorage.getItem('settings_haptic') !== 'false';
+let plinkoCanvas = null;
+let plinkoCtx = null;
+let plinkoBalls = [];
 let activeTab = 'game';
 let currentGame = 'dice';
 let userWalletAddress = null;
@@ -748,65 +751,44 @@ window.depositRequest = async function () {
 
     const btn = document.getElementById('dep-btn-go');
     btn.disabled = true;
-    btn.textContent = '...';
+    btn.textContent = 'ГЕНЕРАЦИЯ...';
 
     try {
         const res = await api('/api/deposit/request', 'POST', { amount: parseFloat(amountVal) });
         if (!res.address) throw new Error('Адрес не настроен.');
 
         const depositComment = (res.comment || '').trim();
+        const address = res.address.trim();
 
-        // Показываем данные для РУЧНОЙ оплаты (всегда)
-        const details = document.getElementById('manual-deposit-details');
-        const addrText = document.getElementById('dep-address-text');
-        const memoText = document.getElementById('dep-memo-text');
-        if (details && addrText && memoText) {
-            addrText.textContent = res.address;
-            memoText.textContent = depositComment;
-            details.classList.remove('hidden');
+        // Construct Direct Transfer Links 
+        // 1. Universal tonkeeper link (very reliable on mobile)
+        const tonkeeperLink = `https://app.tonkeeper.com/transfer/${address}?text=${encodeURIComponent(depositComment)}&amount=${BigInt(Math.round(amountVal * 1e9))}`;
+        // 2. Protocol link
+        const protoLink = `ton://transfer/${address}?text=${encodeURIComponent(depositComment)}&amount=${BigInt(Math.round(amountVal * 1e9))}`;
+
+        // Show the elegant link button
+        const linkBtn = document.getElementById('direct-transfer-link');
+        const linkContainer = document.querySelector('.direct-link-container');
+        if (linkBtn && linkContainer) {
+            linkBtn.href = tonkeeperLink;
+            linkContainer.classList.remove('hidden');
         }
 
-        // Если кошелек подключен, пробуем АВТОМАТИЧЕСКУЮ оплату
-        if (tonConnectUI.connected) {
-            toast('Заявка создана. Подтвердите в кошельке!', 'success');
+        // Try to open protocol link first, then fallback to tonkeeper link
+        setTimeout(() => { window.location.href = protoLink; }, 100);
 
-            // Standard BOC Payload (compatible with most wallets)
-            let payloadBoc = undefined;
-            if (depositComment && window.TonWeb) {
-                try {
-                    const cell = new window.TonWeb.boc.Cell();
-                    cell.bits.writeUint(0, 32); // Text comment opcode
-                    cell.bits.writeBytes(new TextEncoder().encode(depositComment));
-                    const bytes = await cell.toBoc();
-                    payloadBoc = window.TonWeb.utils.bytesToBase64(bytes);
-                } catch (e) { console.warn('BOC error:', e); }
-            }
+        toast('Заявка создана! Перенаправляем в кошелек...', 'success');
 
-            const transaction = {
-                validUntil: Math.floor(Date.now() / 1000) + 600,
-                messages: [{
-                    address: res.address.trim(),
-                    amount: (BigInt(Math.round(amountVal * 1e9))).toString(),
-                    payload: payloadBoc
-                }]
-            };
-            await tonConnectUI.sendTransaction(transaction);
-            toast('Ждём подтверждения в сети TON...', 'info');
-        } else {
-            toast('Скопируйте адрес и комментарий для оплаты!', 'info');
-        }
-
-        // Monitor deposit
+        // Monitoring poller
         const checkDeposit = async () => {
             for (let i = 0; i < 40; i++) {
                 await new Promise(r => setTimeout(r, 10000));
                 try {
                     const status = await api('/api/deposit/check');
                     if (status.completed && status.completed.some(d => d.comment === depositComment)) {
-                        toast('Пополнение подтверждено!', 'success');
+                        toast('Пополнение зачислено!', 'success');
                         triggerConfetti();
                         refreshBalance();
-                        if (details) details.classList.add('hidden');
                         return;
                     }
                 } catch (e) { }
@@ -815,13 +797,10 @@ window.depositRequest = async function () {
         checkDeposit();
 
     } catch (e) {
-        console.error('Deposit failed:', e);
-        const errMsg = e.message || 'Cancelled';
-        if (errMsg.includes('User reject')) toast('Транзакция отменена', 'info');
-        else toast(`Ошибка: ${errMsg}`, 'error');
+        toast(`Ошибка: ${e.message}`, 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'ОПЛАТИТЬ ЧЕРЕЗ WALLET';
+        btn.textContent = 'ОПЛАТИТЬ';
     }
 }
 
@@ -1211,13 +1190,11 @@ window.setMaxCrashBet = function () {
 
 document.addEventListener('DOMContentLoaded', init);
 // --- PLINKO GAME LOGIC ---
-let plinkoCanvas, plinkoCtx;
-let plinkoBalls = [];
 const PLINKO_ROWS = 8;
 const PLINKO_MULTIS = [15, 4, 1.5, 0.5, 0.2, 0.5, 1.5, 4, 15];
 
 function initPlinko() {
-    plinkoCanvas = document.getElementById('plinko-canvas');
+    if (!plinkoCanvas) plinkoCanvas = document.getElementById('plinko-canvas');
     if (!plinkoCanvas) return;
     plinkoCtx = plinkoCanvas.getContext('2d');
 
@@ -1235,7 +1212,7 @@ function initPlinko() {
 
     if (!window._pRunning) {
         window._pRunning = true;
-        console.log('[Plinko] Core loop activated');
+        console.log('[Plinko] Loop started');
         requestAnimationFrame(renderPlinko);
     }
 }
@@ -1286,7 +1263,11 @@ async function plinkoDrop() {
 }
 
 function renderPlinko() {
-    if (!plinkoCanvas || !plinkoCtx) return requestAnimationFrame(renderPlinko);
+    if (!plinkoCanvas || !plinkoCtx) {
+        plinkoCanvas = document.getElementById('plinko-canvas');
+        if (plinkoCanvas) plinkoCtx = plinkoCanvas.getContext('2d');
+        return requestAnimationFrame(renderPlinko);
+    }
 
     // Low-power mode when hidden
     if (activeTab !== 'game' || currentGame !== 'plinko') {

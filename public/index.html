@@ -425,38 +425,23 @@
               </div>
 
               <button class="pay-btn-premium" id="dep-btn-go" onclick="depositRequest()">
-                <span>💳 ОПЛАТИТЬ ЧЕРЕЗ WALLET</span>
+                <span>💎 ПОПОЛНИТЬ ЧЕРЕЗ КОШЕЛЕК</span>
               </button>
 
-              <div class="dep-info-box">
-                <p>⚠️ <b>Два способа оплаты:</b></p>
-                <p>1. <b>Кнопка выше</b> — если кошелек на этом же устройстве.</p>
-                <p>2. <b>Вручную</b> — если платите с биржи или другого телефона.</p>
-              </div>
-
-              <!-- Manual Details (Hidden by default, shown after request) -->
-              <div id="manual-deposit-details" class="manual-details hidden">
-                <div class="manual-item">
-                  <label>Адрес получателя:</label>
-                  <div class="copy-box">
-                    <span id="dep-address-text">UQ...</span>
-                    <button onclick="copyToClipboard('dep-address-text')">📋</button>
-                  </div>
-                </div>
-                <div class="manual-item">
-                  <label>Комментарий (ОБЯЗАТЕЛЬНО):</label>
-                  <div class="copy-box highlighted">
-                    <span id="dep-memo-text">deposit_XXXXXX</span>
-                    <button onclick="copyToClipboard('dep-memo-text')">📋</button>
-                  </div>
-                </div>
-                <p class="manual-warning">Если не укажете комментарий, платеж придется искать вручную через поддержку!
+              <div class="direct-link-container hidden" style="margin-top: 15px;">
+                <a id="direct-transfer-link" href="#" class="dealer-btn" style="background: var(--blue); color: white;">
+                  ОТКРЫТЬ КОШЕЛЕК ВРУЧНУЮ
+                </a>
+                <p class="manual-warning" style="color: rgba(255,255,255,0.5); margin-top: 8px;">
+                  Если кошелек не открылся автоматически, нажмите кнопку выше.
                 </p>
               </div>
-            </div>
 
-            <!-- Hidden stuff for JS logic -->
-            <button id="show-ton-deposit" style="display:none;"></button>
+              <div class="dep-info-box">
+                <p>Баланс зачисляется <span class="highlight">автоматически</span> сразу после подтверждения транзакции
+                  в сети TON.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

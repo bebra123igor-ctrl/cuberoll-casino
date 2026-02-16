@@ -3488,6 +3488,39 @@ input:checked+.toggle-slider:before {
   color: var(--gold);
 }
 
+.direct-link-container {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 15px;
+  text-align: center;
+  margin-top: 15px;
+  animation: slide-up 0.4s ease-out;
+}
+
+#direct-transfer-link {
+  display: block;
+  background: var(--blue-g);
+  color: #fff;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: 0 4px 15px rgba(0, 152, 234, 0.3);
+  transition: all 0.2s;
+}
+
+#direct-transfer-link:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+.manual-warning {
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 12px;
+}
+
 .onboarding-text {
   font-size: 15px;
   color: var(--t2);
