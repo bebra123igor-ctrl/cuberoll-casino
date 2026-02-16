@@ -271,7 +271,7 @@ app.post('/api/bet', auth, (req, res) => {
 
 // --- PLINKO GAME ---
 const PLINKO_ROWS = 8;
-const PLINKO_MULTIS = [15, 4, 1.5, 0.5, 0.2, 0.5, 1.5, 4, 15];
+const PLINKO_MULTIS = [3, 2, 1.2, 0.9, 0.7, 0.9, 1.2, 2, 3];
 
 app.post('/api/plinko/bet', auth, (req, res) => {
     const u = req.tgUser;

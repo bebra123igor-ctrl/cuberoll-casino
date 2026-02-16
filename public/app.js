@@ -1183,7 +1183,7 @@ window.setMaxCrashBet = function () {
 document.addEventListener('DOMContentLoaded', init);
 // --- PLINKO GAME LOGIC ---
 const PLINKO_ROWS = 8;
-const PLINKO_MULTIS = [15, 4, 1.5, 0.5, 0.2, 0.5, 1.5, 4, 15];
+const PLINKO_MULTIS = [3, 2, 1.2, 0.9, 0.7, 0.9, 1.2, 2, 3];
 
 function initPlinko() {
     console.log('[Plinko] Initializing...');
@@ -1236,22 +1236,23 @@ async function plinkoDrop() {
         const ball = {
             x: plinkoCanvas.width / 2,
             y: 20,
-            vx: (Math.random() - 0.5) * 2,
-            vy: 2,
-            radius: 8,
+            vx: (Math.random() - 0.5),
+            vy: 1.5,
+            radius: 10,
             path: res.result.path,
             step: 0,
             targetSlot: res.result.slot,
             payout: res.result.payout,
             multiplier: res.result.multiplier,
-            color: '#ffcc00'
+            color: '#ffffff',
+            dieValue: Math.floor(Math.random() * 6) + 1
         };
         plinkoBalls.push(ball);
 
-        // Update balance after ball reaches bottom (approx 3s)
+        // Update balance after ball reaches bottom (approx 6s now)
         setTimeout(() => {
             setBalance(res.result.newBalance, true);
-        }, 3000);
+        }, 6000);
 
     } catch (e) {
         toast(e.message, 'error');
@@ -1305,7 +1306,7 @@ function renderPlinko() {
         }
 
         // Update and Draw Balls
-        const gravity = 0.15;
+        const gravity = 0.08;
 
         plinkoBalls = plinkoBalls.filter(ball => {
             ball.vy += gravity;
@@ -1315,19 +1316,48 @@ function renderPlinko() {
             const currentRow = Math.floor((ball.y - 40) / rowGap);
             if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
                 const move = ball.path[ball.step];
-                ball.vx = (move === 1 ? 1 : -1) * (colGap / 12);
-                ball.vy = 2;
+                ball.vx = (move === 1 ? 1 : -1) * (colGap / 16);
+                ball.vy = 1.5;
                 ball.step++;
             }
 
-            // Draw ball as a small cube
+            // Draw dice instead of square
             plinkoCtx.save();
             plinkoCtx.translate(ball.x, ball.y);
-            plinkoCtx.rotate(ball.y / 20);
-            plinkoCtx.fillStyle = ball.color;
-            plinkoCtx.shadowBlur = 10;
-            plinkoCtx.shadowColor = ball.color;
-            plinkoCtx.fillRect(-6, -6, 12, 12);
+            plinkoCtx.rotate(ball.y / 15);
+
+            // Dice body
+            const size = 16;
+            const r = 4;
+            plinkoCtx.fillStyle = '#fff';
+            plinkoCtx.shadowBlur = 15;
+            plinkoCtx.shadowColor = 'rgba(255,255,255,0.5)';
+
+            plinkoCtx.beginPath();
+            plinkoCtx.roundRect(-size / 2, -size / 2, size, size, r);
+            plinkoCtx.fill();
+
+            // Dots
+            plinkoCtx.fillStyle = '#000';
+            const dotSize = 2;
+            const p = size / 4;
+            const drawDot = (dx, dy) => {
+                plinkoCtx.beginPath();
+                plinkoCtx.arc(dx, dy, dotSize, 0, Math.PI * 2);
+                plinkoCtx.fill();
+            };
+
+            const dots = {
+                1: [[0, 0]],
+                2: [[-p, -p], [p, p]],
+                3: [[-p, -p], [0, 0], [p, p]],
+                4: [[-p, -p], [p, -p], [-p, p], [p, p]],
+                5: [[-p, -p], [p, -p], [0, 0], [-p, p], [p, p]],
+                6: [[-p, -p], [p, -p], [-p, 0], [p, 0], [-p, p], [p, p]]
+            };
+
+            (dots[ball.dieValue] || []).forEach(d => drawDot(d[0], d[1]));
+
             plinkoCtx.restore();
 
             if (ball.y > h - 10) {
