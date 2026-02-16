@@ -15,6 +15,7 @@ let isInitializing = true;
 let hapticEnabled = localStorage.getItem('settings_haptic') !== 'false';
 let activeTab = 'game';
 let currentGame = 'dice';
+let userWalletAddress = null;
 
 // Глобальные UI функции должны быть доступны СРАЗУ
 window.closeModal = (id) => {
@@ -211,13 +212,14 @@ async function init() {
 
         tonConnectUI.onStatusChange(async wallet => {
             if (wallet) {
-                const addr = wallet.account.address;
+                userWalletAddress = wallet.account.address;
                 document.getElementById('ton-connect').classList.add('connected');
                 try {
-                    await api('/api/user/wallet', 'POST', { address: addr });
+                    await api('/api/user/wallet', 'POST', { address: userWalletAddress });
                 } catch (e) { }
                 if (!isInitializing) toast('Кошелёк подключен', 'success');
             } else {
+                userWalletAddress = null;
                 document.getElementById('ton-connect').classList.remove('connected');
             }
             isInitializing = false;
