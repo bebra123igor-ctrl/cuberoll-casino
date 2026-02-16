@@ -223,11 +223,11 @@ async function init() {
         document.getElementById('user-initial').textContent = (user.firstName || user.username || 'P')[0].toUpperCase();
 
         setBalance(user.balance);
-        loadHistory();
-        loadGifts();
-        initEventListeners();
-
-        // Hide loader
+        // Initialize modules independently
+        try { await loadHistory(); } catch (e) { console.error('[Init] History failed', e); }
+        try { await loadGifts(); } catch (e) { console.error('[Init] Gifts failed', e); }
+        try { initEventListeners(); } catch (e) { console.error('[Init] Listeners failed', e); }
+        try { buildExactPicker(); } catch (e) { console.error('[Init] Picker failed', e); }
         setTimeout(() => {
             const ldr = document.getElementById('loading-screen');
             if (ldr) {

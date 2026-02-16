@@ -777,10 +777,7 @@ body {
 }
 
 .tab-content.active {
-  display: flex !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  z-index: 10;
+  display: block !important;
 }
 
 button:active,
@@ -2521,48 +2518,26 @@ button:active,
   /* Выше оверлея */
 }
 
-/* ═══ DICE GAME FIXES ═══ */
 .roll-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 20px 0;
-  width: 100%;
-  position: relative;
-  z-index: 100;
+  padding: 10px 0;
+  text-align: center;
 }
 
 .roll-button {
   width: 100%;
-  max-width: 300px;
-  padding: 18px;
+  padding: 14px;
   background: var(--gold-g);
   border: none;
-  border-radius: 18px;
-  color: black;
-  font-size: 16px;
-  font-weight: 900;
+  border-radius: 12px;
+  color: #000;
+  font-weight: 800;
+  font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
   cursor: pointer;
-  box-shadow: 0 8px 25px rgba(255, 204, 0, 0.3);
-  transition: all 0.2s cubic-bezier(0.19, 1, 0.22, 1);
-  -webkit-tap-highlight-color: transparent;
-  pointer-events: auto !important;
-}
-
-.roll-button:active {
-  transform: scale(0.96);
-  box-shadow: 0 4px 10px rgba(255, 204, 0, 0.2);
-}
-
-.roll-button .icon svg {
-  width: 24px;
-  height: 24px;
-  stroke: black;
+  box-shadow: 0 4px 12px rgba(255, 204, 0, 0.2);
 }
 
 .bet-modal-box {
