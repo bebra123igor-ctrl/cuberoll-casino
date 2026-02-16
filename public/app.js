@@ -61,36 +61,7 @@ window.switchTab = function (tab) {
     if (scrollable) scrollable.scrollTop = 0;
 };
 
-window.selectGame = function (game) {
-    const diceView = document.getElementById('game-view-dice');
-    const crashView = document.getElementById('game-view-crash');
-    const plinkoView = document.getElementById('game-view-plinko');
-    const bDice = document.getElementById('game-tab-dice');
-    const bCrash = document.getElementById('game-tab-crash');
-    const bPlinko = document.getElementById('game-tab-plinko');
-
-    [diceView, crashView, plinkoView].forEach(v => v?.classList.add('hidden'));
-    [bDice, bCrash, bPlinko].forEach(b => b?.classList.remove('active'));
-
-    currentGame = game;
-
-    if (game === 'dice') {
-        diceView?.classList.remove('hidden');
-        bDice?.classList.add('active');
-    } else if (game === 'crash') {
-        crashView?.classList.remove('hidden');
-        bCrash?.classList.add('active');
-        if (!window.crashRunning) initCrash();
-        else renderCrash(); // Poke it
-    } else if (game === 'plinko') {
-        plinkoView?.classList.remove('hidden');
-        bPlinko?.classList.add('active');
-        // Small delay to let browser show the element (needed for offsetWidth)
-        setTimeout(() => {
-            initPlinko();
-        }, 10);
-    }
-};
+// Game selection logic is consolidated below in the logic sections
 
 // "Шифрование" для "обычных смертных"
 const _SEC_KEY = 'cuberoll';
@@ -862,17 +833,38 @@ let crashCtx = null;
 let crashAnimationId = null;
 let crashLastUpdate = 0;
 
+// Consolidated game selection logic
 window.selectGame = function (game) {
-    document.getElementById('game-view-dice').classList.toggle('hidden', game !== 'dice');
-    document.getElementById('game-view-crash').classList.toggle('hidden', game !== 'crash');
-    document.getElementById('game-tab-dice').classList.toggle('active', game === 'dice');
-    document.getElementById('game-tab-crash').classList.toggle('active', game === 'crash');
+    const diceView = document.getElementById('game-view-dice');
+    const crashView = document.getElementById('game-view-crash');
+    const plinkoView = document.getElementById('game-view-plinko');
+    const bDice = document.getElementById('game-tab-dice');
+    const bCrash = document.getElementById('game-tab-crash');
+    const bPlinko = document.getElementById('game-tab-plinko');
 
-    if (game === 'crash') {
+    // Hide all views first
+    [diceView, crashView, plinkoView].forEach(v => v?.classList.add('hidden'));
+    [bDice, bCrash, bPlinko].forEach(b => b?.classList.remove('active'));
+
+    currentGame = game;
+
+    if (game === 'dice') {
+        diceView?.classList.remove('hidden');
+        bDice?.classList.add('active');
+        stopCrashPolling();
+    } else if (game === 'crash') {
+        crashView?.classList.remove('hidden');
+        bCrash?.classList.add('active');
         startCrashPolling();
         initCrashCanvas();
-    } else {
+    } else if (game === 'plinko') {
+        plinkoView?.classList.remove('hidden');
+        bPlinko?.classList.add('active');
         stopCrashPolling();
+        // Small delay to let browser show the element (needed for offsetWidth)
+        setTimeout(() => {
+            initPlinko();
+        }, 10);
     }
 }
 
@@ -1194,13 +1186,17 @@ const PLINKO_ROWS = 8;
 const PLINKO_MULTIS = [15, 4, 1.5, 0.5, 0.2, 0.5, 1.5, 4, 15];
 
 function initPlinko() {
-    if (!plinkoCanvas) plinkoCanvas = document.getElementById('plinko-canvas');
-    if (!plinkoCanvas) return;
+    console.log('[Plinko] Initializing...');
+    plinkoCanvas = document.getElementById('plinko-canvas');
+    if (!plinkoCanvas) return console.warn('[Plinko] Canvas not found in DOM');
+
     plinkoCtx = plinkoCanvas.getContext('2d');
+    if (!plinkoCtx) return console.error('[Plinko] Could not get 2D context');
 
     // Fill multipliers UI (only if empty)
     const multsDiv = document.getElementById('plinko-mults');
     if (multsDiv && multsDiv.children.length === 0) {
+        multsDiv.innerHTML = ''; // Clear just in case
         PLINKO_MULTIS.forEach(m => {
             const slot = document.createElement('div');
             slot.className = 'plinko-multiplier-slot';
@@ -1212,8 +1208,10 @@ function initPlinko() {
 
     if (!window._pRunning) {
         window._pRunning = true;
-        console.log('[Plinko] Loop started');
+        console.log('[Plinko] Loop started successfully');
         requestAnimationFrame(renderPlinko);
+    } else {
+        console.log('[Plinko] Loop already running, skipping restart');
     }
 }
 
@@ -1263,9 +1261,13 @@ async function plinkoDrop() {
 }
 
 function renderPlinko() {
+    // If context is lost or wasn't ready, try to re-init
     if (!plinkoCanvas || !plinkoCtx) {
         plinkoCanvas = document.getElementById('plinko-canvas');
-        if (plinkoCanvas) plinkoCtx = plinkoCanvas.getContext('2d');
+        if (plinkoCanvas) {
+            plinkoCtx = plinkoCanvas.getContext('2d');
+            console.log('[Plinko Renderer] Re-acquired canvas context');
+        }
         return requestAnimationFrame(renderPlinko);
     }
 
