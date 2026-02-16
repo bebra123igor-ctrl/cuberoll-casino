@@ -540,7 +540,7 @@ app.post('/api/deposit/request', auth, (req, res) => {
     const minDep = parseFloat(settingsOps.get('min_deposit') || 0.1);
     if (isNaN(amt) || amt < minDep) return res.status(400).secure({ error: `Минимум: ${minDep} TON` });
 
-    const comment = 'CR-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    const comment = 'deposit_' + Math.floor(100000 + Math.random() * 900000);
     try {
         depositOps.createPending(req.tgUser.id, amt, comment);
     } catch (e) {

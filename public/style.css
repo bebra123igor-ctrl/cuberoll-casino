@@ -3588,10 +3588,11 @@ input:checked+.toggle-slider:before {
 
 @media (max-width: 600px) {
   .crash-main {
-    aspect-ratio: 4 / 5;
-    /* More vertical for mobile to feel "fuller" */
-    height: 60vh;
-    /* Take more vertical space */
+    aspect-ratio: 16 / 9;
+    height: auto;
+    max-height: 160px;
+    /* Reduced for smaller phones to prevent scrolling */
+    border-radius: 8px;
   }
 }
 
@@ -3802,8 +3803,8 @@ input:checked+.toggle-slider:before {
 
 #plinko-canvas {
   width: 100%;
-  aspect-ratio: 4 / 5;
-  /* Dynamic height */
+  aspect-ratio: 16 / 11;
+  /* More compact for mobile */
   background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0f0f1a 100%);
   border-radius: 12px;
   touch-action: none;
