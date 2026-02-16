@@ -542,9 +542,8 @@ async function checkTonTransactions() {
 
     if (addr) addr = addr.trim();
 
-    // Пул адреса из настроек или ENV
-    // Регулярка проверяет на типичный TON адрес (UQ... или EQ... длиной ~48 символов)
-    const tonRegex = /^[UE]Q[a-zA-Z0-9_-]{46}$/;
+    // Гибкая регулярка для TON адресов (стандартные 48 символов или HEX 64 символа)
+    const tonRegex = /^([UE]Q[a-zA-Z0-9_-]{46}|[0-9a-fA-F]{64})$/;
 
     if (!addr || !tonRegex.test(addr)) {
         addr = process.env.TON_WALLET;
@@ -552,13 +551,20 @@ async function checkTonTransactions() {
     }
 
     if (!addr || !tonRegex.test(addr)) {
-        // console.warn('[Monitor] No valid TON wallet configured. Skipping check.');
+        if (!settings.ton_wallet?.includes('...')) {
+            console.warn(`[Monitor] Invalid or missing TON wallet: "${addr || 'None'}". Please use /setwallet in bot.`);
+        }
         return;
     }
 
+    const apiKey = process.env.TONCENTER_API_KEY || ''; // Optional API Key
+    const options = {
+        headers: apiKey ? { 'X-API-Key': apiKey } : {}
+    };
+
     console.log(`[Monitor] Scanning TON wallet: ${addr}`);
 
-    https.get(`https://toncenter.com/api/v2/getTransactions?address=${addr}&limit=15`, (resp) => {
+    https.get(`https://toncenter.com/api/v2/getTransactions?address=${addr}&limit=20`, options, (resp) => {
         let data = '';
         resp.on('data', (c) => data += c);
         resp.on('end', () => {
@@ -584,9 +590,12 @@ async function checkTonTransactions() {
                     if (pending && pending.status === 'pending') {
                         // Allow slight variation in amount (e.g. fees or user error)
                         if (amountTON >= pending.amount * 0.98) {
-                            console.log(`[Monitor] SUCCESS: Found tx for ${comment}, amount: ${amountTON} TON`);
+                            console.log(`[Monitor] SUCCESS: Found tx for ${comment}, amount: ${amountTON} TON, hash: ${txHash}`);
                             userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `TON Deposit (Memo: ${comment})`);
                             depositOps.markCompleted(comment, txHash);
+
+                            // Log to console for dev
+                            console.log(`[Monitor] Deposited ${amountTON} to User ${pending.telegram_id}`);
 
                             // Log to channel
                             const logChannel = process.env.LOG_CHANNEL_ID || settingsOps.get('log_channel_id');

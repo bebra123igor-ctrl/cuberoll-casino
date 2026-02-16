@@ -54,7 +54,6 @@ bot.on('callback_query', async (q) => {
         const st = gameOps.getStats();
         const td = gameOps.getTodayStats();
         const uc = userOps.getCount();
-
         await bot.sendMessage(chatId,
             `📊 *Статистика*\n\n` +
             `👥 Юзеров: ${uc}\n` +
@@ -65,17 +64,24 @@ bot.on('callback_query', async (q) => {
             `_Сегодня: ${td.total_games || 0} игр, профит ${(-(td.total_profit || 0)).toFixed(2)}_`,
             { parse_mode: 'Markdown' }
         );
-        return bot.answerCallbackQuery(q.id);
-    }
-
-    if (q.data === 'adm_maint' && isAdmin(uid)) {
+    } else if (q.data === 'adm_maint' && isAdmin(uid)) {
         const cur = settingsOps.get('maintenance_mode');
         const next = cur === '1' ? '0' : '1';
         settingsOps.set('maintenance_mode', next);
         await bot.sendMessage(chatId, next === '1' ? '🔧 Обслуживание *вкл*' : '✅ Обслуживание *выкл*', { parse_mode: 'Markdown' });
-        return bot.answerCallbackQuery(q.id);
+    } else if (q.data === 'adm_status' && isAdmin(uid)) {
+        const wallet = settingsOps.get('ton_wallet');
+        const logChannel = settingsOps.get('log_channel_id');
+        const adminList = (process.env.ADMIN_IDS || 'Не указано');
+        await bot.sendMessage(chatId,
+            `⚙️ *Статус Системы*\n\n` +
+            `👛 *Кошелек:* \`${wallet || 'Не настроено'}\`\n` +
+            `📢 *Лог-канал:* \`${logChannel || 'Не настроено'}\`\n` +
+            `🔑 *Админы:* \`${adminList}\`\n\n` +
+            `_Используйте /setwallet, /setlogchannel для настройки._`,
+            { parse_mode: 'Markdown' }
+        );
     }
-
     bot.answerCallbackQuery(q.id);
 });
 
@@ -88,11 +94,13 @@ bot.onText(/\/admin/, async (msg) => {
             inline_keyboard: [
                 [{ text: '📊 Стата', callback_data: 'adm_stats' }],
                 [{ text: '🔧 Обслуживание', callback_data: 'adm_maint' }],
+                [{ text: '⚙️ Статус Системы', callback_data: 'adm_status' }],
                 [{ text: '👑 Веб-панель', web_app: { url: `${WEBAPP}/admin` } }]
             ]
         }
     });
 });
+
 
 bot.onText(/\/setbalance (\d+) ([\d.]+)/, async (msg, match) => {
     if (!isAdmin(msg.from.id)) return;
@@ -107,6 +115,26 @@ bot.onText(/\/setwallet (.+)/, async (msg, match) => {
     if (addr.length < 30) return bot.sendMessage(msg.chat.id, '❌ Похоже на неверный адрес');
     settingsOps.set('ton_wallet', addr);
     bot.sendMessage(msg.chat.id, `✅ Адрес для пополнений установлен:\n\n\`${addr}\``, { parse_mode: 'Markdown' });
+});
+
+bot.onText(/\/setlogchannel (.+)/, async (msg, match) => {
+    if (!isAdmin(msg.from.id)) return;
+    const cid = match[1].trim();
+    settingsOps.set('log_channel_id', cid);
+    bot.sendMessage(msg.chat.id, `✅ ID канала для логов установлен:\n\n\`${cid}\``, { parse_mode: 'Markdown' });
+});
+
+bot.onText(/\/testlog/, async (msg) => {
+    if (!isAdmin(msg.from.id)) return;
+    const logChannel = process.env.LOG_CHANNEL_ID || settingsOps.get('log_channel_id');
+    if (!logChannel) return bot.sendMessage(msg.chat.id, '❌ Канал для логов не настроен. Используйте `/setlogchannel -100...`');
+
+    try {
+        await bot.sendMessage(logChannel, `🔔 *ТЕСТОВОЕ УВЕДОМЛЕНИЕ*\nБот успешно подключен к каналу логирования!`, { parse_mode: 'Markdown' });
+        bot.sendMessage(msg.chat.id, '✅ Тестовое сообщение отправлено в канал!');
+    } catch (e) {
+        bot.sendMessage(msg.chat.id, `❌ Ошибка отправки: ${e.message}\n\nУбедитесь, что бот добавлен в канал как администратор.`);
+    }
 });
 
 bot.onText(/\/ban (\d+)/, async (msg, match) => {
