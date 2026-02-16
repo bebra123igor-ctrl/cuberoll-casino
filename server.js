@@ -664,37 +664,49 @@ async function checkTonTransactions() {
             const amountTON = Number(msg.value) / 1e9;
             const txHash = tx.transaction_id.hash;
 
-            if (!comment) return;
+            const fromAddr = msg.source || msg.from; // Адрес отправителя
 
-            // Ищем заявку
-            let pending = depositOps.getByComment(comment);
-            if (pending && pending.status === 'pending') {
-                if (amountTON >= pending.amount * 0.95) { // Более мягкий порог (5%) на случай комиссий кошелька
-                    logMonitor(`MATCH! Comment: ${comment}, Amount: ${amountTON} TON`);
-                    const result = userOps.updateBalance(pending.telegram_id, amountTON, 'deposit', `TON Deposit (Memo: ${comment})`);
-                    depositOps.markCompleted(comment, txHash);
+            // 1. Сначала ищем по комментарию (классический метод)
+            let matchFound = false;
+            if (comment) {
+                let pending = depositOps.getByComment(comment);
+                if (pending && pending.status === 'pending' && amountTON >= pending.amount * 0.95) {
+                    processSuccessDeposit(pending.telegram_id, amountTON, comment, txHash);
+                    matchFound = true;
+                }
+            }
 
-                    // Уведомление в лог-канал
-                    const logChannel = process.env.LOG_CHANNEL_ID || settingsOps.get('log_channel_id');
-                    if (logChannel && bot) {
-                        const user = userOps.get(pending.telegram_id);
-                        const userLink = user.username ? `@${user.username}` : `[${user.first_name}](tg://user?id=${user.telegram_id})`;
-                        bot.sendMessage(logChannel,
-                            `💰 *НОВОЕ ПОПОЛНЕНИЕ (АВТО)*\n\n` +
-                            `👤 Игрок: ${userLink}\n` +
-                            `💵 Сумма: *${amountTON.toFixed(2)} TON*\n` +
-                            `📝 Мемо: \`${comment}\`\n` +
-                            `🔗 [Транзакция](https://tonviewer.com/transaction/${txHash})`,
-                            { parse_mode: 'Markdown' }
-                        ).catch(e => console.error('[Log] Channel error:', e.message));
-                    }
-                } else {
-                    logMonitor(`Mismatch: ${comment} expected ${pending.amount}, got ${amountTON}`);
+            // 2. СПОСОБ №2: Если по комменту не нашли, ищем по адресу кошелька
+            if (!matchFound && fromAddr) {
+                const userByWallet = userOps.getByWallet(fromAddr);
+                if (userByWallet) {
+                    logMonitor(`MATCH BY WALLET! User: ${userByWallet.telegram_id}, From: ${fromAddr}, Amount: ${amountTON}`);
+                    processSuccessDeposit(userByWallet.telegram_id, amountTON, `Wallet-Auto: ${fromAddr.substring(0, 8)}`, txHash);
+                    matchFound = true;
                 }
             }
         });
     } catch (e) {
         logMonitor(`Critical: ${e.message}`);
+    }
+}
+
+function processSuccessDeposit(tgId, amount, memo, txHash) {
+    userOps.updateBalance(tgId, amount, 'deposit', `TON Deposit (${memo})`);
+    depositOps.markCompleted(memo, txHash);
+
+    const logChannel = process.env.LOG_CHANNEL_ID || settingsOps.get('log_channel_id');
+    if (logChannel && bot) {
+        const user = userOps.get(tgId);
+        const userLink = user.username ? `@${user.username}` : `[${user.first_name}](tg://user?id=${user.telegram_id})`;
+        bot.sendMessage(logChannel,
+            `💰 *АВТО-ПОПОЛНЕНИЕ*\n\n` +
+            `👤 Игрок: ${userLink}\n` +
+            `💵 Сумма: *${amount.toFixed(2)} TON*\n` +
+            `📝 Тип: \`${memo}\`\n` +
+            `🔗 [Транзакция](https://tonviewer.com/transaction/${txHash})`,
+            { parse_mode: 'Markdown' }
+        ).catch(e => console.error('[Log] Channel error:', e.message));
     }
 }
 

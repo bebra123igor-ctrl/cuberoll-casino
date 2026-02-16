@@ -768,31 +768,32 @@ window.depositRequest = async function () {
         toast('Заявка создана. Подтвердите в кошельке!', 'success');
 
         // Generate BOC payload for TonConnect (Standard Text Comment)
-        let payload = undefined;
+        let payloadBoc = undefined;
         if (depositComment) {
             try {
                 if (window.TonWeb) {
                     const cell = new window.TonWeb.boc.Cell();
-                    cell.bits.writeUint(0, 32); // Opcode 0 is for text comment
+                    cell.bits.writeUint(0, 32); // Opcode 0 for text comment
                     cell.bits.writeBytes(new TextEncoder().encode(depositComment));
-                    const bytes = await cell.toBoc(); // Use default toBoc() for maximum compatibility
-                    payload = window.TonWeb.utils.bytesToBase64(bytes);
-                    console.log('[Deposit] Comment BOC generated:', payload);
+                    const bytes = await cell.toBoc();
+                    payloadBoc = window.TonWeb.utils.bytesToBase64(bytes);
+                    console.log('[Deposit] BOC Payload:', payloadBoc);
                 }
             } catch (e) {
-                console.warn('[Deposit] Failed to generate BOC payload:', e);
+                console.warn('[Deposit] BOC generation failed:', e);
             }
         }
 
-        const message = {
-            address: res.address.trim(),
-            amount: (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString(),
-            payload: payload || undefined // Standard BOC
-        };
-
         const transaction = {
             validUntil: Math.floor(Date.now() / 1000) + 600,
-            messages: [message]
+            messages: [
+                {
+                    address: res.address.trim(),
+                    amount: (BigInt(Math.round(parseFloat(amountVal) * 1e9))).toString(),
+                    payload: payloadBoc, // Это для Tonkeeper/Brave
+                    message: depositComment // Fallback для некоторых лаунчеров
+                }
+            ]
         };
 
         await tonConnectUI.sendTransaction(transaction);
