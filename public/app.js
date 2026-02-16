@@ -1221,13 +1221,9 @@ function initPlinko() {
     if (!plinkoCanvas) return;
     plinkoCtx = plinkoCanvas.getContext('2d');
 
-    // Reset loop flag to be sure it restarts if it ever hangs
-    // window._pRunning = false; 
-
-    // Fill multipliers UI
+    // Fill multipliers UI (only if empty)
     const multsDiv = document.getElementById('plinko-mults');
-    if (multsDiv) {
-        multsDiv.innerHTML = '';
+    if (multsDiv && multsDiv.children.length === 0) {
         PLINKO_MULTIS.forEach(m => {
             const slot = document.createElement('div');
             slot.className = 'plinko-multiplier-slot';
@@ -1237,16 +1233,9 @@ function initPlinko() {
         });
     }
 
-    // Measure and set initial size
-    const rect = plinkoCanvas.getBoundingClientRect();
-    if (rect.width > 0) {
-        plinkoCanvas.width = rect.width;
-        plinkoCanvas.height = rect.height || 340;
-    }
-
     if (!window._pRunning) {
         window._pRunning = true;
-        console.log('[Plinko] Loop started');
+        console.log('[Plinko] Core loop activated');
         requestAnimationFrame(renderPlinko);
     }
 }
@@ -1299,80 +1288,73 @@ async function plinkoDrop() {
 function renderPlinko() {
     if (!plinkoCanvas || !plinkoCtx) return requestAnimationFrame(renderPlinko);
 
+    // Low-power mode when hidden
     if (activeTab !== 'game' || currentGame !== 'plinko') {
-        requestAnimationFrame(renderPlinko);
-        return;
+        return requestAnimationFrame(renderPlinko);
     }
 
-    // Only resize if offset changed significantly to avoid constant state resets
-    const curW = plinkoCanvas.offsetWidth || 300;
-    const curH = plinkoCanvas.offsetHeight || 340;
+    const curW = plinkoCanvas.offsetWidth;
+    const curH = plinkoCanvas.offsetHeight;
 
-    if (plinkoCanvas.width !== curW) plinkoCanvas.width = curW;
-    if (plinkoCanvas.height !== curH) plinkoCanvas.height = curH;
+    // Only draw and resize if visible
+    if (curW > 10 && curH > 10) {
+        if (plinkoCanvas.width !== curW) plinkoCanvas.width = curW;
+        if (plinkoCanvas.height !== curH) plinkoCanvas.height = curH;
 
-    const w = plinkoCanvas.width;
-    const h = plinkoCanvas.height;
+        const w = plinkoCanvas.width;
+        const h = plinkoCanvas.height;
+        plinkoCtx.clearRect(0, 0, w, h);
 
-    if (w < 10) return requestAnimationFrame(renderPlinko); // Wait for visibility
-    plinkoCtx.clearRect(0, 0, w, h);
+        // Draw Pegs
+        const rowGap = (h - 60) / (PLINKO_ROWS + 1);
+        const colGap = w / (PLINKO_ROWS + 2);
 
-    // Draw Pegs
-    const rowGap = (h - 60) / (PLINKO_ROWS + 1);
-    const colGap = w / (PLINKO_ROWS + 2);
-
-    plinkoCtx.fillStyle = 'rgba(255,255,255,0.2)';
-    for (let r = 1; r <= PLINKO_ROWS; r++) {
-        const rowY = 40 + r * rowGap;
-        const rowCols = r + 1;
-        const startX = (w - (rowCols - 1) * colGap) / 2;
-        for (let c = 0; c < rowCols; c++) {
-            plinkoCtx.beginPath();
-            plinkoCtx.arc(startX + c * colGap, rowY, 3, 0, Math.PI * 2);
-            plinkoCtx.fill();
+        plinkoCtx.fillStyle = 'rgba(255,255,255,0.2)';
+        for (let r = 1; r <= PLINKO_ROWS; r++) {
+            const rowY = 40 + r * rowGap;
+            const rowCols = r + 1;
+            const startX = (w - (rowCols - 1) * colGap) / 2;
+            for (let c = 0; c < rowCols; c++) {
+                plinkoCtx.beginPath();
+                plinkoCtx.arc(startX + c * colGap, rowY, 3, 0, Math.PI * 2);
+                plinkoCtx.fill();
+            }
         }
+
+        // Update and Draw Balls
+        const gravity = 0.15;
+
+        plinkoBalls = plinkoBalls.filter(ball => {
+            ball.vy += gravity;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            const currentRow = Math.floor((ball.y - 40) / rowGap);
+            if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
+                const move = ball.path[ball.step];
+                ball.vx = (move === 1 ? 1 : -1) * (colGap / 12);
+                ball.vy = 2;
+                ball.step++;
+            }
+
+            // Draw ball as a small cube
+            plinkoCtx.save();
+            plinkoCtx.translate(ball.x, ball.y);
+            plinkoCtx.rotate(ball.y / 20);
+            plinkoCtx.fillStyle = ball.color;
+            plinkoCtx.shadowBlur = 10;
+            plinkoCtx.shadowColor = ball.color;
+            plinkoCtx.fillRect(-6, -6, 12, 12);
+            plinkoCtx.restore();
+
+            if (ball.y > h - 10) {
+                highlightSlot(ball.targetSlot);
+                if (ball.payout > 0) toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success');
+                return false;
+            }
+            return true;
+        });
     }
-
-    // Update and Draw Balls
-    const gravity = 0.15;
-    const friction = 0.98;
-
-    plinkoBalls = plinkoBalls.filter(ball => {
-        ball.vy += gravity;
-        ball.x += ball.vx;
-        ball.y += ball.vy;
-
-        // Peg collision logic (Simplified for "True" server side path)
-        const currentRow = Math.floor((ball.y - 40) / rowGap);
-        if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
-            const move = ball.path[ball.step];
-            ball.vx = (move === 1 ? 1 : -1) * (colGap / 12);
-            ball.vy = 2; // Bounce up/down reset
-            ball.step++;
-        }
-
-        // Draw ball as a small cube (as requested)
-        plinkoCtx.save();
-        plinkoCtx.translate(ball.x, ball.y);
-        plinkoCtx.rotate(ball.y / 20);
-        plinkoCtx.fillStyle = ball.color;
-        plinkoCtx.shadowBlur = 10;
-        plinkoCtx.shadowColor = ball.color;
-        plinkoCtx.fillRect(-6, -6, 12, 12);
-
-        // Dots on cube
-        plinkoCtx.fillStyle = '#000';
-        plinkoCtx.fillRect(-2, -2, 4, 4);
-        plinkoCtx.restore();
-
-        if (ball.y > h - 10) {
-            // Hit bottom
-            highlightSlot(ball.targetSlot);
-            if (ball.payout > 0) toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success');
-            return false;
-        }
-        return true;
-    });
 
     requestAnimationFrame(renderPlinko);
 }

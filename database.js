@@ -413,6 +413,13 @@ const depositOps = {
   },
   getExpiredOptimistic(minutes = 5) {
     return db.prepare("SELECT * FROM deposits WHERE status = 'optimistic' AND datetime(created_at, '+' || ? || ' minutes') < datetime('now')").all(minutes);
+  },
+  isHashUsed(hash) {
+    if (!hash) return false;
+    const exists = db.prepare("SELECT id FROM deposits WHERE tx_hash = ?").get(hash);
+    if (exists) return true;
+    const existsInTrans = db.prepare("SELECT id FROM transactions WHERE description LIKE ?").get(`%${hash}%`);
+    return !!existsInTrans;
   }
 };
 

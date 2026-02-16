@@ -590,51 +590,54 @@ async function checkTonTransactions() {
     try {
         const settings = settingsOps.getAll();
         let addr = settings.ton_wallet;
-        if (!addr || addr.includes('...')) addr = process.env.TON_WALLET;
-        if (!addr || addr.includes('...')) return;
+        if (!addr || addr.includes('...') || addr.includes('your-')) addr = process.env.TON_WALLET;
+        if (!addr || !addr.trim() || addr.includes('...')) return;
 
         const apiKey = process.env.TONCENTER_API_KEY || '';
-        const url = `https://toncenter.com/api/v2/getTransactions?address=${addr.trim()}&limit=20`;
+        const url = `https://toncenter.com/api/v2/getTransactions?address=${addr.trim()}&limit=30`;
 
-        const fetchTxs = () => new Promise((resolve) => {
-            https.get(url, { headers: apiKey ? { 'X-API-Key': apiKey } : {} }, (res) => {
-                let body = '';
-                res.on('data', c => body += c);
-                res.on('end', () => {
-                    try { resolve(JSON.parse(body).result || []); } catch (e) { resolve([]); }
-                });
-            }).on('error', () => resolve([]));
-        });
+        https.get(url, { headers: apiKey ? { 'X-API-Key': apiKey } : {} }, (res) => {
+            let body = '';
+            res.on('data', c => body += c);
+            res.on('end', () => {
+                try {
+                    const data = JSON.parse(body);
+                    if (!data.ok) return;
+                    const txs = data.result || [];
 
-        const txs = await fetchTxs();
-        txs.forEach(tx => {
-            const msg = tx.in_msg;
-            if (!msg || !msg.value) return;
+                    txs.forEach(tx => {
+                        const txHash = tx.transaction_id.hash;
+                        if (depositOps.isHashUsed(txHash)) return;
 
-            const comment = parseTonComment(msg);
-            const fromAddr = msg.source || msg.from;
-            const amountTON = Number(msg.value) / 1e9;
-            const txHash = tx.transaction_id.hash;
+                        const msg = tx.in_msg;
+                        if (!msg || !msg.value) return;
 
-            let matchFound = false;
+                        const comment = parseTonComment(msg);
+                        const fromAddr = msg.source || msg.from;
+                        const amountTON = Number(msg.value) / 1e9;
 
-            // 1. Поиск по комментарию
-            if (comment) {
-                const pending = depositOps.getByComment(comment);
-                if (pending && pending.status === 'pending' && amountTON >= pending.amount * 0.95) {
-                    processSuccessDeposit(pending.telegram_id, amountTON, comment, txHash);
-                    matchFound = true;
-                }
-            }
+                        let matchFound = false;
 
-            // 2. Поиск по адресу кошелька (Ультра-надежный метод без комментариев)
-            if (!matchFound && fromAddr) {
-                const user = userOps.getByWallet(fromAddr);
-                if (user) {
-                    processSuccessDeposit(user.telegram_id, amountTON, `Auto:${fromAddr.substring(0, 8)}`, txHash);
-                }
-            }
-        });
+                        // 1. Поиск по комментарию (Приоритет)
+                        if (comment) {
+                            const pending = depositOps.getByComment(comment);
+                            if (pending && pending.status === 'pending' && amountTON >= pending.amount * 0.98) {
+                                processSuccessDeposit(pending.telegram_id, amountTON, comment, txHash);
+                                matchFound = true;
+                            }
+                        }
+
+                        // 2. Поиск по адресу кошелька (Если комментарий не подошел)
+                        if (!matchFound && fromAddr) {
+                            const user = userOps.getByWallet(fromAddr);
+                            if (user && amountTON >= 0.01) {
+                                processSuccessDeposit(user.telegram_id, amountTON, `AddressMatch:${fromAddr.substring(0, 8)}`, txHash);
+                            }
+                        }
+                    });
+                } catch (e) { console.error('[TON Poller] Error:', e.message); }
+            });
+        }).on('error', () => { });
     } catch (e) { }
 }
 
@@ -658,29 +661,8 @@ function processSuccessDeposit(tgId, amount, memo, txHash) {
     }
 }
 
-setInterval(checkTonTransactions, 10000);
-
-function processSuccessDeposit(tgId, amount, memo, txHash) {
-    userOps.updateBalance(tgId, amount, 'deposit', `TON Deposit (${memo})`);
-    depositOps.markCompleted(memo, txHash);
-
-    const logChannel = process.env.LOG_CHANNEL_ID || settingsOps.get('log_channel_id');
-    if (logChannel && bot) {
-        const user = userOps.get(tgId);
-        const userLink = user.username ? `@${user.username}` : `[${user.first_name}](tg://user?id=${user.telegram_id})`;
-        bot.sendMessage(logChannel,
-            `💰 *АВТО-ПОПОЛНЕНИЕ*\n\n` +
-            `👤 Игрок: ${userLink}\n` +
-            `💵 Сумма: *${amount.toFixed(2)} TON*\n` +
-            `📝 Тип: \`${memo}\`\n` +
-            `🔗 [Транзакция](https://tonviewer.com/transaction/${txHash})`,
-            { parse_mode: 'Markdown' }
-        ).catch(e => console.error('[Log] Channel error:', e.message));
-    }
-}
-
-// Поллинг каждые 10 секунд для скорости подтверждения
-setInterval(checkTonTransactions, 10000);
+// Одиночный интервал для мониторинга
+setInterval(checkTonTransactions, 15000);
 
 // --- GIFT BUYBACK (NFT) DYNAMIC PARSER ---
 
