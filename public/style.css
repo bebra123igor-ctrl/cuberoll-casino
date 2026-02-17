@@ -1108,10 +1108,12 @@ button:active,
   padding: 8px 10px calc(12px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--border2);
   gap: 2px;
-  z-index: 1000;
-  position: relative;
-  /* Back to relative in flex flow */
-  /* Remove fixed/sticky which causes issues with scrolling */
+  z-index: 9999;
+  position: fixed;
+  /* Force fixed bottom */
+  bottom: 0;
+  left: 0;
+  right: 0;
   width: 100%;
 }
 
@@ -1172,7 +1174,8 @@ button:active,
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 14px 16px 20px;
+  padding: 14px 16px 100px;
+  /* Big padding to clear fixed nav */
   /* Padding for content + space for nav */
   -webkit-overflow-scrolling: touch;
   width: 100%;
