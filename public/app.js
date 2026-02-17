@@ -1767,28 +1767,25 @@ function renderPlinko() {
                 const currentRow = Math.floor((ball.y - 40) / rowGap);
                 if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
                     const move = ball.path[ball.step];
-                    // Reduce random noise significantly to prevent drift
-                    ball.vx = (move === 1 ? 1 : -1) * (colGap / 10) + (Math.random() - 0.5) * 0.05;
-                    ball.vy = 1.8;
+                    // Gentle peg nudge: add to vx instead of replacing, so no sharp jumps
+                    const nudge = (move === 1 ? 1 : -1) * (colGap * 0.08);
+                    ball.vx += nudge;
+                    ball.vx *= 0.92;
+                    ball.vy = 1.2;
                     ball.step++;
                 }
 
                 if (ball.step >= PLINKO_ROWS) {
-                    const targetX = (ball.targetSlot + 0.5) * slotWidth;
-                    // Minimal guidance only when very close to ensure it settles in the slot
-                    // The path is already physics-derived from server, so we trust it mostly.
-                    const diff = (targetX - ball.x);
-                    if (Math.abs(diff) > slotWidth * 0.1) {
-                        ball.vx += diff * 0.02;
-                        ball.vx *= 0.98;
-                    }
-                    ball.vy = Math.max(ball.vy, 1.8);
+                    // No magnetic pull — let ball fall naturally; we'll snap position on land
+                    ball.vy = Math.max(ball.vy, 1.0);
                 }
 
                 if (ball.y >= h - 18) {
                     ball.landed = true;
                     ball.y = h - 10;
                     ball.vx = 0; ball.vy = 0;
+                    // Snap x to target slot so it visually lands in correct hole (no teleport during fall)
+                    ball.x = (ball.targetSlot + 0.5) * slotWidth;
                     highlightSlot(ball.targetSlot);
                     if (ball.payout > 0) { toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success'); triggerConfetti(); }
                     if (ball.newBalance !== undefined) setBalance(ball.newBalance, true);
@@ -1919,6 +1916,12 @@ async function tonDeposit() {
         return;
     }
 
+    const TonWebLib = window.TonWeb || window.tonweb;
+    if (!TonWebLib || !TonWebLib.utils || typeof TonWebLib.utils.bytesToBase64 !== 'function') {
+        toast('Библиотека кошелька не загружена. Обновите страницу.', 'error');
+        return;
+    }
+
     const amt = parseFloat(document.getElementById('dep-amount').value) || 0;
     const btn = document.getElementById('start-deposit-btn');
     if (btn.disabled) return;
@@ -1926,12 +1929,18 @@ async function tonDeposit() {
 
     try {
         const req = await api('/api/deposit/request', 'POST', { amount: amt });
+        const commentBytes = new TextEncoder().encode(req.comment);
+        const payloadBytes = new Uint8Array(4 + commentBytes.length);
+        payloadBytes[0] = 0; payloadBytes[1] = 0; payloadBytes[2] = 0; payloadBytes[3] = 0;
+        payloadBytes.set(commentBytes, 4);
+        const payloadB64 = TonWebLib.utils.bytesToBase64(payloadBytes);
+
         const tx = {
             validUntil: Math.floor(Date.now() / 1000) + 600,
             messages: [{
                 address: req.address,
                 amount: (amt * 1e9).toString(),
-                payload: TonWeb.utils.bytesToBase64(new Uint8Array([0, 0, 0, 0, ...Buffer.from(req.comment)]))
+                payload: payloadB64
             }]
         };
 
@@ -2027,14 +2036,16 @@ window.openBetModal = function (game) {
     const title = { dice: 'Dice', crash: 'Rocket', plinko: 'Plinko', hide: 'Прятки' }[game] || 'Ставка';
     document.getElementById('bet-modal-title').textContent = title;
 
-    // Reset confirm btn
+    // Reset confirm btn — use activeBetGame so handler always matches opened game
     const confirmBtn = document.getElementById('bet-confirm-btn');
-    confirmBtn.onclick = () => {
-        if (game === 'dice') roll();
-        else if (game === 'crash') crashPlaceBet();
-        else if (game === 'plinko') { closeModal('bet-modal'); plinkoDrop(); }
-        else if (game === 'hide') { closeModal('bet-modal'); placeHideBet(); }
-    };
+    if (confirmBtn) {
+        confirmBtn.onclick = function () {
+            if (activeBetGame === 'dice') roll();
+            else if (activeBetGame === 'crash') crashPlaceBet();
+            else if (activeBetGame === 'plinko') { closeModal('bet-modal'); plinkoDrop(); }
+            else if (activeBetGame === 'hide') { closeModal('bet-modal'); placeHideBet(); }
+        };
+    }
 };
 
 // --- HIDE AND SEEK (ПРЯТКИ) ---

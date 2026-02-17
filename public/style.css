@@ -3224,6 +3224,16 @@ button:active,
 .bet-modal-box .roll-button {
   margin-top: 10px;
   width: 100%;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bet-modal-box .roll-button:hover {
+  box-shadow: 0 6px 16px rgba(255, 204, 0, 0.35);
+}
+
+.bet-modal-box #bet-confirm-btn {
+  position: relative;
+  z-index: 2;
 }
 
 #toast {
@@ -4340,6 +4350,11 @@ input:checked+.toggle-slider:before {
   justify-content: space-between;
   gap: 3px;
   margin-top: 5px;
+}
+
+#game-view-plinko .roll-section {
+  margin-top: -8px;
+  padding-top: 6px;
 }
 
 .plinko-multiplier-slot {
