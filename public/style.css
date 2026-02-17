@@ -3959,64 +3959,52 @@ input:checked+.toggle-slider:before {
   z-index: 10;
 }
 
-.plinko-multiplier-slot[data-mult="15"] {
-  border-color: #ff3d00;
-  color: #ff3d00;
+.plinko-multiplier-slot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 8px 0;
+  text-align: center;
+  min-height: 52px;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-.plinko-multiplier-slot[data-mult="4"] {
-  border-color: #ff9100;
-  color: #ff9100;
+.mult-val {
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 2px;
 }
 
-.plinko-multiplier-slot[data-mult="1.5"] {
-  border-color: #ffd600;
-  color: #ffd600;
-}
-
-.plinko-multiplier-slot[data-mult="0.5"] {
-  border-color: #757575;
-  color: #757575;
-}
-
-.wallet-method-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  padding: 24px;
-  border-radius: 20px;
-  margin-bottom: 20px;
-}
-
-.pay-btn-premium {
-  width: 100%;
-  background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
-  border: none;
-  padding: 16px;
-  border-radius: 14px;
-  color: #fff;
-  font-weight: 800;
-  font-size: 15px;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
-}
-
-.pay-btn-premium:active {
-  transform: scale(0.97);
-}
-
-.plinko-multiplier-slot[data-mult="0.2"] {
-  border-color: #424242;
-  color: #424242;
+.mult-payout-preview {
+  font-family: 'Outfit', sans-serif;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+  opacity: 0.6;
 }
 
 .plinko-multiplier-slot.win {
+  background: var(--gold-g) !important;
   color: #000 !important;
   border-color: transparent !important;
+  box-shadow: 0 0 20px var(--gold);
+  transform: scale(1.15) translateY(-5px);
+  z-index: 10;
+}
+
+.plinko-multiplier-slot.win .mult-payout-preview {
+  color: #000 !important;
+  opacity: 0.8;
 }
 
 .crash-info.crashed .crash-mult {

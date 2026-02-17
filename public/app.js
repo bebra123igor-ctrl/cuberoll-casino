@@ -154,18 +154,24 @@ async function init() {
     console.log('[Init] Starting...');
     initTg();
 
-    // NEW: Robust check for Telegram environment
-    const isInsideTelegram = window.Telegram?.WebApp?.initDataUnsafe?.user;
+    // NEW: Ultra-robust check for Telegram / Swiftgram environment
+    let isInsideTelegram = !!(window.Telegram?.WebApp?.initData || window.Telegram?.WebApp?.initDataUnsafe?.user);
     const isDev = window.location.hostname === 'localhost' ||
         window.location.hostname === '127.0.0.1' ||
-        window.location.hostname.includes('.local') ||
-        window.location.hostname.includes('192.168.');
+        window.location.hostname.includes('.local');
 
     if (!initData && !isInsideTelegram && !isDev) {
-        console.warn('Access denied: Not inside Telegram Bot environment.');
-        const lockMsg = document.querySelector('#tg-lock p');
-        if (lockMsg) lockMsg.innerHTML += '<br><small style="opacity:0.5">(Error: No legitimate Telegram session detected)</small>';
-        return;
+        // Fallback: wait 500ms for bridge injection (common in some clients like Swiftgram)
+        await new Promise(r => setTimeout(r, 600));
+        initTg(); // Re-initialize
+        isInsideTelegram = !!(window.Telegram?.WebApp?.initData || window.Telegram?.WebApp?.initDataUnsafe?.user);
+
+        if (!initData && !isInsideTelegram && !isDev) {
+            console.warn('Access denied: Authentication bridge not found.');
+            const lockMsg = document.querySelector('#tg-lock p');
+            if (lockMsg) lockMsg.innerHTML += '<br><small style="opacity:0.5">(Error: No legitimate Telegram session detected)</small>';
+            return;
+        }
     }
 
     // Remove lock and show loader

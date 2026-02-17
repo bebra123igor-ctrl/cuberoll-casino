@@ -17,7 +17,7 @@
     #tg-lock {
       position: fixed;
       inset: 0;
-      background: #000;
+      background: radial-gradient(circle at center, #1a1a2e 0%, #0d0d15 100%);
       z-index: 10000;
       display: flex;
       flex-direction: column;
@@ -27,11 +27,42 @@
       padding: 30px;
     }
 
-    input,
-    textarea {
-      -webkit-user-select: text !important;
-      user-select: text !important;
-      pointer-events: auto !important;
+    #tg-lock h2 {
+      font-size: 28px;
+      letter-spacing: 2px;
+      margin-bottom: 5px;
+      background: linear-gradient(135deg, #fff 0%, #aaa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .telegram-icon-wrapper {
+      width: 100px;
+      height: 100px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 50px;
+      margin-bottom: 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      animation: pulseFloating 3s ease-in-out infinite;
+    }
+
+    @keyframes pulseFloating {
+
+      0%,
+      100% {
+        transform: translateY(0) scale(1);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      }
+
+      50% {
+        transform: translateY(-10px) scale(1.05);
+        box-shadow: 0 35px 60px rgba(0, 0, 0, 0.6);
+      }
     }
   </style>
 </head>
@@ -39,13 +70,15 @@
 <body>
   <!-- ТГ ЗАМОК -->
   <div id="tg-lock">
-    <div style="font-size: 64px; margin-bottom: 20px;">📲</div>
-    <h2 style="color: white; font-weight: 900;">ОТКРОЙТЕ В TELEGRAM</h2>
-    <p style="color: var(--t3); margin-top: 10px; font-weight: 600;">Это приложение доступно только внутри официального
-      бота CubeRoll.</p>
+    <div class="telegram-icon-wrapper">📲</div>
+    <h2 style="font-weight: 900;">ОТКРОЙТЕ В TELEGRAM</h2>
+    <p style="color: rgba(255,255,255,0.6); margin-top: 10px; font-weight: 600; max-width: 280px; line-height: 1.5;">
+      Это приложение доступно только внутри официального бота CubeRoll.
+    </p>
     <a href="https://t.me/cuberoll_robot"
-      style="margin-top: 20px; display: inline-block; background: var(--gold); color: black; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: 800;">ПЕРЕЙТИ
-      В БОТА</a>
+      style="margin-top: 30px; display: inline-block; background: var(--gold-g); color: black; padding: 16px 32px; border-radius: 16px; text-decoration: none; font-weight: 900; letter-spacing: 0.5px; box-shadow: 0 10px 20px rgba(255, 204, 0, 0.2); transition: all 0.3s;">
+      ПЕРЕЙТИ В БОТА
+    </a>
   </div>
 
   <script>
