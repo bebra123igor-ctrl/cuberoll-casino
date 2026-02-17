@@ -4443,6 +4443,52 @@ input:checked+.toggle-slider:before {
   opacity: 0.8;
 }
 
+/* MANUAL DEPOSIT */
+.manual-deposit-box {
+  width: 100%;
+}
+
+.manual-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--t4);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}
+
+.copy-field {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copy-field:active {
+  transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.copy-field span {
+  font-family: monospace;
+  font-size: 13px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 10px;
+}
+
+.copy-field svg {
+  color: var(--t3);
+  flex-shrink: 0;
+}
+
 .crash-info.crashed .crash-mult {
   color: var(--red);
   text-shadow: 0 0 30px rgba(229, 57, 53, 0.5);

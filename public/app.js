@@ -250,6 +250,16 @@ async function init() {
                         if (h) h.textContent = `Минимум: ${window.appSettings.minDeposit} TON`;
                     }
 
+                    // POPULATE MANUAL DEPOSIT FIELDS
+                    if (window.appSettings.walletAddress) {
+                        const walEl = document.getElementById('system-wallet');
+                        if (walEl) walEl.textContent = window.appSettings.walletAddress;
+                    }
+                    if (user && user.telegramId) {
+                        const memoEl = document.getElementById('user-memo');
+                        if (memoEl) memoEl.textContent = user.telegramId;
+                    }
+
                     document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
                     document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
 
