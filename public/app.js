@@ -733,7 +733,15 @@ async function openInventory() {
         const { inventory, listings } = await api('/api/inventory/combined');
 
         if (inventory.length === 0 && listings.length === 0) {
-            list.innerHTML = '<p class="empty-state">У вас пока нет подарков</p>';
+            list.innerHTML = `
+                <div class="premium-empty" style="grid-column: 1/-1; padding: 40px 0;">
+                    <div class="empty-glow"></div>
+                    <div class="empty-icon-wrap" style="margin: 0 auto 15px;">
+                        <svg viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-14L4 7m8 4v10M4 7v10l8 4"/></svg>
+                    </div>
+                    <p style="text-align: center;">У вас пока нет подарков</p>
+                </div>
+            `;
             return;
         }
 
@@ -950,16 +958,21 @@ async function loadHistory() {
             const date = new Date(g.created_at);
             const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const amountStr = (g.payout > 0) ? `+${g.payout.toFixed(2)}` : `-${g.bet_amount.toFixed(2)}`;
-            const statusLabel = (g.payout > 0) ? 'WIN' : 'LOSS';
+            const statusLabel = (g.payout > 0) ? 'ВЫИГРЫШ' : 'ПРОИГРЫШ';
+            const gameNames = { dice: 'Кубики', crash: 'Ракета', plinko: 'Плинко', hide: 'Прятки' };
+            const gameTitle = gameNames[g.game_type] || g.game_type.toUpperCase();
 
             return `
                 <div class="history-item animated-history">
+                    <div class="hist-left">
                         <div class="hist-badge ${(g.payout > 0) ? 'badge-win' : 'badge-loss'}">${statusLabel}</div>
                         <div class="hist-meta">
-                            <span class="hist-type">${g.game_type.toUpperCase()}</span>
+                            <span class="hist-type">${gameTitle}</span>
                             <span class="hist-time">${timeStr}</span>
                         </div>
                     </div>
+                    <div class="hist-res ${(g.payout > 0) ? 'win' : 'loss'}">${amountStr} TON</div>
+                </div>
             `;
         }).join('') : '<div class="premium-empty"><p>История пуста</p></div>';
     } catch (e) { }

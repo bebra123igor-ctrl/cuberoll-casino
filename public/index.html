@@ -436,12 +436,14 @@
 
     <!-- Dynamic Modals for Stats/History -->
     <div id="leaderboard-modal" class="modal-overlay hidden">
-      <div class="modal-box premium-modal stats-modal-box">
-        <div class="modal-header">
+      <div class="modal-box premium-modal stats-modal-box"
+        style="display: flex; flex-direction: column; max-height: 85vh; padding: 0;">
+        <div class="modal-header"
+          style="padding: 24px 24px 10px; flex-shrink: 0; background: var(--card2); border-radius: 24px 24px 0 0; border-bottom: 1px solid var(--border);">
           <h3>ТОП ИГРОКОВ</h3>
           <button class="close-modal-btn" onclick="closeModal('leaderboard-modal')">×</button>
         </div>
-        <div class="leaderboard-list" id="leaderboard-list">
+        <div class="leaderboard-list" id="leaderboard-list" style="flex: 1; overflow-y: auto; padding: 15px 24px 24px;">
           <div class="premium-empty">
             <p>Загрузка...</p>
           </div>
@@ -450,12 +452,14 @@
     </div>
 
     <div id="history-modal" class="modal-overlay hidden">
-      <div class="modal-box premium-modal stats-modal-box">
-        <div class="modal-header">
+      <div class="modal-box premium-modal stats-modal-box"
+        style="display: flex; flex-direction: column; max-height: 85vh; padding: 0;">
+        <div class="modal-header"
+          style="padding: 24px 24px 10px; flex-shrink: 0; background: var(--card2); border-radius: 24px 24px 0 0; border-bottom: 1px solid var(--border);">
           <h3>ИСТОРИЯ ИГР</h3>
           <button class="close-modal-btn" onclick="closeModal('history-modal')">×</button>
         </div>
-        <div class="history-list" id="history-modal-list">
+        <div class="history-list" id="history-modal-list" style="flex: 1; overflow-y: auto; padding: 15px 24px 24px;">
           <div class="premium-empty">
             <p>Загрузка...</p>
           </div>
@@ -613,12 +617,15 @@
         <h3 class="section-title">Настройки</h3>
         <div class="settings-list">
           <div class="settings-group">
-            <div class="promo-section">
-              <span class="settings-name">Промокод</span>
-              <div class="promo-input-group">
-                <input type="text" id="promo-input" placeholder="Введите код...">
-                <button onclick="redeemPromo()">АКТИВИРОВАТЬ</button>
+            <div class="settings-item">
+              <div class="settings-info">
+                <span class="settings-name">Вибрация (Haptic)</span>
+                <span class="settings-desc">Отклик устройства во время игры</span>
               </div>
+              <label class="toggle">
+                <input type="checkbox" id="settings-haptic" checked onchange="toggleHaptic()">
+                <span class="toggle-slider"></span>
+              </label>
             </div>
           </div>
 
@@ -983,15 +990,19 @@
 
     <!-- Inventory Modal -->
     <div id="inventory-modal" class="modal-overlay hidden">
-      <div class="modal-box inventory-box">
-        <div class="modal-header">
+      <div class="modal-box inventory-box" style="display: flex; flex-direction: column; max-height: 85vh; padding: 0;">
+        <div class="modal-header"
+          style="padding: 24px 24px 10px; flex-shrink: 0; background: var(--card2); border-radius: 24px 24px 0 0; border-bottom: 1px solid var(--border);">
           <h3>МОЙ ИНВЕНТАРЬ</h3>
-          <button class="close-modal-btn" onclick="closeModal('inventory-modal')">&times;</button>
+          <button class="close-modal-btn" onclick="closeModal('inventory-modal')">×</button>
         </div>
-        <div class="inventory-grid" id="inventory-list">
-          <!-- User items here -->
+        <div style="flex: 1; overflow-y: auto; padding: 15px 24px;">
+          <div class="inventory-grid" id="inventory-list">
+            <!-- User items here -->
+          </div>
+          <p class="inventory-hint" style="margin-top: 20px; opacity: 0.6; text-align: center; font-size: 11px;">Здесь
+            ваши уникальные подарки. Вы можете выставить их на продажу в Маркетплейс.</p>
         </div>
-        <p class="inventory-hint">Здесь ваши уникальные подарки. Вы можете выставить их на продажу в Маркетплейс.</p>
       </div>
     </div>
 
