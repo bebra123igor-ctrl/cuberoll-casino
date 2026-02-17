@@ -251,18 +251,18 @@ async function init() {
                     }
 
                     // Direct Pay Helper
+                    // Direct Pay Helper
                     window.directPay = function () {
                         const amount = document.getElementById('dep-amount').value;
                         if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
 
                         const address = window.appSettings.walletAddress;
-                        const comment = user.telegramId;
+                        // Random 9 digit number
+                        const rnd = Math.floor(100000000 + Math.random() * 900000000);
+                        const comment = `deposit_${rnd}`;
 
                         if (!address) return toast('Ошибка адреса системы', 'error');
 
-                        // Construct TON link
-                        // Format: ton://transfer/<address>?amount=<nanotons>&text=<comment>
-                        // 1 TON = 1,000,000,000 nanotons
                         const nano = Math.floor(amount * 1000000000);
                         const link = `ton://transfer/${address}?amount=${nano}&text=${comment}`;
 
@@ -2101,15 +2101,16 @@ window.openBetModal = function (game) {
     };
 };
 
-// Global listener for bet types (Dice)
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.bet-type-btn');
-    if (btn) {
+// Local listener for bet types
+const betBtns = document.querySelectorAll('.bet-type-btn');
+betBtns.forEach(btn => {
+    btn.onclick = (e) => {
         document.querySelectorAll('.bet-type-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+        e.currentTarget.classList.add('active');
         if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
-    }
+    };
 });
+
 
 // --- HIDE AND SEEK (ПРЯТКИ) ---
 let hideStatus = null;
