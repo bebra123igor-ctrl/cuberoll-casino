@@ -260,12 +260,23 @@ async function init() {
                         const val = document.getElementById('dep-amount').value;
                         const amount = parseFloat(val);
                         if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
+
+                        // Fallback address
                         const address = window.appSettings.walletAddress || 'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7';
+
                         const rnd = Math.floor(100000000 + Math.random() * 900000000);
                         const comment = `deposit_${rnd}`;
-                        const nano = Math.floor(amount * 1000000000);
-                        const link = `ton://transfer/${address}?amount=${nano}&text=${comment}`;
-                        window.location.href = link;
+                        const nano = Math.floor(amount * 1000000000).toString();
+
+                        // Universal link for better mobile support
+                        // https://app.tonkeeper.com/transfer/<addr>?amount=<nano>&text=<comment>
+                        const link = `https://app.tonkeeper.com/transfer/${address}?amount=${nano}&text=${encodeURIComponent(comment)}`;
+
+                        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
+                            window.Telegram.WebApp.openLink(link);
+                        } else {
+                            window.location.href = link;
+                        }
                     }
                     window.directPay = doDirectPay;
                     window._goToPaymentImpl = function () {
@@ -2084,15 +2095,29 @@ window.openBetModal = function (game) {
     document.getElementById('dice-options-area').classList.toggle('hidden', game !== 'dice');
     document.getElementById('crash-auto-cashout-area').classList.toggle('hidden', game !== 'crash');
 
-    const title = { dice: 'Dice', crash: 'Rocket', plinko: 'Plinko', hide: 'Прятки' }[game] || 'Ставка';
-    document.getElementById('bet-modal-title').textContent = title;
-
+    // Global handler for the button
     window.confirmBetAction = function () {
-        if (activeBetGame === 'dice') roll();
-        else if (activeBetGame === 'crash') crashPlaceBet();
-        else if (activeBetGame === 'plinko') { closeModal('bet-modal'); plinkoDrop(); }
-        else if (activeBetGame === 'hide') { closeModal('bet-modal'); placeHideBet(); }
+        if (activeBetGame === 'dice') {
+            closeModal('bet-modal');
+            roll();
+        }
+        else if (activeBetGame === 'crash') {
+            closeModal('bet-modal');
+            crashPlaceBet();
+        }
+        else if (activeBetGame === 'plinko') {
+            closeModal('bet-modal');
+            plinkoDrop();
+        }
+        else if (activeBetGame === 'hide') {
+            closeModal('bet-modal');
+            placeHideBet();
+        }
     };
+
+    // Assign to button
+    const confirmBtn = document.getElementById('bet-confirm-btn');
+    if (confirmBtn) confirmBtn.onclick = window.confirmBetAction;
 };
 
 // Local listener for bet types
