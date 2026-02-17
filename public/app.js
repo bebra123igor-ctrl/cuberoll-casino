@@ -1,4 +1,14 @@
 // cuberoll frontend
+// TonWeb Safety Helper - Ensure library is available
+function getTonWeb() {
+    if (window.tonweb) return window.tonweb;
+    if (window.TonWeb) {
+        window.tonweb = new window.TonWeb();
+        return window.tonweb;
+    }
+    return null;
+}
+window.getTonWeb = getTonWeb;
 
 const API = '';
 let tg = null, initData = '';
@@ -2047,8 +2057,33 @@ window.openBetModal = function (game) {
     const title = { dice: 'Dice', crash: 'Rocket', plinko: 'Plinko', hide: 'Прятки' }[game] || 'Ставка';
     document.getElementById('bet-modal-title').textContent = title;
 
-    // Confirm button is handled by delegated listener below (so it always works)
+    // RESTORED CONFIRM LOGIC
+    const confirmBtn = document.getElementById('bet-confirm-btn');
+    confirmBtn.onclick = () => {
+        if (activeBetGame === 'dice') {
+            roll();
+        } else if (activeBetGame === 'crash') {
+            closeModal('bet-modal');
+            crashPlaceBet();
+        } else if (activeBetGame === 'plinko') {
+            closeModal('bet-modal');
+            plinkoDrop();
+        } else if (activeBetGame === 'hide') {
+            closeModal('bet-modal');
+            placeHideBet();
+        }
+    };
 };
+
+// Global listener for bet types (Dice)
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.bet-type-btn');
+    if (btn) {
+        document.querySelectorAll('.bet-type-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
+    }
+});
 
 // --- HIDE AND SEEK (ПРЯТКИ) ---
 let hideStatus = null;
