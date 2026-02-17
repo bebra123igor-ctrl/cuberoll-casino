@@ -533,7 +533,14 @@ window.verifyGame = async function () {
 };
 
 window.roll = async function () {
+    // FORCE RESET if stuck (more than 2s since last attempt)
+    const now = Date.now();
+    if (rolling && (now - (window.lastRollAttempt || 0) > 2000)) {
+        console.warn('Force resetting stuck dice roll');
+        rolling = false;
+    }
     if (rolling) return;
+    window.lastRollAttempt = now;
 
     const betEl = document.getElementById('bet-amount');
     if (!betEl) return toast('Interface error', 'error');
@@ -565,6 +572,7 @@ window.roll = async function () {
         if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
         animateDice(res.result.dice);
 
+        // Reset rolling flag after animation
         setTimeout(() => {
             user.balance = res.result.newBalance;
             setBalance(user.balance, true);
@@ -578,6 +586,8 @@ window.roll = async function () {
         toast(e.message, 'error');
     }
 };
+
+window.lastRollAttempt = 0; // Global tracking for stuck state
 
 function animateDice(vals) {
     const d1 = document.getElementById('die1');
@@ -1375,58 +1385,115 @@ function renderCrash() {
         crashCtx.translate(rx, ry);
         crashCtx.scale(s, s);
 
-        // Dynamic Flame
+        // Dynamic Flame (High Quality)
         if (isPlaying || (isCrashed && t > 0)) {
-            const fireLen = (35 + Math.random() * 25);
-            const fireGrad = crashCtx.createRadialGradient(0, 15, 0, 0, 15, fireLen);
-            fireGrad.addColorStop(0, '#f1c40f');
-            fireGrad.addColorStop(0.5, '#e67e22');
+            const fireLen = (40 + Math.random() * 30);
+            const fireW = 16 + Math.random() * 4;
+
+            // Core white heat
+            const coreGrad = crashCtx.createRadialGradient(0, 25, 0, 0, 25, fireLen * 0.4);
+            coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+            coreGrad.addColorStop(1, 'rgba(255, 255, 0, 0)');
+            crashCtx.fillStyle = coreGrad;
+            crashCtx.beginPath();
+            crashCtx.ellipse(0, 25, 6, fireLen * 0.3, 0, 0, Math.PI * 2);
+            crashCtx.fill();
+
+            // Outer flame
+            const fireGrad = crashCtx.createLinearGradient(0, 20, 0, 20 + fireLen);
+            fireGrad.addColorStop(0, '#f1c40f'); // Yellow
+            fireGrad.addColorStop(0.4, '#e67e22'); // Orange
+            fireGrad.addColorStop(0.8, '#c0392b'); // Red
             fireGrad.addColorStop(1, 'transparent');
+
             crashCtx.fillStyle = fireGrad;
             crashCtx.beginPath();
-            crashCtx.moveTo(-12, 18);
-            crashCtx.lineTo(0, 18 + fireLen);
-            crashCtx.lineTo(12, 18);
+            crashCtx.moveTo(-fireW / 2, 22);
+            crashCtx.quadraticCurveTo(-fireW / 4, 22 + fireLen * 0.5, 0, 22 + fireLen);
+            crashCtx.quadraticCurveTo(fireW / 4, 22 + fireLen * 0.5, fireW / 2, 22);
             crashCtx.fill();
         }
 
-        // Rocket Body
-        const rGrad = crashCtx.createLinearGradient(-15, 0, 15, 0);
-        rGrad.addColorStop(0, '#bdc3c7');
-        rGrad.addColorStop(0.5, '#ffffff');
-        rGrad.addColorStop(1, '#95a5a6');
-        crashCtx.fillStyle = rGrad;
+        // --- PREMIUM ROCKET BODY ---
+
+        // 1. Shadows for depth (fins)
+        crashCtx.fillStyle = 'rgba(0,0,0,0.3)';
+        // Left Fin Shadow
+        crashCtx.beginPath(); crashCtx.moveTo(-16, 12); crashCtx.lineTo(-32, 32); crashCtx.lineTo(-16, 26); crashCtx.fill();
+        // Right Fin Shadow
+        crashCtx.beginPath(); crashCtx.moveTo(16, 12); crashCtx.lineTo(32, 32); crashCtx.lineTo(16, 26); crashCtx.fill();
+
+        // 2. Fins (Aerodynamic)
+        const finGrad = crashCtx.createLinearGradient(-30, 0, 30, 0);
+        finGrad.addColorStop(0, '#c0392b'); // Dark Red
+        finGrad.addColorStop(0.5, '#e74c3c'); // Bright Red
+        finGrad.addColorStop(1, '#c0392b');
+        crashCtx.fillStyle = finGrad;
+
+        // Left Fin
         crashCtx.beginPath();
-        crashCtx.ellipse(0, 0, 14, 28, 0, 0, Math.PI * 2);
+        crashCtx.moveTo(-12, 5);
+        crashCtx.quadraticCurveTo(-35, 25, -35, 35);
+        crashCtx.lineTo(-12, 25);
         crashCtx.fill();
 
-        // Red Top
-        crashCtx.fillStyle = '#c0392b';
+        // Right Fin
         crashCtx.beginPath();
-        crashCtx.moveTo(-14, -10);
-        crashCtx.quadraticCurveTo(0, -45, 14, -10);
+        crashCtx.moveTo(12, 5);
+        crashCtx.quadraticCurveTo(35, 25, 35, 35);
+        crashCtx.lineTo(12, 25);
         crashCtx.fill();
 
-        // Window
-        crashCtx.fillStyle = '#34495e';
+        // Center Tail Fin
         crashCtx.beginPath();
-        crashCtx.arc(0, -6, 6, 0, Math.PI * 2);
+        crashCtx.moveTo(0, 10);
+        crashCtx.lineTo(-4, 28);
+        crashCtx.lineTo(4, 28);
         crashCtx.fill();
-        crashCtx.strokeStyle = 'rgba(255,255,255,0.2)';
+
+        // 3. Main Hull (Metallic Capsule)
+        const bodyGrad = crashCtx.createLinearGradient(-15, 0, 15, 0);
+        bodyGrad.addColorStop(0, '#95a5a6');   // Dark Grey
+        bodyGrad.addColorStop(0.2, '#ecf0f1'); // White Highlight
+        bodyGrad.addColorStop(0.5, '#ffffff'); // Pure White Center
+        bodyGrad.addColorStop(0.8, '#bdc3c7'); // Grey
+        bodyGrad.addColorStop(1, '#7f8c8d');   // Darker Shadow
+
+        crashCtx.fillStyle = bodyGrad;
+        crashCtx.beginPath();
+        // Sleek teardrop-ish capsule
+        crashCtx.moveTo(-14, 20);
+        crashCtx.quadraticCurveTo(-15, -10, 0, -45); // Nose cone curve left
+        crashCtx.quadraticCurveTo(15, -10, 14, 20);  // Nose cone curve right
+        crashCtx.quadraticCurveTo(0, 24, -14, 20);   // Bottom curve
+        crashCtx.fill();
+
+        // 4. Cockpit / Window (Glass effect)
+        const winGrad = crashCtx.createLinearGradient(-5, -20, 10, -5);
+        winGrad.addColorStop(0, '#3498db'); // Blue
+        winGrad.addColorStop(1, '#2980b9'); // Darker Blue
+        crashCtx.fillStyle = winGrad;
+        crashCtx.beginPath();
+        crashCtx.arc(0, -12, 8, 0, Math.PI * 2);
+        crashCtx.fill();
+
+        // Glare/Reflection
+        crashCtx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        crashCtx.beginPath();
+        crashCtx.ellipse(-3, -15, 3, 2, Math.PI / 4, 0, Math.PI * 2);
+        crashCtx.fill();
+
+        // Window Rim
+        crashCtx.strokeStyle = '#ecf0f1';
         crashCtx.lineWidth = 1.5;
         crashCtx.stroke();
 
-        // Fins
-        crashCtx.fillStyle = '#c0392b';
-        crashCtx.beginPath(); // L
-        crashCtx.moveTo(-14, 8);
-        crashCtx.lineTo(-28, 28);
-        crashCtx.lineTo(-14, 22);
-        crashCtx.fill();
-        crashCtx.beginPath(); // R
-        crashCtx.moveTo(14, 8);
-        crashCtx.lineTo(28, 28);
-        crashCtx.lineTo(14, 22);
+        // 5. Red Nose Tip (Stylistic)
+        crashCtx.fillStyle = '#e74c3c';
+        crashCtx.beginPath();
+        crashCtx.moveTo(-5, -34);
+        crashCtx.quadraticCurveTo(0, -45, 5, -34);
+        crashCtx.quadraticCurveTo(0, -32, -5, -34);
         crashCtx.fill();
 
         crashCtx.restore();

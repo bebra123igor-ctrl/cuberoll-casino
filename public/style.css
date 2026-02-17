@@ -4306,7 +4306,7 @@ input:checked+.toggle-slider:before {
   width: 100%;
   max-width: 100vw;
   overflow: hidden;
-  margin-bottom: 5px;
+  margin-bottom: 0px;
 }
 
 .plinko-canvas-wrapper {
