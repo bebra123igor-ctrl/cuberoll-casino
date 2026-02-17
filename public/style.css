@@ -4728,20 +4728,20 @@ input:checked+.toggle-slider:before {
 
 /* --- PREMIUM INPUTS & BETTING --- */
 .premium-bet-input {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1.5px solid var(--border3) !important;
-  border-radius: 16px !important;
-  padding: 10px 16px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 20px !important;
+  padding: 14px 20px !important;
   display: flex !important;
   align-items: center !important;
   gap: 12px !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1) !important;
 }
 
 .premium-bet-input:focus-within {
   border-color: var(--gold) !important;
-  background: rgba(255, 204, 0, 0.04) !important;
-  box-shadow: 0 0 20px rgba(255, 204, 0, 0.1) !important;
+  background: rgba(255, 204, 0, 0.05) !important;
+  box-shadow: 0 0 30px rgba(255, 204, 0, 0.1), inset 0 2px 10px rgba(0, 0, 0, 0.1) !important;
 }
 
 .premium-bet-input input {
@@ -4753,8 +4753,8 @@ input:checked+.toggle-slider:before {
   background: transparent !important;
   border: none !important;
   outline: none !important;
-  font-family: 'Outfit', sans-serif !important;
-  letter-spacing: -0.5px !important;
+  font-family: "Outfit", sans-serif !important;
+  letter-spacing: -1px !important;
 }
 
 .premium-bet-input .bet-max {
@@ -4765,4 +4765,43 @@ input:checked+.toggle-slider:before {
   border-radius: 8px !important;
   font-weight: 800 !important;
   text-transform: uppercase !important;
+}
+
+.bet-modal-box {
+  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%) !important;
+  border-radius: 24px !important;
+  padding: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.bet-mode-tab {
+  border: none !important;
+  background: transparent !important;
+  color: var(--t3) !important;
+  padding: 10px !important;
+  border-radius: 12px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+}
+
+.bet-mode-tab.active {
+  background: var(--gold) !important;
+  color: #000 !important;
+}
+
+.crash-canvas-wrap {
+  background: #080808 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+.gift-select-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gift-select-card.active {
+  border-color: var(--gold) !important;
+  background: rgba(255, 204, 0, 0.05) !important;
 }

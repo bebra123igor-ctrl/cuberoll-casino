@@ -9,7 +9,7 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tonweb@0.0.66/dist/tonweb.bundle.js"></script>
-  <link rel="stylesheet" href="style.css?v=11.0">
+  <link rel="stylesheet" href="style.css?v=12.0">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -314,6 +314,7 @@
                 <label>СУММА СТАВКИ</label>
                 <div class="crash-input-wrapper premium-bet-input">
                   <input type="number" id="crash-bet-amount" value="1.0" step="0.1" min="0.1">
+                  <span class="bet-input-unit">TON</span>
                 </div>
               </div>
 
@@ -324,10 +325,11 @@
                 </div>
               </div>
 
-              <div class="bet-input-container">
+              <div class="bet-input-container" id="crash-auto-cashout-area">
                 <label>АВТО-ВЫВОД</label>
                 <div class="crash-input-wrapper premium-bet-input">
                   <input type="number" id="crash-auto-cashout" placeholder="Нет" step="0.1" min="1.1">
+                  <span class="bet-input-unit">X</span>
                 </div>
               </div>
               <button id="crash-bet-btn" class="crash-btn bet" onclick="crashPlaceBet()">ПОСТАВИТЬ</button>
@@ -739,12 +741,10 @@
 
         <div class="bet-amount-section-modal" id="bet-ton-input-area">
           <label>Сумма ставки</label>
-          <div class="bet-input-container">
+          <div class="bet-input-container premium-bet-input">
             <button class="bet-adjust" id="btn-half">/2</button>
-            <div class="bet-input-wrapper">
-              <input type="number" id="bet-amount" class="bet-input" value="1.0" min="0.1" max="100" step="0.1">
-              <span class="bet-input-unit">TON</span>
-            </div>
+            <input type="number" id="bet-amount" class="bet-input" value="1.0" min="0.1" max="100" step="0.1">
+            <span class="bet-input-unit">TON</span>
             <button class="bet-adjust" id="btn-double">×2</button>
           </div>
           <div class="quick-bets">
@@ -900,7 +900,7 @@
     </div>
 
     <div id="toast" class="toast"></div>
-    <script src="app.js?v=11.0"></script>
+    <script src="app.js?v=12.0"></script>
     <!-- Daily Spin Modal -->
     <div id="daily-spin-modal" class="modal-overlay hidden">
       <div class="modal-box daily-spin-box">

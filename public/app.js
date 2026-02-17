@@ -550,16 +550,10 @@ window.roll = async function () {
     try {
         const payload = { betAmount: amt, betType: betType };
         if (betType === 'exact') payload.exactNumber = exactNum;
-        if (selectedGiftForBet) {
-            payload.giftInstanceId = selectedGiftForBet.instanceId;
-            // Visual reset
-            const giftBtn = document.querySelector('.gift-bet-trigger');
-            if (giftBtn) giftBtn.innerHTML = '🎁';
-            const betInput = document.getElementById('bet-amount');
-            if (betInput) {
-                betInput.disabled = false;
-                betInput.style.color = '';
-            }
+        if (betMode === 'gift' && selectedGift) {
+            payload.giftInstanceId = selectedGift.instance_id;
+            // Reset state
+            selectedGift = null;
         }
 
         const res = await api('/api/bet', 'POST', payload);
@@ -1387,62 +1381,65 @@ function renderCrash() {
         crashCtx.scale(s, s);
         crashCtx.translate(-rx, -ry);
 
-        // FIRE
-        if (isPlaying || (isCrashed && t > 0)) {
-            const firePower = 1 + Math.min(3, currentMult / 10);
-            const fireLen = (40 + Math.random() * 30) * firePower;
-            const fireGrad = crashCtx.createLinearGradient(rx, ry + 15, rx, ry + fireLen);
-            fireGrad.addColorStop(0, '#ffffff');
-            fireGrad.addColorStop(0.3, '#f1c40f');
-            fireGrad.addColorStop(0.6, '#e67e22');
-            fireGrad.addColorStop(1, 'transparent');
+        // --- PREMIUM ROCKET DESIGN ---
+        const rx_base = rx;
+        const ry_base = ry;
 
+        crashCtx.save();
+        crashCtx.translate(rx_base, ry_base);
+
+        // Dynamic Flame
+        if (isPlaying || (isCrashed && t > 0)) {
+            const fireLen = (35 + Math.random() * 25);
+            const fireGrad = crashCtx.createRadialGradient(0, 15, 0, 0, 15, fireLen);
+            fireGrad.addColorStop(0, '#f1c40f');
+            fireGrad.addColorStop(0.5, '#e67e22');
+            fireGrad.addColorStop(1, 'transparent');
             crashCtx.fillStyle = fireGrad;
             crashCtx.beginPath();
-            crashCtx.moveTo(rx - 12, ry + 15);
-            crashCtx.quadraticCurveTo(rx, ry + fireLen + 20, rx + 12, ry + 15);
+            crashCtx.moveTo(-12, 18);
+            crashCtx.lineTo(0, 18 + fireLen);
+            crashCtx.lineTo(12, 18);
             crashCtx.fill();
         }
 
-        // DESIGN - PREMIUM ROCKET
-        const rocketGrad = crashCtx.createLinearGradient(rx - 16, ry, rx + 16, ry);
-        rocketGrad.addColorStop(0, '#95a5a6');
-        rocketGrad.addColorStop(0.5, '#ffffff');
-        rocketGrad.addColorStop(1, '#7f8c8d');
-
-        crashCtx.fillStyle = rocketGrad;
+        // Rocket Body
+        const rGrad = crashCtx.createLinearGradient(-15, 0, 15, 0);
+        rGrad.addColorStop(0, '#bdc3c7');
+        rGrad.addColorStop(0.5, '#ffffff');
+        rGrad.addColorStop(1, '#95a5a6');
+        crashCtx.fillStyle = rGrad;
         crashCtx.beginPath();
-        crashCtx.moveTo(rx - 16, ry + 25);
-        crashCtx.lineTo(rx - 16, ry);
-        crashCtx.bezierCurveTo(rx - 16, ry - 60, rx + 16, ry - 60, rx + 16, ry);
-        crashCtx.lineTo(rx + 16, ry + 25);
-        crashCtx.quadraticCurveTo(rx, ry + 38, rx - 16, ry + 25);
+        crashCtx.ellipse(0, 0, 14, 28, 0, 0, Math.PI * 2);
+        crashCtx.fill();
+
+        // Red Top
+        crashCtx.fillStyle = '#c0392b';
+        crashCtx.beginPath();
+        crashCtx.moveTo(-14, -10);
+        crashCtx.quadraticCurveTo(0, -45, 14, -10);
         crashCtx.fill();
 
         // Window
-        crashCtx.fillStyle = '#2c3e50';
+        crashCtx.fillStyle = '#34495e';
         crashCtx.beginPath();
-        crashCtx.arc(rx, ry - 12, 7, 0, Math.PI * 2);
+        crashCtx.arc(0, -6, 6, 0, Math.PI * 2);
         crashCtx.fill();
-        // Window Reflection
-        crashCtx.fillStyle = 'rgba(255,255,255,0.1)';
-        crashCtx.beginPath();
-        crashCtx.arc(rx - 2, ry - 14, 2, 0, Math.PI * 2);
-        crashCtx.fill();
+        crashCtx.strokeStyle = 'rgba(255,255,255,0.2)';
+        crashCtx.lineWidth = 1.5;
+        crashCtx.stroke();
 
         // Fins
-        crashCtx.fillStyle = '#f39c12';
-        // Left
-        crashCtx.beginPath();
-        crashCtx.moveTo(rx - 16, ry + 5);
-        crashCtx.lineTo(rx - 35, ry + 35);
-        crashCtx.lineTo(rx - 16, ry + 25);
+        crashCtx.fillStyle = '#c0392b';
+        crashCtx.beginPath(); // L
+        crashCtx.moveTo(-14, 8);
+        crashCtx.lineTo(-28, 28);
+        crashCtx.lineTo(-14, 22);
         crashCtx.fill();
-        // Right
-        crashCtx.beginPath();
-        crashCtx.moveTo(rx + 16, ry + 5);
-        crashCtx.lineTo(rx + 35, ry + 35);
-        crashCtx.lineTo(rx + 16, ry + 25);
+        crashCtx.beginPath(); // R
+        crashCtx.moveTo(14, 8);
+        crashCtx.lineTo(28, 28);
+        crashCtx.lineTo(14, 22);
         crashCtx.fill();
 
         crashCtx.restore();
@@ -1564,7 +1561,13 @@ window.addEventListener('resize', () => {
 });
 
 function updatePlinkoPreviews() {
-    const amt = parseFloat(document.getElementById('plinko-bet-amount').value) || 0;
+    let amt = 0;
+    if (betMode === 'gift' && selectedGift) {
+        amt = selectedGift.price;
+    } else {
+        amt = parseFloat(document.getElementById('plinko-bet-amount').value) || 0;
+    }
+
     document.querySelectorAll('.plinko-multiplier-slot').forEach(slot => {
         const m = parseFloat(slot.dataset.mult);
         const preview = slot.querySelector('.mult-payout-preview');
@@ -1913,56 +1916,101 @@ function getGiftEmoji(model) {
 // Stats listener to user Avatar
 document.querySelector('.header-left').onclick = openStats;
 
+// Consolidated Gift Betting Logic
 let betMode = 'ton';
 let selectedGift = null;
 
 window.setBetMode = function (mode) {
     betMode = mode;
-    const games = ['crash', 'plinko', 'dice'];
-    games.forEach(g => {
-        const tonBtn = document.getElementById(g + '-mode-ton');
-        const giftBtn = document.getElementById(g + '-mode-gift');
-        const tonArea = document.getElementById(g + '-ton-input-area');
-        const giftArea = document.getElementById(g + '-gift-input-area');
+    console.log('[BetMode] Switching to', mode);
+
+    // UI elements to toggle
+    const selectors = [
+        { ton: 'crash-ton-input-area', gift: 'crash-gift-input-area', bt: 'crash-mode-ton', bg: 'crash-mode-gift' },
+        { ton: 'plinko-ton-input-area', gift: 'plinko-gift-input-area', bt: 'plinko-mode-ton', bg: 'plinko-mode-gift' },
+        { ton: 'bet-ton-input-area', gift: 'bet-gift-input-area', bt: 'bet-mode-ton', bg: 'bet-mode-gifts' }
+    ];
+
+    selectors.forEach(s => {
+        const areaTon = document.getElementById(s.ton);
+        const areaGift = document.getElementById(s.gift);
+        const btnTon = document.getElementById(s.bt);
+        const btnGift = document.getElementById(s.bg);
 
         if (mode === 'ton') {
-            tonBtn?.classList.add('active');
-            giftBtn?.classList.remove('active');
-            tonArea?.classList.remove('hidden');
-            giftArea?.classList.add('hidden');
+            areaTon?.classList.remove('hidden');
+            areaGift?.classList.add('hidden');
+            btnTon?.classList.add('active');
+            btnGift?.classList.remove('active');
+            // Show Crash auto-cashout if it was hidden
+            const autoArea = document.getElementById('crash-auto-cashout-area');
+            if (autoArea) autoArea.classList.remove('hidden');
         } else {
-            tonBtn?.classList.remove('active');
-            giftBtn?.classList.add('active');
-            tonArea?.classList.add('hidden');
-            giftArea?.classList.remove('hidden');
-            loadGiftsForBet(g);
+            areaTon?.classList.add('hidden');
+            areaGift?.classList.remove('hidden');
+            btnTon?.classList.remove('active');
+            btnGift?.classList.add('active');
+            // Hide Crash auto-cashout for gifts (as requested to clean up UI)
+            const autoArea = document.getElementById('crash-auto-cashout-area');
+            if (autoArea) autoArea.classList.add('hidden');
+
+            let gameId = s.gift.split('-')[0];
+            if (s.gift === 'bet-gift-input-area') gameId = 'dice';
+            loadGiftsForBet(gameId);
         }
     });
+
+    if (typeof updatePlinkoPreviews === 'function') updatePlinkoPreviews();
 };
 
-async function loadGiftsForBet(game) {
-    const list = document.getElementById(game + '-gift-list');
+async function loadGiftsForBet(gameId) {
+    const listId = (gameId === 'dice') ? 'gift-selection-list' : (gameId + '-gift-list');
+    const list = document.getElementById(listId);
     if (!list) return;
-    list.innerHTML = '<p style="font-size:10px; color:var(--t4)">Загрузка...</p>';
+
+    list.innerHTML = '<div class="premium-empty"><p style="font-size:10px;">Загрузка...</p></div>';
 
     try {
         const { inventory } = await api('/api/inventory/combined');
         if (inventory.length === 0) {
-            list.innerHTML = '<p style="font-size:10px; color:var(--t4)">Нет подарков</p>';
+            list.innerHTML = '<div class="premium-empty"><p style="font-size:10px;">Нет подарков</p></div>';
             return;
         }
 
+        const gameForCallback = (gameId === 'dice') ? 'dice' : gameId;
+
         list.innerHTML = inventory.map(item => `
-            <div id="gift-bet-${item.instance_id}" class="gift-select-card ${selectedGift?.instance_id === item.instance_id ? 'active' : ''}" onclick="selectGiftForBet(${JSON.stringify(item).replace(/"/g, '&quot;')}, '${game}')">
+            <div id="gift-card-${item.instance_id}" class="gift-select-card ${selectedGift?.instance_id === item.instance_id ? 'active' : ''}" onclick="selectGiftForBet(${JSON.stringify(item).replace(/"/g, '&quot;')}, '${gameForCallback}')">
                 <div class="gift-avatar"><img src="${getGiftImg(item.model)}" alt=""></div>
-                <span class="gift-title">${item.title}</span>
-                <span class="gift-cost">${item.price} TON</span>
+                <div class="gift-select-info">
+                   <div class="gift-title">${item.title}</div>
+                   <div class="gift-cost">${item.price} TON</div>
+                </div>
             </div>`).join('');
-    } catch (e) { list.innerHTML = '<p>Ошибка</p>'; }
+    } catch (e) {
+        list.innerHTML = '<p>Ошибка</p>';
+    }
 }
 
-window.selectGiftForBet = function (item, game) {
+window.selectGiftForBet = function (item, gameId) {
     selectedGift = item;
-    loadGiftsForBet(game);
     if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
+    loadGiftsForBet(gameId);
+    if (gameId === 'plinko') updatePlinkoPreviews();
 };
+
+function updatePlinkoPreviews() {
+    let amt = 0;
+    if (betMode === 'gift' && selectedGift) {
+        amt = selectedGift.price;
+    } else {
+        const inp = document.getElementById('plinko-bet-amount');
+        amt = parseFloat(inp?.value) || 0;
+    }
+
+    document.querySelectorAll('.plinko-multiplier-slot').forEach(slot => {
+        const m = parseFloat(slot.dataset.mult);
+        const preview = slot.querySelector('.mult-payout-preview');
+        if (preview) preview.textContent = (amt * m).toFixed(2);
+    });
+}
