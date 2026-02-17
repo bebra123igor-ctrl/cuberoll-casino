@@ -154,20 +154,17 @@ async function init() {
     console.log('[Init] Starting...');
     initTg();
 
-    // SECURITY: Telegram only check
-    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    // NEW: Robust check for Telegram environment
+    const isInsideTelegram = window.Telegram?.WebApp?.initDataUnsafe?.user;
+    const isDev = window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.includes('.local') ||
+        window.location.hostname.includes('192.168.');
 
-    // Fallback check if initData is somehow missing but we are definitely in TG
-    if (!initData && window.Telegram?.WebApp?.initDataUnsafe?.user) {
-        console.log('[Init] Using initDataUnsafe fallback');
-        initData = 'UNSAFE_MODE'; // Note: Server might reject this if it expects HMAC
-    }
-
-    if (!initData && !isDev) {
-        console.warn('Telegram initData not found. Application locked.');
-        // Show something on lock screen for debug
+    if (!initData && !isInsideTelegram && !isDev) {
+        console.warn('Access denied: Not inside Telegram Bot environment.');
         const lockMsg = document.querySelector('#tg-lock p');
-        if (lockMsg) lockMsg.innerHTML += '<br><small style="opacity:0.5">(Error: No Init Data)</small>';
+        if (lockMsg) lockMsg.innerHTML += '<br><small style="opacity:0.5">(Error: No legitimate Telegram session detected)</small>';
         return;
     }
 
