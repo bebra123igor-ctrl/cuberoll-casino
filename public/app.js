@@ -1465,18 +1465,28 @@ function renderCrash() {
 }
 
 window.crashPlaceBet = async function () {
-    const amtStr = document.getElementById('crash-bet-amount').value;
-    const amt = parseFloat(amtStr);
-
-    if (isNaN(amt) || amt < 0.1) return toast('Минимум 0.1 TON', 'error');
-    if (amt > user.balance) return toast('Недостаточно баланса', 'error');
+    const payload = {};
+    if (betMode === 'gift') {
+        if (!selectedGift) return toast('Выберите подарок', 'error');
+        payload.giftInstanceId = selectedGift.instance_id;
+    } else {
+        const amtStr = document.getElementById('crash-bet-amount').value;
+        const amt = parseFloat(amtStr);
+        if (isNaN(amt) || amt < 0.1) return toast('Минимум 0.1 TON', 'error');
+        if (amt > user.balance) return toast('Недостаточно баланса', 'error');
+        payload.betAmount = amt;
+    }
 
     try {
-        const res = await api('/api/crash/bet', 'POST', { betAmount: amt });
-        setBalance(res.newBalance);
+        const res = await api('/api/crash/bet', 'POST', payload);
+        if (res.newBalance !== undefined) setBalance(res.newBalance);
         toast('Ставка принята!', 'success');
         if (window.haptic && hapticEnabled) haptic.impactOccurred('medium');
         pollCrash();
+        if (betMode === 'gift') {
+            selectedGift = null;
+            loadGiftsForBet('crash');
+        }
     } catch (e) { toast(e.message, 'error'); }
 };
 
@@ -1498,7 +1508,7 @@ window.setMaxCrashBet = function () {
 document.addEventListener('DOMContentLoaded', init);
 // --- PLINKO GAME LOGIC ---
 const PLINKO_ROWS = 8;
-const PLINKO_MULTIS = [3, 2, 1.2, 0.9, 0.7, 0.9, 1.2, 2, 3];
+const PLINKO_MULTIS = [5, 2, 1.2, 0.5, 0, 0.5, 1.2, 2, 5];
 
 function initPlinko() {
     console.log('[Plinko] Initializing...');
@@ -1566,13 +1576,23 @@ function updatePlinkoPreviews() {
 
 async function plinkoDrop() {
     const btn = document.getElementById('plinko-drop-btn');
-    const amountVal = document.getElementById('plinko-bet-amount').value;
-
     if (btn.disabled) return;
     btn.disabled = true;
 
+    const payload = {};
+    if (betMode === 'gift') {
+        if (!selectedGift) {
+            btn.disabled = false;
+            return toast('Выберите подарок', 'error');
+        }
+        payload.giftInstanceId = selectedGift.instance_id;
+    } else {
+        const amountVal = document.getElementById('plinko-bet-amount').value;
+        payload.betAmount = parseFloat(amountVal);
+    }
+
     try {
-        const res = await api('/api/plinko/bet', 'POST', { betAmount: parseFloat(amountVal) });
+        const res = await api('/api/plinko/bet', 'POST', payload);
 
         // Clear previous landed dice on new bet
         plinkoBalls = plinkoBalls.filter(b => !b.landed);
@@ -1892,3 +1912,57 @@ function getGiftEmoji(model) {
 
 // Stats listener to user Avatar
 document.querySelector('.header-left').onclick = openStats;
+
+let betMode = 'ton';
+let selectedGift = null;
+
+window.setBetMode = function (mode) {
+    betMode = mode;
+    const games = ['crash', 'plinko', 'dice'];
+    games.forEach(g => {
+        const tonBtn = document.getElementById(g + '-mode-ton');
+        const giftBtn = document.getElementById(g + '-mode-gift');
+        const tonArea = document.getElementById(g + '-ton-input-area');
+        const giftArea = document.getElementById(g + '-gift-input-area');
+
+        if (mode === 'ton') {
+            tonBtn?.classList.add('active');
+            giftBtn?.classList.remove('active');
+            tonArea?.classList.remove('hidden');
+            giftArea?.classList.add('hidden');
+        } else {
+            tonBtn?.classList.remove('active');
+            giftBtn?.classList.add('active');
+            tonArea?.classList.add('hidden');
+            giftArea?.classList.remove('hidden');
+            loadGiftsForBet(g);
+        }
+    });
+};
+
+async function loadGiftsForBet(game) {
+    const list = document.getElementById(game + '-gift-list');
+    if (!list) return;
+    list.innerHTML = '<p style="font-size:10px; color:var(--t4)">Загрузка...</p>';
+
+    try {
+        const { inventory } = await api('/api/inventory/combined');
+        if (inventory.length === 0) {
+            list.innerHTML = '<p style="font-size:10px; color:var(--t4)">Нет подарков</p>';
+            return;
+        }
+
+        list.innerHTML = inventory.map(item => `
+            <div id="gift-bet-${item.instance_id}" class="gift-select-card ${selectedGift?.instance_id === item.instance_id ? 'active' : ''}" onclick="selectGiftForBet(${JSON.stringify(item).replace(/"/g, '&quot;')}, '${game}')">
+                <div class="gift-avatar"><img src="${getGiftImg(item.model)}" alt=""></div>
+                <span class="gift-title">${item.title}</span>
+                <span class="gift-cost">${item.price} TON</span>
+            </div>`).join('');
+    } catch (e) { list.innerHTML = '<p>Ошибка</p>'; }
+}
+
+window.selectGiftForBet = function (item, game) {
+    selectedGift = item;
+    loadGiftsForBet(game);
+    if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
+};

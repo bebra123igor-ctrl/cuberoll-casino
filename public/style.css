@@ -4725,3 +4725,44 @@ input:checked+.toggle-slider:before {
 .nav-tab.active[data-tab="bonuses"] svg {
   color: var(--gold);
 }
+
+/* --- PREMIUM INPUTS & BETTING --- */
+.premium-bet-input {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1.5px solid var(--border3) !important;
+  border-radius: 16px !important;
+  padding: 10px 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.premium-bet-input:focus-within {
+  border-color: var(--gold) !important;
+  background: rgba(255, 204, 0, 0.04) !important;
+  box-shadow: 0 0 20px rgba(255, 204, 0, 0.1) !important;
+}
+
+.premium-bet-input input {
+  font-size: 32px !important;
+  font-weight: 900 !important;
+  color: #fff !important;
+  text-align: center !important;
+  flex: 1 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  font-family: 'Outfit', sans-serif !important;
+  letter-spacing: -0.5px !important;
+}
+
+.premium-bet-input .bet-max {
+  font-size: 11px !important;
+  padding: 6px 12px !important;
+  background: var(--gold) !important;
+  color: #000 !important;
+  border-radius: 8px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+}

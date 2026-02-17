@@ -293,22 +293,36 @@ app.post('/api/bet', auth, async (req, res) => {
 
 // --- PLINKO GAME ---
 const PLINKO_ROWS = 8;
-const PLINKO_MULTIS = [3, 2, 1.2, 0.9, 0.7, 0.9, 1.2, 2, 3];
+const PLINKO_MULTIS = [5, 2, 1.2, 0.5, 0, 0.5, 1.2, 2, 5];
 
-app.post('/api/plinko/bet', auth, (req, res) => {
+app.post('/api/plinko/bet', auth, async (req, res) => {
     const u = req.tgUser;
     const user = userOps.get(u.id);
     if (!user) return res.status(404).secure({ error: 'User not found' });
     if (user.is_banned) return res.status(403).secure({ error: 'Account is banned' });
     if (settingsOps.get('maintenance_mode') === '1') return res.status(503).secure({ error: 'Casino is under maintenance' });
 
-    const { betAmount } = req.body;
-    const amt = Math.round(parseFloat(betAmount) * 1e9) / 1e9;
-    const minBet = parseFloat(settingsOps.get('min_bet') || '0.1');
-    const maxBet = parseFloat(settingsOps.get('max_bet') || '10000');
+    const { betAmount, giftInstanceId } = req.body;
+    let amt = 0;
 
-    if (isNaN(amt) || amt < minBet || amt > maxBet) return res.status(400).secure({ error: `Bet must be between ${minBet} and ${maxBet}` });
-    if (amt > user.balance + 1e-9) return res.status(400).secure({ error: 'Insufficient balance' });
+    if (giftInstanceId) {
+        const inventory = inventoryOps.getByUser(u.id);
+        const item = inventory.find(i => i.instance_id === giftInstanceId);
+        if (!item) return res.status(404).secure({ error: 'Gift not found in inventory' });
+
+        amt = item.price;
+        const livePrice = await fetchNftFloorPrice(item.title);
+        if (livePrice && livePrice.price > 0) amt = livePrice.price;
+        if (amt < 0.01) return res.status(400).secure({ error: 'Gift has no market value' });
+
+        inventoryOps.remove(giftInstanceId);
+    } else {
+        amt = Math.round(parseFloat(betAmount) * 1e9) / 1e9;
+        const minBet = parseFloat(settingsOps.get('min_bet') || '0.1');
+        const maxBet = parseFloat(settingsOps.get('max_bet') || '10000');
+        if (isNaN(amt) || amt < minBet || amt > maxBet) return res.status(400).secure({ error: `Bet must be between ${minBet} and ${maxBet}` });
+        if (amt > user.balance + 1e-9) return res.status(400).secure({ error: 'Insufficient balance' });
+    }
 
     const s = getSeed(u.id);
     s.nonce++;
@@ -430,7 +444,7 @@ app.get('/api/crash/status', auth, (req, res) => {
     });
 });
 
-app.post('/api/crash/bet', auth, (req, res) => {
+app.post('/api/crash/bet', auth, async (req, res) => {
     if (crashState.phase !== 'WAITING') return res.status(400).secure({ error: 'Game already started' });
 
     const u = req.tgUser;
@@ -440,18 +454,32 @@ app.post('/api/crash/bet', auth, (req, res) => {
     const existing = crashState.bets.find(b => b.telegramId === u.id);
     if (existing) return res.status(400).secure({ error: 'Bet already placed' });
 
-    const { betAmount } = req.body;
-    const amt = Math.round(parseFloat(betAmount) * 1e9) / 1e9;
-    const minBet = parseFloat(settingsOps.get('min_bet') || '0.1');
-    const maxBet = parseFloat(settingsOps.get('max_bet') || '100');
+    const { betAmount, giftInstanceId } = req.body;
+    let amt = 0;
 
-    if (isNaN(amt) || amt < minBet || amt > maxBet) return res.status(400).secure({ error: `Min: ${minBet}, Max: ${maxBet}` });
-    if (amt > user.balance + 0.000000001) return res.status(400).secure({ error: 'Insufficient balance' });
+    if (giftInstanceId) {
+        const inventory = inventoryOps.getByUser(u.id);
+        const item = inventory.find(i => i.instance_id === giftInstanceId);
+        if (!item) return res.status(404).secure({ error: 'Gift not found in inventory' });
 
-    userOps.updateBalance(u.id, -amt, 'crash_bet', 'Crash game bet');
-    crashState.bets.push({ telegramId: u.id, amount: amt, cashedOut: false });
+        amt = item.price;
+        const livePrice = await fetchNftFloorPrice(item.title);
+        if (livePrice && livePrice.price > 0) amt = livePrice.price;
+        if (amt < 0.01) return res.status(400).secure({ error: 'Gift has no market value' });
 
-    res.secure({ success: true, newBalance: user.balance - amt });
+        inventoryOps.remove(giftInstanceId);
+    } else {
+        amt = Math.round(parseFloat(betAmount) * 1e9) / 1e9;
+        const minBet = parseFloat(settingsOps.get('min_bet') || '0.1');
+        const maxBet = parseFloat(settingsOps.get('max_bet') || '100');
+        if (isNaN(amt) || amt < minBet || amt > maxBet) return res.status(400).secure({ error: `Min: ${minBet}, Max: ${maxBet}` });
+        if (amt > user.balance + 0.000000001) return res.status(400).secure({ error: 'Insufficient balance' });
+        userOps.updateBalance(u.id, -amt, 'crash_bet', 'Crash game bet');
+    }
+
+    crashState.bets.push({ telegramId: u.id, amount: amt, cashedOut: false, isGift: !!giftInstanceId });
+
+    res.secure({ success: true, newBalance: user.balance - (giftInstanceId ? 0 : amt) });
 });
 
 app.post('/api/crash/cashout', auth, (req, res) => {
