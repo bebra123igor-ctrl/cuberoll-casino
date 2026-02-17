@@ -231,6 +231,18 @@
           <button class="game-sel-btn" id="game-tab-plinko" onclick="selectGame('plinko')">Plinko</button>
         </div>
 
+        <div class="daily-bonus glass-card" id="daily-spin-box"
+          style="margin-top: 5px; margin-bottom: 15px; border-color: var(--gold-dim);">
+          <div class="bonus-content">
+            <div class="bonus-icon">🎡</div>
+            <div class="bonus-info">
+              <div class="bonus-title">Колесо Фортуны</div>
+              <div class="bonus-text">Испытай удачу раз в 24 часа!</div>
+            </div>
+          </div>
+          <button class="claim-btn-premium" onclick="openDailySpin()">КРУТИТЬ</button>
+        </div>
+
         <!-- КУБИКИ -->
         <div id="game-view-dice">
           <div class="dice-arena">
@@ -330,15 +342,20 @@
             </div>
 
             <div class="crash-controls">
-              <div class="crash-bet-box">
-                <div class="bet-input-wrap">
-                  <input type="number" id="crash-bet-amount" placeholder="Ставка" value="10">
-                  <button class="bet-max" onclick="setMaxCrashBet()">MAX</button>
+              <div class="bet-input-container">
+                <label>СУММА (TON)</label>
+                <div class="crash-input-wrapper">
+                  <input type="number" id="crash-bet-amount" value="1.0" step="0.1" min="0.1">
                 </div>
-                <button id="crash-bet-btn" class="crash-btn bet" onclick="crashPlaceBet()">ПОСТАВИТЬ</button>
-                <button id="crash-cashout-btn" class="crash-btn cashout hidden"
-                  onclick="crashCashout()">ЗАБРАТЬ</button>
               </div>
+              <div class="bet-input-container">
+                <label>АВТО-ВЫВОД</label>
+                <div class="crash-input-wrapper">
+                  <input type="number" id="crash-auto-cashout" placeholder="Нет" step="0.1" min="1.1">
+                </div>
+              </div>
+              <button id="crash-bet-btn" class="crash-btn bet" onclick="crashPlaceBet()">ПОСТАВИТЬ</button>
+              <button id="crash-cashout-btn" class="crash-btn cashout hidden" onclick="crashCashout()">ЗАБРАТЬ</button>
             </div>
           </div>
         </div>
@@ -397,9 +414,23 @@
 
     <div class="tab-content" id="content-shop">
       <div class="tab-scrollable">
-        <h3 class="section-title">Магазин подарков</h3>
-        <div class="shop-grid" id="shop-list">
-          <!-- Подарки будут здесь -->
+        <div class="shop-tabs">
+          <button class="shop-tab-btn active" onclick="switchShopTab('official')">ОФИЦИАЛЬНЫЕ</button>
+          <button class="shop-tab-btn" onclick="switchShopTab('marketplace')">МАРКЕТПЛЕЙС</button>
+          <button class="shop-tab-btn" onclick="openInventory()"
+            style="background: var(--bg3); border-color: var(--border);">МОИ ВЕЩИ</button>
+        </div>
+        <div id="shop-official-section">
+          <h3 class="section-title">Магазин подарков</h3>
+          <div class="shop-grid" id="shop-list">
+            <!-- Подарки будут здесь -->
+          </div>
+        </div>
+        <div id="shop-marketplace-section" class="hidden">
+          <h3 class="section-title">Рынок игроков</h3>
+          <div class="shop-grid" id="marketplace-list">
+            <!-- Объявления будут здесь -->
+          </div>
         </div>
       </div>
     </div>
@@ -461,6 +492,30 @@
       </div>
 
       <!-- настройки -->
+      <div class="tab-content" id="content-invite">
+        <div class="tab-scrollable">
+          <div class="invite-hero">
+            <div class="hero-icon">🤝</div>
+            <h2>Приглашай друзей</h2>
+            <p>Получай <b>10%</b> с каждого <b>проигрыша</b> твоего реферала ПОЖИЗНЕННО!</p>
+          </div>
+
+          <div class="stats-grid" style="margin-bottom: 20px;">
+            <div class="stat-card">
+              <span class="stat-label">Заработано</span>
+              <span class="stat-value" id="ref-earned-value">0.00 TON</span>
+            </div>
+          </div>
+
+          <div class="referral-link-card">
+            <label>Твоя ссылка:</label>
+            <div class="copy-box" id="ref-link-box">
+              <span id="referral-link">Загрузка...</span>
+              <button onclick="copyReferralLink()">📋</button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="tab-content" id="content-settings">
         <div class="tab-scrollable">
           <h3 class="section-title">Настройки</h3>
@@ -755,6 +810,87 @@
 
     <div id="toast" class="toast"></div>
     <script src="app.js?v=7.0"></script>
+    <!-- Daily Spin Modal -->
+    <div id="daily-spin-modal" class="modal-overlay hidden">
+      <div class="modal-box daily-spin-box">
+        <div class="modal-header">
+          <h3>КОЛЕСО ФОРТУНЫ</h3>
+          <button class="close-modal-btn" onclick="closeModal('daily-spin-modal')">&times;</button>
+        </div>
+        <div class="wheel-container">
+          <div id="wheel" class="wheel-visual">
+            <div class="wheel-pointer">▼</div>
+            <div class="wheel-segments" id="wheel-segments"></div>
+          </div>
+        </div>
+        <p class="spin-hint">Шанс на супер-приз (10 TON) — 0.1%!</p>
+        <button id="spin-start-btn" class="roll-button" onclick="startDailySpin()">КРУТИТЬ</button>
+      </div>
+    </div>
+
+    <!-- Stats Modal (New Profile Tab could be better, but we use existing structure) -->
+    <div id="stats-modal" class="modal-overlay hidden">
+      <div class="modal-box stats-modal-box">
+        <div class="modal-header">
+          <h3>МОЯ СТАТИСТИКА</h3>
+          <button class="close-modal-btn" onclick="closeModal('stats-modal')">&times;</button>
+        </div>
+        <div class="stats-grid-detailed">
+          <div class="stat-item">
+            <label>ВСЕГО СТАВОК</label>
+            <span id="stat-wagered">0.00</span>
+          </div>
+          <div class="stat-item">
+            <label>ВЫИГРАНО</label>
+            <span id="stat-won" style="color:var(--green)">0.00</span>
+          </div>
+          <div class="stat-item">
+            <label>ПРОИГРАНО</label>
+            <span id="stat-lost" style="color:var(--red)">0.00</span>
+          </div>
+          <div class="stat-item">
+            <label>РЕКОРДНЫЙ ИКС</label>
+            <span id="stat-max-mult" style="color:var(--gold)">0.00x</span>
+          </div>
+        </div>
+        <button class="result-close" onclick="closeModal('stats-modal')">ЗАКРЫТЬ</button>
+      </div>
+    </div>
+
+    <!-- Inventory Modal -->
+    <div id="inventory-modal" class="modal-overlay hidden">
+      <div class="modal-box inventory-box">
+        <div class="modal-header">
+          <h3>МОЙ ИНВЕНТАРЬ</h3>
+          <button class="close-modal-btn" onclick="closeModal('inventory-modal')">&times;</button>
+        </div>
+        <div class="inventory-grid" id="inventory-list">
+          <!-- User items here -->
+        </div>
+        <p class="inventory-hint">Здесь ваши уникальные подарки. Вы можете выставить их на продажу в Маркетплейс.</p>
+      </div>
+    </div>
+
+    <!-- List for Sale Modal -->
+    <div id="list-sale-modal" class="modal-overlay hidden">
+      <div class="modal-box small-modal">
+        <div class="modal-header">
+          <h3>ПРОДАЖА</h3>
+          <button class="close-modal-btn" onclick="closeModal('list-sale-modal')">&times;</button>
+        </div>
+        <div class="sale-form">
+          <input type="hidden" id="sale-instance-id">
+          <label>ЦЕНА (TON)</label>
+          <div class="premium-input-group">
+            <input type="number" id="sale-price" value="1.0" step="0.1">
+            <span class="unit">TON</span>
+          </div>
+          <button class="claim-btn-premium" style="margin-top:15px; width:100%;"
+            onclick="confirmListSale()">ВЫСТАВИТЬ</button>
+        </div>
+      </div>
+    </div>
+
 </body>
 
 </html>

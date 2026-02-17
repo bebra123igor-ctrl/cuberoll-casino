@@ -219,7 +219,8 @@ async function init() {
                     });
 
                     console.log('[Init] Authenticating...');
-                    const data = await api('/api/auth', 'POST');
+                    const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+                    const data = await api('/api/auth', 'POST', { start_param: startParam });
                     user = data.user;
                     curSeeds = data.seeds;
                     window.appSettings = data.settings || {};
@@ -229,11 +230,18 @@ async function init() {
                         if (h) h.textContent = `Минимум: ${window.appSettings.minDeposit} TON`;
                     }
 
-                    document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
-                    document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
-                    document.getElementById('user-initial').textContent = (user.firstName || user.username || 'P')[0].toUpperCase();
-
                     setBalance(user.balance);
+
+                    // Update Referral Info
+                    const refLink = `https://t.me/CubeRollBot/play?startapp=${user.telegramId}`;
+                    const refLinkEl = document.getElementById('referral-link');
+                    if (refLinkEl) refLinkEl.textContent = refLink;
+                    const refEarnedEl = document.getElementById('ref-earned-value');
+                    if (refEarnedEl) refEarnedEl.textContent = (user.referralEarned || 0).toFixed(2) + ' TON';
+
+                    // Update UI for Auto Cashout
+                    const autoEl = document.getElementById('crash-auto-cashout');
+                    if (autoEl && user.autoCashout) autoEl.value = user.autoCashout;
 
                     // Initialize modules independently
                     try { await loadHistory(); } catch (e) { console.error('[Init] History failed', e); }
@@ -296,6 +304,22 @@ function setBalance(val, anim = false) {
         void p.offsetWidth;
         p.classList.add(val > old ? 'pulse' : 'pulse-loss');
     }
+}
+
+function openStats() {
+    if (!user) return;
+    document.getElementById('stat-wagered').textContent = (user.totalWagered || 0).toFixed(2);
+    document.getElementById('stat-won').textContent = (user.totalWon || 0).toFixed(2);
+    document.getElementById('stat-lost').textContent = (user.totalLost || 0).toFixed(2);
+    document.getElementById('stat-max-mult').textContent = (user.biggestWinMult || 0).toFixed(2) + 'x';
+    document.getElementById('stats-modal').classList.remove('hidden');
+}
+
+function copyReferralLink() {
+    const link = document.getElementById('referral-link').textContent;
+    navigator.clipboard.writeText(link).then(() => {
+        toast('Ссылка скопирована!', 'success');
+    });
 }
 
 
@@ -575,8 +599,122 @@ function setDiceFace(el, val) {
         5: 'rotateX(90deg) rotateY(0deg)',
         6: 'rotateX(0deg) rotateY(180deg)'
     };
-    el.style.transform = rotations[val] || 'rotateX(0deg)';
+    el.style.transform = rotations[val] || rotations[1];
 }
+
+// --- SHOP TAB LOGIC ---
+function switchShopTab(tab) {
+    document.querySelectorAll('.shop-tab-btn').forEach(b => b.classList.remove('active'));
+    if (event) event.target.classList.add('active');
+
+    if (tab === 'official') {
+        document.getElementById('shop-official-section').classList.remove('hidden');
+        document.getElementById('shop-marketplace-section').classList.add('hidden');
+    } else {
+        document.getElementById('shop-official-section').classList.add('hidden');
+        document.getElementById('shop-marketplace-section').classList.remove('hidden');
+        loadMarketplace();
+    }
+}
+
+async function loadMarketplace() {
+    const list = document.getElementById('marketplace-list');
+    if (!list) return;
+    list.innerHTML = '<p class="empty-state">Загрузка товаров...</p>';
+
+    try {
+        const { listings } = await api('/api/marketplace/items');
+        if (listings.length === 0) {
+            list.innerHTML = '<p class="empty-state">На рынке пока пусто</p>';
+            return;
+        }
+
+        list.innerHTML = listings.map(item => `
+            <div class="shop-item glass-card">
+                <div class="marketplace-badge">PLAYER</div>
+                <div class="shop-item-icon">${getGiftEmoji(item.model)}</div>
+                <div class="shop-item-info">
+                    <div class="shop-item-title" style="font-size: 11px; font-weight: 800;">${item.title}</div>
+                    <div class="shop-item-price" style="color: var(--gold);">${item.price.toFixed(2)} TON</div>
+                    <div class="shop-item-seller" style="font-size: 8px; opacity: 0.5;">@${item.seller_name}</div>
+                </div>
+                <button class="buy-btn" onclick="buyFromMarket(${item.id})" style="margin-top: 5px;">КУПИТЬ</button>
+            </div>
+        `).join('');
+    } catch (e) {
+        list.innerHTML = `<p class="empty-state" style="color:var(--red)">Ошибка: ${e.message}</p>`;
+    }
+}
+
+async function buyFromMarket(listingId) {
+    try {
+        const res = await api('/api/marketplace/buy', 'POST', { listingId });
+        toast('Подарок куплен!', 'success');
+        setBalance(res.newBalance, true);
+        loadMarketplace();
+    } catch (e) { toast(e.message, 'error'); }
+}
+
+// --- INVENTORY LOGIC ---
+async function openInventory() {
+    const list = document.getElementById('inventory-list');
+    if (!list) return;
+    list.innerHTML = '<p class="empty-state">Загрузка предметов...</p>';
+    document.getElementById('inventory-modal').classList.remove('hidden');
+
+    try {
+        const { inventory } = await api('/api/inventory');
+        if (inventory.length === 0) {
+            list.innerHTML = '<p class="empty-state">У вас пока нет подарков</p>';
+            return;
+        }
+
+        list.innerHTML = inventory.map(item => `
+            <div class="shop-item glass-card">
+                <div class="shop-item-icon">${getGiftEmoji(item.model)}</div>
+                <div class="shop-item-info">
+                    <div class="shop-item-title">${item.title}</div>
+                </div>
+                <button class="buy-btn" onclick="openListSale(${item.instance_id})">ПРОДАТЬ</button>
+            </div>
+        `).join('');
+    } catch (e) {
+        list.innerHTML = `<p class="empty-state" style="color:var(--red)">Ошибка: ${e.message}</p>`;
+    }
+}
+
+function openListSale(instanceId) {
+    document.getElementById('sale-instance-id').value = instanceId;
+    document.getElementById('list-sale-modal').classList.remove('hidden');
+}
+
+async function confirmListSale() {
+    const instanceId = document.getElementById('sale-instance-id').value;
+    const price = document.getElementById('sale-price').value;
+
+    try {
+        await api('/api/marketplace/list', 'POST', { instanceId, price });
+        toast('Товар выставлен на продажу!', 'success');
+        closeModal('list-sale-modal');
+        closeModal('inventory-modal');
+    } catch (e) { toast(e.message, 'error'); }
+}
+
+function getGiftEmoji(model) {
+    if (model?.includes('perfume')) return '🧪';
+    if (model?.includes('ring')) return '💍';
+    if (model?.includes('cake')) return '🎂';
+    return '🎁';
+}
+
+// Auto Cashout Persist
+document.getElementById('crash-auto-cashout')?.addEventListener('change', async (e) => {
+    const val = parseFloat(e.target.value) || 0;
+    try {
+        await api('/api/user/auto-cashout', 'POST', { multiplier: val });
+        toast('Авто-вывод сохранен', 'success');
+    } catch (e) { }
+});
 
 function showResult(res) {
     const ov = document.getElementById('result-overlay');
@@ -942,6 +1080,12 @@ function updateCrashUI() {
         multEl.classList.add('vibrating', 'flying');
         document.querySelector('.crash-info').classList.remove('crashed');
         document.querySelector('.crash-main').style.backdropFilter = 'none';
+
+        // AUTO CASHOUT LOGIC
+        const autoMult = parseFloat(document.getElementById('crash-auto-cashout').value) || 0;
+        if (autoMult > 1 && crashStatus.multiplier >= autoMult && crashStatus.myBet && !crashStatus.myBet.cashedOut) {
+            crashCashout(); // Trigger local cashout which calls API
+        }
 
         if (crashStatus.myBet && !crashStatus.myBet.cashedOut) {
             betBtn.classList.add('hidden');
@@ -1309,7 +1453,9 @@ async function plinkoDrop() {
     try {
         const res = await api('/api/plinko/bet', 'POST', { betAmount: parseFloat(amountVal) });
 
-        // Start animation
+        // Clear previous landed dice on new bet
+        plinkoBalls = plinkoBalls.filter(b => !b.landed);
+
         const ball = {
             x: plinkoCanvas.width / 2 + (Math.random() - 0.5) * 10,
             y: 20,
@@ -1324,6 +1470,7 @@ async function plinkoDrop() {
             color: '#ffffff',
             dieValue: Math.floor(Math.random() * 6) + 1,
             bounceCount: 0,
+            landed: false,
             newBalance: res.result.newBalance // Store balance here to sync on impact
         };
         plinkoBalls.push(ball);
@@ -1383,39 +1530,51 @@ function renderPlinko() {
         const gravity = 0.05; // Even slower
 
         plinkoBalls = plinkoBalls.filter(ball => {
-            ball.vy += gravity;
-            ball.x += ball.vx;
-            ball.y += ball.vy;
+            if (!ball.landed) {
+                ball.vy += gravity;
+                ball.x += ball.vx;
+                ball.y += ball.vy;
 
-            // Wall bouncing
-            if (ball.x < 15) {
-                ball.x = 15;
-                ball.vx *= -0.6;
-            } else if (ball.x > w - 15) {
-                ball.x = w - 15;
-                ball.vx *= -0.6;
+                // Wall bouncing
+                if (ball.x < 15) {
+                    ball.x = 15;
+                    ball.vx *= -0.6;
+                } else if (ball.x > w - 15) {
+                    ball.x = w - 15;
+                    ball.vx *= -0.6;
+                }
+
+                const currentRow = Math.floor((ball.y - 40) / rowGap);
+                if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
+                    const move = ball.path[ball.step];
+                    ball.vx = (move === 1 ? 1 : -1) * (colGap / 18) + (Math.random() - 0.5) * 0.5;
+                    ball.vy = 1.2;
+                    ball.step++;
+                }
+
+                if (ball.y > h - 18) {
+                    ball.landed = true;
+                    ball.y = h - 18;
+                    ball.vx = 0;
+                    ball.vy = 0;
+                    highlightSlot(ball.targetSlot);
+                    if (ball.payout > 0) toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success');
+                    if (ball.newBalance !== undefined) setBalance(ball.newBalance, true);
+                }
             }
 
-            const currentRow = Math.floor((ball.y - 40) / rowGap);
-            if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
-                const move = ball.path[ball.step];
-                // Introduce some "bounce" logic
-                ball.vx = (move === 1 ? 1 : -1) * (colGap / 18) + (Math.random() - 0.5) * 0.5;
-                ball.vy = 1.2;
-                ball.step++;
-            }
-
-            // Draw dice instead of square
+            // Draw dice
             plinkoCtx.save();
             plinkoCtx.translate(ball.x, ball.y);
-            plinkoCtx.rotate(ball.y / 15);
+            // Rotate only if not landed, or fixed rotation if landed
+            plinkoCtx.rotate(ball.landed ? (ball.y / 15) : (ball.y / 15));
 
             // Dice body
             const size = 16;
             const r = 4;
             plinkoCtx.fillStyle = '#fff';
-            plinkoCtx.shadowBlur = 15;
-            plinkoCtx.shadowColor = 'rgba(255,255,255,0.5)';
+            plinkoCtx.shadowBlur = ball.landed ? 20 : 15;
+            plinkoCtx.shadowColor = ball.landed ? 'rgba(255, 215, 0, 0.6)' : 'rgba(255,255,255,0.5)';
 
             plinkoCtx.beginPath();
             plinkoCtx.roundRect(-size / 2, -size / 2, size, size, r);
@@ -1441,17 +1600,9 @@ function renderPlinko() {
             };
 
             (dots[ball.dieValue] || []).forEach(d => drawDot(d[0], d[1]));
-
             plinkoCtx.restore();
 
-            if (ball.y > h - 18) {
-                // Precise landing inside the slot
-                highlightSlot(ball.targetSlot);
-                if (ball.payout > 0) toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success');
-                if (ball.newBalance !== undefined) setBalance(ball.newBalance, true);
-                return false;
-            }
-            return true;
+            return true; // Keep ball in array until next bet clears it
         });
     }
 
@@ -1465,3 +1616,52 @@ function highlightSlot(idx) {
         setTimeout(() => slots[idx].classList.remove('win'), 1500);
     }
 }
+// --- DAILY SPIN LOGIC ---
+let isSpinning = false;
+function openDailySpin() {
+    document.getElementById('daily-spin-modal').classList.remove('hidden');
+}
+
+async function startDailySpin() {
+    if (isSpinning) return;
+
+    try {
+        const res = await api('/api/daily-spin', 'POST');
+        isSpinning = true;
+        const btn = document.getElementById('spin-start-btn');
+        btn.disabled = true;
+        btn.textContent = 'КРУТИМ...';
+
+        const wheel = document.getElementById('wheel');
+        // Random rotations + target angle
+        const extraDegrees = (res.win ? 360 * 7 + 77 : 360 * 5 + Math.random() * 360);
+        wheel.style.transform = `rotate(${extraDegrees}deg)`;
+
+        setTimeout(() => {
+            isSpinning = false;
+            btn.disabled = false;
+            btn.textContent = 'КРУТИТЬ';
+
+            if (res.win) {
+                toast(`ПОЗДРАВЛЯЕМ! Вы выиграли ${res.prize} TON!`, 'success');
+                setBalance(res.newBalance, true);
+            } else {
+                toast('В этот раз не повезло. Попробуйте завтра!', 'info');
+            }
+
+            // Reset wheel after delay
+            setTimeout(() => {
+                wheel.style.transition = 'none';
+                wheel.style.transform = 'rotate(0deg)';
+                void wheel.offsetWidth;
+                wheel.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
+            }, 2000);
+        }, 4500);
+
+    } catch (e) {
+        toast(e.message, 'error');
+    }
+}
+
+// Stats listener to user Avatar
+document.querySelector('.header-left').onclick = openStats;

@@ -1034,6 +1034,75 @@ button:active,
   }
 }
 
+/* --- PREMIUM UTILITIES --- */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 15px;
+}
+
+.claim-btn-premium {
+  background: linear-gradient(135deg, #ffd700 0%, #ffae00 100%);
+  color: #000;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(255, 174, 0, 0.3);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  text-transform: uppercase;
+}
+
+.claim-btn-premium:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 8px rgba(255, 174, 0, 0.2);
+}
+
+.claim-btn-premium:disabled {
+  filter: grayscale(0.8);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--t4);
+  font-size: 11px;
+  padding: 20px;
+}
+
+/* Modal sizing */
+.inventory-box {
+  max-width: 320px !important;
+}
+
+.inventory-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.inventory-hint {
+  font-size: 9px;
+  color: var(--t4);
+  text-align: center;
+  margin-top: 15px;
+  line-height: 1.4;
+}
+
+.small-modal {
+  max-width: 280px !important;
+}
+
 /* ═══ nav ═══ */
 .nav-tabs {
   display: flex;
@@ -3959,6 +4028,165 @@ input:checked+.toggle-slider:before {
   100% {
     box-shadow: 0 0 0 0 rgba(241, 196, 15, 0);
   }
+}
+
+/* --- WHEEL OF FORTUNE (DAILY SPIN) --- */
+.wheel-container {
+  width: 240px;
+  height: 240px;
+  margin: 20px auto;
+  position: relative;
+  border-radius: 50%;
+  padding: 10px;
+  background: var(--card2);
+  box-shadow: 0 0 30px rgba(255, 204, 0, 0.1), inset 0 0 20px rgba(0, 0, 0, 0.5);
+  border: 4px solid var(--border3);
+}
+
+.wheel-visual {
+  width: 100%;
+  height: 100%;
+  background: conic-gradient(#2c3e50 0deg 30deg, #34495e 30deg 60deg,
+      #2c3e50 60deg 90deg, #34495e 90deg 120deg,
+      #2c3e50 120deg 150deg, #34495e 150deg 180deg,
+      #2c3e50 180deg 210deg, #34495e 210deg 240deg,
+      #2c3e50 240deg 270deg, #34495e 270deg 300deg,
+      #2c3e50 300deg 330deg, #34495e 330deg 360deg);
+  border-radius: 50%;
+  position: relative;
+  transition: transform 4s cubic-bezier(0.15, 0, 0.15, 1);
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8);
+}
+
+.wheel-pointer {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--gold);
+  font-size: 32px;
+  filter: drop-shadow(0 0 10px rgba(255, 204, 0, 0.5));
+  z-index: 5;
+}
+
+.spin-hint {
+  text-align: center;
+  font-size: 11px;
+  color: var(--t4);
+  margin-bottom: 20px;
+}
+
+/* --- SHOP TABS & MARKETPLACE --- */
+.shop-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.shop-tab-btn {
+  flex: 1;
+  padding: 12px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  color: var(--t3);
+  font-weight: 800;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.shop-tab-btn.active {
+  background: var(--gold-dim);
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 4px 15px rgba(255, 204, 0, 0.1);
+}
+
+.marketplace-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--blue-g);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+/* --- STATS GRID --- */
+.stats-grid-detailed {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stat-item {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  padding: 12px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-item label {
+  font-size: 9px;
+  color: var(--t4);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.stat-item span {
+  font-size: 16px;
+  font-weight: 900;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* --- CRASH IMPROVEMENTS --- */
+.crash-controls {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+}
+
+.bet-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bet-input-container label {
+  font-size: 9px;
+  font-weight: 900;
+  color: var(--t4);
+  padding-left: 5px;
+}
+
+.crash-input-wrapper {
+  background: var(--bg);
+  border: 1.5px solid var(--border3);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.crash-input-wrapper input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #fff;
+  padding: 12px;
+  font-weight: 800;
+  outline: none;
+  text-align: center;
+}
+
+.crash-btn.bet,
+.crash-btn.cashout {
+  grid-column: span 2;
 }
 
 .crash-btn:disabled {

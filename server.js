@@ -170,7 +170,10 @@ const { logMonitor, monitoringLogs } = require('./logger');
 // авторизация + получение профиля
 app.post('/api/auth', auth, (req, res) => {
     const u = req.tgUser;
-    const user = userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '');
+    const { start_param } = req.body; // Telegram referral parameter
+    const referrerId = start_param ? parseInt(start_param) : null;
+
+    const user = userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '', referrerId);
     if (user.is_banned) return res.status(403).secure({ error: 'Account is banned' });
 
     const s = getSeed(u.id);
@@ -179,12 +182,14 @@ app.post('/api/auth', auth, (req, res) => {
             telegramId: user.telegram_id, username: user.username, firstName: user.first_name,
             balance: user.balance, gamesPlayed: user.games_played, gamesWon: user.games_won,
             totalWagered: user.total_wagered, totalWon: user.total_won, totalLost: user.total_lost,
-            lastDailyClaim: user.last_daily_claim, walletAddress: user.wallet_address
+            lastDailyClaim: user.last_daily_claim, lastDailySpin: user.last_daily_spin,
+            walletAddress: user.wallet_address, biggestWinMult: user.biggest_win_mult,
+            referralEarned: user.referral_earned, autoCashout: user.auto_cashout
         },
         seeds: s,
         settings: {
-            minBet: parseFloat(settingsOps.get('min_bet') || '10'),
-            maxBet: parseFloat(settingsOps.get('max_bet') || '10000'),
+            minBet: parseFloat(settingsOps.get('min_bet') || '0.1'),
+            maxBet: parseFloat(settingsOps.get('max_bet') || '100'),
             tonWallet: settingsOps.get('ton_wallet'),
             minDeposit: parseFloat(settingsOps.get('min_deposit') || '0.1')
         },
@@ -249,7 +254,7 @@ app.post('/api/bet', auth, (req, res) => {
     userOps.updateBalance(u.id, change, result.won ? 'win' : 'loss',
         `Dice: ${resolvedType} | ${dice.dice.join(',')} (${dice.total})`
     );
-    userOps.updateStats(u.id, amt, result.won, result.profit);
+    userOps.updateStats(u.id, amt, result.won, result.profit, result.multiplier);
 
     gameOps.create({
         telegramId: u.id, betAmount: amt, gameType: 'dice', playerChoice: resolvedType,
@@ -308,7 +313,7 @@ app.post('/api/plinko/bet', auth, (req, res) => {
     const profit = payout - amt;
 
     userOps.updateBalance(u.id, profit, won ? 'win_plinko' : 'loss_plinko', `Plinko: Slot ${rightMoves}`);
-    userOps.updateStats(u.id, amt, won, profit);
+    userOps.updateStats(u.id, amt, won, profit, multiplier);
 
     gameOps.create({
         telegramId: u.id, betAmount: amt, gameType: 'plinko', playerChoice: `rows_${PLINKO_ROWS}`,
@@ -378,7 +383,7 @@ function tickCrash() {
                         playerChoice: 'crash', diceResult: String(crashState.crashPoint),
                         multiplier: 0, payout: 0, profit: -b.amount, won: 0
                     });
-                    userOps.updateStats(b.telegramId, b.amount, false, -b.amount);
+                    userOps.updateStats(b.telegramId, b.amount, false, -b.amount, 0);
                 }
             });
 
@@ -448,7 +453,7 @@ app.post('/api/crash/cashout', auth, (req, res) => {
     bet.payout = payout;
 
     userOps.updateBalance(u.id, payout, 'crash_win', `Crash cashout ${currentMultiplier}x`);
-    userOps.updateStats(u.id, bet.amount, true, profit);
+    userOps.updateStats(u.id, bet.amount, true, profit, currentMultiplier);
 
     gameOps.create({
         telegramId: u.id, betAmount: bet.amount, gameType: 'crash',
@@ -526,12 +531,85 @@ app.post('/api/gifts/buy', auth, (req, res) => {
 
     userOps.updateBalance(req.tgUser.id, -gift.price, 'gift_buy', `Bought ${gift.title}`);
 
+    // Inventory addition
+    inventoryOps.add(req.tgUser.id, giftId);
+
     // Очередь на передачу юзерботом
     giftOps.createTransfer(giftId, req.tgUser.id);
+    giftOps.delete(giftId);
 
-    giftOps.delete(giftId); // Это помечает is_active = 0
     const updated = userOps.get(req.tgUser.id);
     res.secure({ success: true, newBalance: updated.balance });
+});
+
+// --- MARKETPLACE & INVENTORY ---
+
+app.get('/api/inventory', auth, (req, res) => {
+    res.secure({ inventory: inventoryOps.getByUser(req.tgUser.id) });
+});
+
+app.post('/api/marketplace/list', auth, (req, res) => {
+    const { instanceId, price } = req.body;
+    if (!instanceId || !price) return res.status(400).secure({ error: 'Missing data' });
+    try {
+        marketplaceOps.list(req.tgUser.id, instanceId, parseFloat(price));
+        res.secure({ success: true });
+    } catch (e) { res.status(400).secure({ error: e.message }); }
+});
+
+app.get('/api/marketplace/items', auth, (req, res) => {
+    res.secure({ listings: marketplaceOps.getActive() });
+});
+
+app.post('/api/marketplace/buy', auth, (req, res) => {
+    const { listingId } = req.body;
+    try {
+        marketplaceOps.buy(req.tgUser.id, listingId);
+        const updated = userOps.get(req.tgUser.id);
+        res.secure({ success: true, newBalance: updated.balance });
+    } catch (e) { res.status(400).secure({ error: e.message }); }
+});
+
+// --- DAILY SPIN ---
+
+app.post('/api/daily-spin', auth, (req, res) => {
+    const user = userOps.get(req.tgUser.id);
+    const now = new Date();
+
+    if (user.last_daily_spin) {
+        const last = new Date(user.last_daily_spin);
+        const diff = now - last;
+        if (diff < 24 * 60 * 60 * 1000) {
+            return res.status(400).secure({ error: 'Retry in ' + Math.ceil((24 * 60 * 60 * 1000 - diff) / 3600000) + 'h' });
+        }
+    }
+
+    // Almost impossible logic: 1 in 1000
+    const roll = Math.floor(Math.random() * 1000);
+    let prize = 0;
+    let win = false;
+
+    if (roll === 777) {
+        prize = 10; // Big prize
+        win = true;
+    } else if (roll < 5) {
+        prize = 1; // Small prize
+        win = true;
+    }
+
+    if (win) userOps.updateBalance(req.tgUser.id, prize, 'daily_spin_win', 'Won on wheel');
+
+    db.prepare("UPDATE users SET last_daily_spin = datetime('now') WHERE telegram_id = ?").run(req.tgUser.id);
+
+    res.secure({ roll, win, prize, newBalance: userOps.get(req.tgUser.id).balance });
+});
+
+app.post('/api/user/auto-cashout', auth, (req, res) => {
+    const { multiplier } = req.body;
+    const m = parseFloat(multiplier);
+    if (isNaN(m) || m < 0) return res.status(400).secure({ error: 'Invalid multiplier' });
+    db.prepare('UPDATE users SET auto_cashout = ? WHERE telegram_id = ?').run(m, req.tgUser.id);
+    res.secure({ success: true });
 });
 
 app.post('/api/deposit/request', auth, (req, res) => {

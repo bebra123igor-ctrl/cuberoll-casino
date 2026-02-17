@@ -115,28 +115,50 @@ db.exec(`
 `);
 
 try {
-  db.exec('ALTER TABLE users ADD COLUMN last_name TEXT');
+  db.exec('ALTER TABLE users ADD COLUMN referred_by INTEGER DEFAULT NULL');
 } catch (e) { }
 
 try {
-  db.exec('ALTER TABLE users ADD COLUMN last_daily_claim TEXT DEFAULT NULL');
+  db.exec('ALTER TABLE users ADD COLUMN referral_earned REAL DEFAULT 0');
 } catch (e) { }
 
 try {
-  db.exec('ALTER TABLE users ADD COLUMN wallet_address TEXT DEFAULT NULL');
+  db.exec('ALTER TABLE users ADD COLUMN last_daily_spin TEXT DEFAULT NULL');
 } catch (e) { }
 
 try {
-  db.exec('CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet_address)');
+  db.exec('ALTER TABLE users ADD COLUMN biggest_win_mult REAL DEFAULT 0');
 } catch (e) { }
 
 try {
-  db.exec('ALTER TABLE gifts ADD COLUMN gift_id TEXT UNIQUE');
+  db.exec('ALTER TABLE users ADD COLUMN auto_cashout REAL DEFAULT 0');
 } catch (e) { }
 
-try {
-  db.exec('ALTER TABLE gifts ADD COLUMN nft_address TEXT');
-} catch (e) { }
+// Marketplace Table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS marketplace_listings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    seller_id INTEGER,
+    gift_instance_id INTEGER, -- Link to user's gift if we have an inventory system, but currently we just have gifts as objects. 
+    -- Actually, we need an inventory table to track who owns what gift. 
+    price REAL,
+    status TEXT DEFAULT 'active', -- active, sold, cancelled
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (seller_id) REFERENCES users(telegram_id)
+  );
+`);
+
+// Inventory Table (to track which user owns which gift)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_inventory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    telegram_id INTEGER,
+    gift_id INTEGER,
+    acquired_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (telegram_id) REFERENCES users(telegram_id),
+    FOREIGN KEY (gift_id) REFERENCES gifts(id)
+  );
+`);
 
 // Таблица для активных сессий (Crossroad и др.)
 db.exec(`
@@ -183,7 +205,7 @@ const sessionOps = {
 };
 
 const userOps = {
-  getOrCreate(tgId, username, firstName, lastName) {
+  getOrCreate(tgId, username, firstName, lastName, referrerId = null) {
     const startBal = 0;
     try {
       const existing = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
@@ -193,14 +215,13 @@ const userOps = {
         return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
       }
 
-      console.log(`[DB] Creating new user: ${tgId} (${username})`);
-      db.prepare('INSERT INTO users (telegram_id, username, first_name, last_name, balance) VALUES (?, ?, ?, ?, ?)')
-        .run(tgId, username || '', firstName || '', lastName || '', startBal);
+      console.log(`[DB] Creating new user: ${tgId} (${username}), referred by: ${referrerId}`);
+      db.prepare('INSERT INTO users (telegram_id, username, first_name, last_name, balance, referred_by) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(tgId, username || '', firstName || '', lastName || '', startBal, referrerId);
 
       return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
     } catch (err) {
       console.error(`[DB Error] getOrCreate failed for user ${tgId}:`, err.message);
-      // Если юзер уже есть (параллельный запрос), просто вернем его
       return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
     }
   },
@@ -250,16 +271,28 @@ const userOps = {
   ban(tgId) { db.prepare('UPDATE users SET is_banned = 1 WHERE telegram_id = ?').run(tgId); },
   unban(tgId) { db.prepare('UPDATE users SET is_banned = 0 WHERE telegram_id = ?').run(tgId); },
 
-  updateStats(tgId, wagered, isWin, profit) {
+  updateStats(tgId, wagered, isWin, profit, multiplier = 0) {
     db.prepare(`
       UPDATE users SET 
         total_wagered = total_wagered + ?,
         total_won = total_won + ?,
         total_lost = total_lost + ?,
         games_played = games_played + 1,
-        games_won = games_won + ?
+        games_won = games_won + ?,
+        biggest_win_mult = MAX(biggest_win_mult, ?)
       WHERE telegram_id = ?
-    `).run(wagered, isWin ? profit : 0, isWin ? 0 : wagered, isWin ? 1 : 0, tgId);
+    `).run(wagered, isWin ? profit : 0, isWin ? 0 : wagered, isWin ? 1 : 0, isWin ? multiplier : 0, tgId);
+
+    // Referral Commission (10% of LOSS)
+    if (!isWin) {
+      const user = this.get(tgId);
+      if (user && user.referred_by) {
+        const commission = wagered * 0.1;
+        this.updateBalance(user.referred_by, commission, 'referral_loss_bonus', `10% commission from referral ${tgId} loss`);
+        db.prepare('UPDATE users SET referral_earned = referral_earned + ? WHERE telegram_id = ?')
+          .run(commission, user.referred_by);
+      }
+    }
   },
 
   getCount() {
@@ -466,4 +499,66 @@ const promoOps = {
   }
 };
 
-module.exports = { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps, sessionOps, setOnChange };
+const inventoryOps = {
+  add(tgId, giftId) {
+    return db.prepare('INSERT INTO user_inventory (telegram_id, gift_id) VALUES (?, ?)').run(tgId, giftId);
+  },
+  getByUser(tgId) {
+    return db.prepare(`
+      SELECT i.id as instance_id, g.* FROM user_inventory i
+      JOIN gifts g ON i.gift_id = g.id
+      WHERE i.telegram_id = ?
+    `).all(tgId);
+  },
+  remove(instanceId) {
+    return db.prepare('DELETE FROM user_inventory WHERE id = ?').run(instanceId);
+  }
+};
+
+const marketplaceOps = {
+  list(sellerId, instanceId, price) {
+    const item = db.prepare('SELECT * FROM user_inventory WHERE id = ? AND telegram_id = ?').get(instanceId, sellerId);
+    if (!item) throw new Error('Item not found in inventory');
+
+    return db.transaction(() => {
+      db.prepare('INSERT INTO marketplace_listings (seller_id, gift_instance_id, price) VALUES (?, ?, ?)').run(sellerId, instanceId, price);
+      // We don't remove from inventory yet, but we mark it as "listed" if we had a status column. 
+      // Instead, we just check for exists in marketplace_listings.
+    })();
+  },
+  getActive() {
+    return db.prepare(`
+      SELECT m.*, g.title, g.model, g.background, g.symbol, u.username as seller_name
+      FROM marketplace_listings m
+      JOIN user_inventory i ON m.gift_instance_id = i.id
+      JOIN gifts g ON i.gift_id = g.id
+      JOIN users u ON m.seller_id = u.telegram_id
+      WHERE m.status = 'active'
+      ORDER BY m.created_at DESC
+    `).all();
+  },
+  buy(buyerId, listingId) {
+    const listing = db.prepare('SELECT * FROM marketplace_listings WHERE id = ? AND status = "active"').get(listingId);
+    if (!listing) throw new Error('Listing not found');
+    if (listing.seller_id === buyerId) throw new Error('Cannot buy your own item');
+
+    const buyer = userOps.get(buyerId);
+    if (buyer.balance < listing.price) throw new Error('Insufficient balance');
+
+    return db.transaction(() => {
+      // 1. Pay seller
+      userOps.updateBalance(listing.seller_id, listing.price, 'marketplace_sale', `Sold gift for ${listing.price} TON`);
+      // 2. Charge buyer
+      userOps.updateBalance(buyerId, -listing.price, 'marketplace_purchase', `Bought gift for ${listing.price} TON`);
+      // 3. Move inventory
+      db.prepare('UPDATE user_inventory SET telegram_id = ? WHERE id = ?').run(buyerId, listing.gift_instance_id);
+      // 4. Mark listing as sold
+      db.prepare('UPDATE marketplace_listings SET status = "sold" WHERE id = ?').run(listingId);
+    })();
+  },
+  cancel(sellerId, listingId) {
+    return db.prepare('UPDATE marketplace_listings SET status = "cancelled" WHERE id = ? AND seller_id = ? AND status = "active"').run(listingId, sellerId);
+  }
+};
+
+module.exports = { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps, sessionOps, inventoryOps, marketplaceOps, setOnChange };
