@@ -202,6 +202,11 @@ async function init() {
                         buttonRootId: null
                     });
 
+                    // Initialize TonWeb IMMEDIATELY global scope
+                    if (window.TonWeb && !window.tonweb) {
+                        try { window.tonweb = new window.TonWeb(); } catch (e) { console.error('TonWeb init failed', e); }
+                    }
+
                     tonConnectUI.onStatusChange(async wallet => {
                         if (wallet) {
                             userWalletAddress = wallet.account.address;
@@ -2124,26 +2129,38 @@ function renderHide() {
 
     if (hideStatus.phase === 'SEARCHING' || hideStatus.phase === 'RESULT' || hideStatus.phase === 'SELECTION') {
         const roomCount = hideStatus.finalRoomCount || 4;
-        const cols = (roomCount === 4) ? 2 : 4;
-        const rows = Math.ceil(roomCount / cols);
-
-        // Increased padding for distancing
-        const canvasPad = 80;
-        const gridW = w - canvasPad * 2;
-        const gridH = h - canvasPad * 2;
-        const cellW = gridW / cols;
-        const cellH = gridH / rows;
+        // Helper to get house position
+        const getHousePos = (idx, total) => {
+            if (total === 4) {
+                // CORNERS
+                const marginX = 60;
+                const marginY = 80;
+                if (idx === 1) return { x: marginX, y: marginY }; // TL
+                if (idx === 2) return { x: w - marginX - 40, y: marginY }; // TR
+                if (idx === 3) return { x: marginX, y: h - marginY - 40 }; // BL
+                if (idx === 4) return { x: w - marginX - 40, y: h - marginY - 40 }; // BR
+            }
+            // Fallback grid
+            const cols = (total <= 4) ? 2 : 4;
+            const rows = Math.ceil(total / cols);
+            const canvasPad = 80;
+            const gridW = w - canvasPad * 2;
+            const gridH = h - canvasPad * 2;
+            const cellW = gridW / cols;
+            const cellH = gridH / rows;
+            const ix = (idx - 1) % cols;
+            const iy = Math.floor((idx - 1) / cols);
+            return {
+                x: canvasPad + ix * cellW + cellW / 2 - 30,
+                y: canvasPad + iy * cellH + cellH / 2 - 40
+            };
+        };
 
         for (let i = 1; i <= roomCount; i++) {
-            const ix = (i - 1) % cols;
-            const iy = Math.floor((i - 1) / cols);
-            const rx = canvasPad + ix * cellW + cellW / 2 - 30;
-            const ry = canvasPad + iy * cellH + cellH / 2 - 40;
-
+            const pos = getHousePos(i, roomCount);
             const wasHit = (hideStatus.phase === 'RESULT' || hideStatus.phase === 'SEARCHING') && (hideStatus.killerTargets || []).slice(0, hideStatus.phase === 'RESULT' ? 3 : hideStatus.currentSearchingIdx + 1).includes(i);
             const isUserRoom = hideStatus.myRoom === i;
-
-            drawHouse(rx, ry, i, isUserRoom, wasHit);
+            drawHouse(pos.x, pos.y, i, isUserRoom, wasHit);
         }
 
         if (hideStatus.phase === 'SEARCHING') {
@@ -2158,19 +2175,27 @@ function renderHide() {
             const smoothT = t < 0.2 ? 0 : (t > 0.8 ? 1 : (t - 0.2) / 0.6);
             const easeT = smoothT * smoothT * (3 - 2 * smoothT);
 
-            const r1 = currentRoomIdx;
-            const r2 = (currentRoomIdx + 1) % roomCount;
+            const r1 = (currentRoomIdx % roomCount) + 1;
+            const r2 = ((currentRoomIdx + 1) % roomCount) + 1;
 
-            const ix1 = r1 % cols; const iy1 = Math.floor(r1 / cols);
-            const ix2 = r2 % cols; const iy2 = Math.floor(r2 / cols);
+            const p1 = getHousePos(r1, roomCount);
+            // Fix circular wrapping logically (1->2->3->4->1)
+            // But if r2 is actually 1 (wrapped), getHousePos(1) handles it.
+            // Wait, for 4 rooms: 0->1 (idx 1->2), 1->2 (idx 2->3), 2->3 (idx 3->4), 3->0 (idx 4->1)
+            // In loop above: r2 = (currentRoomIdx + 1) % roomCount. If current=3, +1=4, %4=0. +1 => 1. Correct.
 
-            const x1 = canvasPad + ix1 * cellW + cellW / 2;
-            const y1 = canvasPad + iy1 * cellH + cellH / 2;
-            const x2 = canvasPad + ix2 * cellW + cellW / 2;
-            const y2 = canvasPad + iy2 * cellH + cellH / 2;
+            const p2 = getHousePos((r2 === 0 ? roomCount : r2), roomCount); // getHousePos checks 1-based index
 
-            const kX = x1 + (x2 - x1) * easeT;
-            const kY = y1 + (y2 - y1) * easeT - 10;
+            // Interpolate center points (approximate center of house based on size)
+            // House draw offset is (x, y) top-left. Center is roughly x+30, y+40?
+            // drawHouse uses translate(x,y). House size ~60x80 bounding box.
+            // Let's aim for the "door" area for the killer.
+
+            const startX = p1.x + 30; const startY = p1.y + 60;
+            const endX = p2.x + 30; const endY = p2.y + 60;
+
+            const kX = startX + (endX - startX) * easeT;
+            const kY = startY + (endY - startY) * easeT - 10;
             const isWalking = (t > 0.2 && t < 0.8);
 
             // Draw "THE KILLER" (Shadowy figure)
