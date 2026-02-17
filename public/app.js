@@ -623,33 +623,57 @@ function setDiceFace(el, val) {
 // --- GIFT BETTING LOGIC ---
 let selectedGiftForBet = null;
 
-window.openGiftBetModal = async function () {
-    const list = document.getElementById('gift-bet-list');
-    list.innerHTML = '<div class="empty-state">Загрузка...</div>';
-    document.getElementById('gift-bet-modal').classList.remove('hidden');
+window.setBetMode = function (mode) {
+    const tonBtn = document.getElementById('bet-mode-ton');
+    const giftBtn = document.getElementById('bet-mode-gifts');
+    const tonArea = document.getElementById('bet-ton-input-area');
+    const giftArea = document.getElementById('bet-gift-input-area');
+    const betInput = document.getElementById('bet-amount');
+
+    if (mode === 'ton') {
+        tonBtn.classList.add('active');
+        giftBtn.classList.remove('active');
+        tonArea.classList.remove('hidden');
+        giftArea.classList.add('hidden');
+        selectedGiftForBet = null;
+        betInput.disabled = false;
+        betInput.style.color = '';
+    } else {
+        tonBtn.classList.remove('active');
+        giftBtn.classList.add('active');
+        tonArea.classList.add('hidden');
+        giftArea.classList.remove('hidden');
+        loadInventoryForBet();
+    }
+};
+
+async function loadInventoryForBet() {
+    const list = document.getElementById('gift-selection-list');
+    list.innerHTML = '<div class="empty-state">...</div>';
 
     try {
         const { inventory } = await api('/api/inventory');
         if (!inventory || inventory.length === 0) {
-            list.innerHTML = '<div class="premium-empty"><p>Инвентарь пуст</p></div>';
+            list.innerHTML = '<div style="grid-column: 1/-1; padding: 20px; text-align: center; font-size: 11px; opacity: 0.5;">Инвентарь пуст</div>';
             return;
         }
 
         list.innerHTML = inventory.map(item => `
-            <div class="shop-item glass-card" onclick="selectGiftForBet(${item.instance_id}, '${item.title}', ${item.price})">
-                <div class="shop-item-icon">${getGiftEmoji(item.model)}</div>
-                <div class="shop-item-info">
-                    <div class="shop-item-title">${item.title}</div>
-                    <div class="shop-item-price">${item.price} TON</div>
-                </div>
+            <div class="gift-select-card" onclick="setBetGift(${item.instance_id}, '${item.title.replace(/'/g, "\\'")}', ${item.price}, this)">
+                <div class="gift-avatar"><img src="${getGiftImg(item.model)}" alt=""></div>
+                <div class="gift-title">${item.title}</div>
+                <div class="gift-cost">${item.price} TON</div>
             </div>
         `).join('');
     } catch (e) {
-        list.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+        list.innerHTML = '<div class="empty-state">Ошибка</div>';
     }
-};
+}
 
-window.selectGiftForBet = function (instanceId, title, price) {
+window.setBetGift = function (instanceId, title, price, el) {
+    document.querySelectorAll('.gift-select-card').forEach(c => c.classList.remove('active'));
+    if (el) el.classList.add('active');
+
     selectedGiftForBet = { instanceId, title, price };
     const betInput = document.getElementById('bet-amount');
     if (betInput) {
@@ -657,25 +681,14 @@ window.selectGiftForBet = function (instanceId, title, price) {
         betInput.disabled = true;
         betInput.style.color = 'var(--gold)';
     }
-    toast(`Выбран подарок: ${title}`, 'success');
-    closeModal('gift-bet-modal');
-
-    // Add visual indicator to the trigger
-    const btn = document.querySelector('.gift-bet-trigger');
-    if (btn) btn.innerHTML = '✅';
+    toast(`Выбран: ${title}`, 'success');
 };
 
-// Reset gift bet when typing manually
-document.getElementById('bet-amount')?.addEventListener('input', () => {
-    if (selectedGiftForBet) {
-        selectedGiftForBet = null;
-        const betInput = document.getElementById('bet-amount');
-        betInput.disabled = false;
-        betInput.style.color = '';
-        const btn = document.querySelector('.gift-bet-trigger');
-        if (btn) btn.innerHTML = '🎁';
-    }
-});
+function getGiftImg(model) {
+    if (!model) return 'https://i.imgur.com/8YvYyZp.png';
+    if (model.startsWith('http')) return model;
+    return `models/${model}/photo.png`; // Assuming local storage pattern
+}
 
 // --- SHOP TAB LOGIC ---
 function switchShopTab(tab) {
@@ -706,11 +719,12 @@ async function loadMarketplace() {
 
         list.innerHTML = listings.map(item => `
             <div class="shop-item glass-card">
+                <a href="${getGiftLink(item.gift_id)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
                 <div class="marketplace-badge">PLAYER</div>
-                <div class="shop-item-icon">${getGiftEmoji(item.model)}</div>
+                <div class="shop-item-icon"><img src="${getGiftImg(item.model)}" alt=""></div>
                 <div class="shop-item-info">
-                    <div class="shop-item-title" style="font-size: 11px; font-weight: 800;">${item.title}</div>
-                    <div class="shop-item-price" style="color: var(--gold);">${item.price.toFixed(2)} TON</div>
+                    <div class="shop-item-title">${item.title}</div>
+                    <div class="shop-item-price">${item.price.toFixed(2)} TON</div>
                     <div class="shop-item-seller" style="font-size: 8px; opacity: 0.5;">@${item.seller_name || 'Anonymous'}</div>
                 </div>
                 <button class="buy-btn" onclick="buyFromMarket(${item.id})" style="margin-top: 5px;">КУПИТЬ</button>
@@ -738,24 +752,55 @@ async function openInventory() {
     document.getElementById('inventory-modal').classList.remove('hidden');
 
     try {
-        const { inventory } = await api('/api/inventory');
-        if (inventory.length === 0) {
+        const { inventory, listings } = await api('/api/inventory/combined');
+
+        if (inventory.length === 0 && listings.length === 0) {
             list.innerHTML = '<p class="empty-state">У вас пока нет подарков</p>';
             return;
         }
 
-        list.innerHTML = inventory.map(item => `
+        let html = '';
+
+        // Items in inventory
+        html += inventory.map(item => `
             <div class="shop-item glass-card">
-                <div class="shop-item-icon">${getGiftEmoji(item.model)}</div>
+                <a href="${getGiftLink(item.gift_id)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
+                <div class="shop-item-icon"><img src="${getGiftImg(item.model)}" alt=""></div>
                 <div class="shop-item-info">
                     <div class="shop-item-title">${item.title}</div>
                 </div>
                 <button class="buy-btn" onclick="openListSale(${item.instance_id})">ПРОДАТЬ</button>
             </div>
         `).join('');
+
+        // Items already listed
+        html += listings.map(item => `
+            <div class="shop-item glass-card listing-active">
+                <a href="${getGiftLink(item.gift_id)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
+                <div class="marketplace-badge" style="background:var(--red)">LISTED</div>
+                <div class="shop-item-icon" style="opacity: 0.5;"><img src="${getGiftImg(item.model)}" alt=""></div>
+                <div class="shop-item-info">
+                    <div class="shop-item-title">${item.title}</div>
+                    <div class="shop-item-price" style="font-size: 10px;">На продаже: ${item.price} TON</div>
+                </div>
+                <button class="buy-btn danger" onclick="cancelListing(${item.id})" style="background:rgba(255,59,48,0.2); border-color:var(--red); color:var(--red)">СНЯТЬ</button>
+            </div>
+        `).join('');
+
+        list.innerHTML = html;
     } catch (e) {
         list.innerHTML = `<p class="empty-state" style="color:var(--red)">Ошибка: ${e.message}</p>`;
     }
+}
+
+async function cancelListing(listingId) {
+    if (!confirm('Вы уверены, что хотите снять предмет с продажи?')) return;
+    try {
+        await api('/api/marketplace/cancel', 'POST', { listingId });
+        toast('Предмет снят с продажи', 'success');
+        openInventory(); // Refresh
+        if (activeTab === 'shop') loadMarketplace(); // Also refresh markteplace if on that tab
+    } catch (e) { toast(e.message, 'error'); }
 }
 
 function openListSale(instanceId) {
@@ -833,13 +878,14 @@ async function loadGifts() {
             const card = document.createElement('div');
             card.className = 'gift-card';
             card.innerHTML = `
+                <a href="${getGiftLink(g.id)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
                 <div class="gift-img-wrap">
-                    <img src="${g.model || 'https://i.imgur.com/8YvYyZp.png'}" class="gift-img">
+                    <img src="${getGiftImg(g.model)}" class="gift-img">
                 </div>
                 <div class="gift-info">
                     <div class="gift-name">${g.title}</div>
                     <div class="gift-price">${g.price} TON</div>
-                    <button class="gift-buy-btn" data-id="${g.id}" data-name="${g.title.replace(/'/g, "\\'")}" data-price="${g.price}">Купить</button>
+                    <button class="gift-buy-btn" data-id="${g.id}">Купить</button>
                 </div>
             `;
             card.querySelector('.gift-buy-btn').onclick = () => window.openBuyModal(g.id, g.title, g.price);
@@ -848,6 +894,10 @@ async function loadGifts() {
     } catch (e) { }
 }
 window.loadGifts = loadGifts;
+
+function getGiftLink(id) {
+    return `https://t.me/nft/gift/${id}`; // Simplified link format as requested
+}
 
 let currentBuyId = null;
 let currentBuyPrice = 0;

@@ -587,6 +587,20 @@ app.post('/api/marketplace/buy', auth, (req, res) => {
     } catch (e) { res.status(400).secure({ error: e.message }); }
 });
 
+app.post('/api/marketplace/cancel', auth, (req, res) => {
+    const { listingId } = req.body;
+    try {
+        marketplaceOps.cancel(req.tgUser.id, listingId);
+        res.secure({ success: true });
+    } catch (e) { res.status(400).secure({ error: e.message }); }
+});
+
+app.get('/api/inventory/combined', auth, (req, res) => {
+    const inventory = inventoryOps.getByUser(req.tgUser.id);
+    const listings = marketplaceOps.getByUser(req.tgUser.id);
+    res.secure({ inventory, listings });
+});
+
 // --- DAILY SPIN ---
 
 app.post('/api/daily-spin', auth, (req, res) => {

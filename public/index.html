@@ -9,7 +9,7 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tonweb@0.0.66/dist/tonweb.bundle.js"></script>
-  <link rel="stylesheet" href="style.css?v=8.0">
+  <link rel="stylesheet" href="style.css?v=10.0">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -337,7 +337,7 @@
             <div class="bet-input-wrap" style="margin-bottom: 6px;">
               <input type="number" id="plinko-bet-amount" placeholder="Ставка" value="1.0" step="0.1">
               <button class="bet-max"
-                onclick="document.getElementById('plinko-bet-amount').value = userBalance.toFixed(2)">MAX</button>
+                onclick="document.getElementById('plinko-bet-amount').value = user.balance.toFixed(2)">MAX</button>
             </div>
             <button class="roll-button" id="plinko-drop-btn" onclick="plinkoDrop()">
               <span class="roll-text">БРОСИТЬ КУБИК</span>
@@ -705,7 +705,12 @@
           <button class="close-modal-btn" onclick="closeModal('bet-modal')">×</button>
         </div>
 
-        <div class="bet-amount-section-modal">
+        <div class="bet-modes-tabs">
+          <button class="bet-mode-tab active" id="bet-mode-ton" onclick="setBetMode('ton')">TON</button>
+          <button class="bet-mode-tab" id="bet-mode-gifts" onclick="setBetMode('gifts')">ПОДАРКИ</button>
+        </div>
+
+        <div class="bet-amount-section-modal" id="bet-ton-input-area">
           <label>Сумма ставки</label>
           <div class="bet-input-container">
             <button class="bet-adjust" id="btn-half">/2</button>
@@ -721,16 +726,13 @@
             <button class="quick-bet active" data-amount="10">10</button>
             <button class="quick-bet" data-amount="20">20</button>
             <button class="quick-bet" data-amount="max">MAX</button>
-            <button class="quick-bet gift-bet-trigger" onclick="openGiftBetModal()"
-              style="background: var(--gold-dim); border-color: var(--gold); display: flex; align-items: center; justify-content: center;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5" width="14" height="14">
-                <polyline points="20 12 20 22 4 22 4 12" />
-                <rect x="2" y="7" width="20" height="5" />
-                <line x1="12" y1="22" x2="12" y2="7" />
-                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
-                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-              </svg>
-            </button>
+          </div>
+        </div>
+
+        <div class="gift-selection-area hidden" id="bet-gift-input-area">
+          <label>Выберите подарок из инвентаря</label>
+          <div class="gift-selection-scroll" id="gift-selection-list">
+            <!-- JS dynamic content -->
           </div>
         </div>
 
@@ -871,7 +873,7 @@
     </div>
 
     <div id="toast" class="toast"></div>
-    <script src="app.js?v=8.0"></script>
+    <script src="app.js?v=10.0"></script>
     <!-- Daily Spin Modal -->
     <div id="daily-spin-modal" class="modal-overlay hidden">
       <div class="modal-box daily-spin-box">

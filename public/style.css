@@ -4511,6 +4511,212 @@ input:checked+.toggle-slider:before {
   z-index: 1;
 }
 
+/* --- PREMIUM GIFT CARDS & SHOP --- */
+.shop-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 12px !important;
+  padding: 10px 0 !important;
+}
+
+.gift-card,
+.shop-item {
+  position: relative !important;
+  background: var(--card2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 20px !important;
+  padding: 12px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.gift-img-wrap,
+.shop-item-icon {
+  width: 100% !important;
+  aspect-ratio: 1/1 !important;
+  background: linear-gradient(135deg, rgba(255, 204, 0, 0.08) 0%, transparent 100%) !important;
+  border-radius: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  border: 1.5px solid rgba(255, 204, 0, 0.12) !important;
+  font-size: 32px !important;
+}
+
+.gift-img,
+.shop-item-icon img,
+.gift-avatar img {
+  width: 75% !important;
+  height: 75% !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 0 15px rgba(255, 204, 0, 0.3)) !important;
+}
+
+.gift-info-link {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  width: 20px !important;
+  height: 20px !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  text-decoration: none !important;
+  z-index: 20 !important;
+  backdrop-filter: blur(4px) !important;
+  transition: all 0.2s !important;
+}
+
+.gift-info-link:active {
+  transform: scale(0.85) !important;
+  background: var(--gold) !important;
+  color: #000 !important;
+}
+
+.gift-name,
+.shop-item-title {
+  font-weight: 800 !important;
+  font-size: 12px !important;
+  color: var(--t1) !important;
+  margin-top: 4px !important;
+}
+
+.gift-price,
+.shop-item-price {
+  font-weight: 900 !important;
+  font-size: 14px !important;
+  color: var(--gold) !important;
+}
+
+.gift-buy-btn,
+.buy-btn {
+  width: 100% !important;
+  padding: 10px !important;
+  border-radius: 12px !important;
+  background: var(--bg3) !important;
+  border: 1px solid var(--border3) !important;
+  color: var(--t2) !important;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+  text-transform: uppercase !important;
+}
+
+.gift-buy-btn:active,
+.buy-btn:active {
+  background: var(--gold) !important;
+  color: #000 !important;
+  border-color: var(--gold) !important;
+}
+
+/* --- BET MODES --- */
+.bet-modes-tabs {
+  display: flex !important;
+  gap: 6px !important;
+  background: var(--bg) !important;
+  padding: 4px !important;
+  border-radius: 14px !important;
+  margin-bottom: 12px !important;
+  border: 1px solid var(--border3) !important;
+}
+
+.bet-mode-tab {
+  flex: 1 !important;
+  padding: 10px !important;
+  border-radius: 10px !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--t4) !important;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+}
+
+.bet-mode-tab.active {
+  background: var(--card2) !important;
+  color: var(--gold) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+.gift-selection-area {
+  margin-top: 10px !important;
+}
+
+.gift-selection-scroll {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 8px !important;
+  max-height: 180px !important;
+  overflow-y: auto !important;
+  padding: 4px !important;
+}
+
+/* Card in bet modal */
+.gift-select-card {
+  background: var(--bg2) !important;
+  border: 1.5px solid var(--border) !important;
+  border-radius: 12px !important;
+  padding: 8px !important;
+  text-align: center !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+  position: relative !important;
+}
+
+.gift-select-card.active {
+  border-color: var(--gold) !important;
+  background: var(--gold-dim) !important;
+  box-shadow: 0 0 10px rgba(255, 174, 0, 0.15) !important;
+}
+
+.gift-select-card .gift-avatar {
+  width: 40px !important;
+  height: 40px !important;
+  margin: 0 auto 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.gift-select-card .gift-title {
+  font-size: 8px !important;
+  font-weight: 800 !important;
+  color: var(--t2) !important;
+  display: block;
+}
+
+.gift-select-card .gift-cost {
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  color: var(--gold) !important;
+}
+
+.marketplace-badge {
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  font-size: 7px !important;
+  font-weight: 900 !important;
+  color: #000 !important;
+  background: var(--gold) !important;
+  padding: 2px 5px !important;
+  border-radius: 4px !important;
+  z-index: 5 !important;
+}
+
 /* Fix mobile nav icon for bonuses */
 [data-tab="bonuses"] svg {
   color: var(--t3);

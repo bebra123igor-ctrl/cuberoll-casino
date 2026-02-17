@@ -529,6 +529,7 @@ const inventoryOps = {
       SELECT i.id as instance_id, g.* FROM user_inventory i
       JOIN gifts g ON i.gift_id = g.id
       WHERE i.telegram_id = ?
+      AND i.id NOT IN (SELECT gift_instance_id FROM marketplace_listings WHERE status = 'active')
     `).all(tgId);
   },
   remove(instanceId) {
@@ -559,7 +560,7 @@ const marketplaceOps = {
     `).all();
   },
   buy(buyerId, listingId) {
-    const listing = db.prepare('SELECT * FROM marketplace_listings WHERE id = ? AND status = "active"').get(listingId);
+    const listing = db.prepare("SELECT * FROM marketplace_listings WHERE id = ? AND status = 'active'").get(listingId);
     if (!listing) throw new Error('Listing not found');
     if (listing.seller_id === buyerId) throw new Error('Cannot buy your own item');
 
@@ -574,11 +575,20 @@ const marketplaceOps = {
       // 3. Move inventory
       db.prepare('UPDATE user_inventory SET telegram_id = ? WHERE id = ?').run(buyerId, listing.gift_instance_id);
       // 4. Mark listing as sold
-      db.prepare('UPDATE marketplace_listings SET status = "sold" WHERE id = ?').run(listingId);
+      db.prepare("UPDATE marketplace_listings SET status = 'sold' WHERE id = ?").run(listingId);
     })();
   },
   cancel(sellerId, listingId) {
-    return db.prepare('UPDATE marketplace_listings SET status = "cancelled" WHERE id = ? AND seller_id = ? AND status = "active"').run(listingId, sellerId);
+    return db.prepare("UPDATE marketplace_listings SET status = 'cancelled' WHERE id = ? AND seller_id = ? AND status = 'active'").run(listingId, sellerId);
+  },
+  getByUser(sellerId) {
+    return db.prepare(`
+      SELECT m.*, g.title, g.model, g.background, g.symbol
+      FROM marketplace_listings m
+      JOIN user_inventory i ON m.gift_instance_id = i.id
+      JOIN gifts g ON i.gift_id = g.id
+      WHERE m.seller_id = ? AND m.status = 'active'
+    `).all(sellerId);
   }
 };
 
