@@ -57,16 +57,22 @@ body {
 
 
 .wallet-btn {
-  background: var(--accent);
-  border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--t1);
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.wallet-btn:active {
+  transform: scale(0.92);
+  border-color: var(--gold);
 }
 
 /* ANTI-ZOOM & OVERFLOW */
@@ -803,14 +809,13 @@ button:active,
   }
 }
 
-/* Scrollable wrapper inside tab */
-/* Consolidated Scrollable wrapper */
+/* Standard Scrollable wrapper */
 .tab-scrollable {
   flex: 1;
   overflow-y: auto !important;
   overflow-x: hidden;
-  padding: 16px 16px 120px !important;
-  /* Large padding to clear nav bar */
+  padding: 16px 16px 40px;
+  /* Normal bottom padding, no hacks needed */
   -webkit-overflow-scrolling: touch;
   min-height: 0;
 }
@@ -1101,10 +1106,7 @@ button:active,
   max-width: 280px !important;
 }
 
-/* ═══ nav ═══ */
-/* Consolidate Nav Tabs and Fix Visibility */
-/* Consolidate Nav Tabs and Fix Visibility */
-/* Consolidate Nav Tabs and Fix Visibility */
+/* Physical Nav Tabs in flex flow */
 .nav-tabs {
   flex-shrink: 0;
   display: flex;
@@ -1113,10 +1115,6 @@ button:active,
   border-top: 1px solid var(--border2);
   gap: 2px;
   z-index: 1000;
-  position: absolute;
-  /* Absolute ensures it sits at bottom of relative parent */
-  bottom: 0;
-  left: 0;
   width: 100%;
 }
 
@@ -1158,17 +1156,13 @@ button:active,
   transform: scale(.92);
 }
 
-/* RESTORED TABS STYLES */
 .tab-content {
   display: none;
   flex: 1;
+  /* Key: grows to fill space between header and footer */
   flex-direction: column;
   overflow: hidden;
-  /* Contains the scrollable area */
-  position: relative;
-  width: 100%;
   min-height: 0;
-  /* Critical for nested flex scrolling */
 }
 
 .tab-content.active {
