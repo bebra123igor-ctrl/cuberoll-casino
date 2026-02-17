@@ -230,6 +230,10 @@ async function init() {
                         if (h) h.textContent = `Минимум: ${window.appSettings.minDeposit} TON`;
                     }
 
+                    document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
+                    document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
+                    document.getElementById('user-initial').textContent = (user.firstName || user.username || 'P')[0].toUpperCase();
+
                     setBalance(user.balance);
 
                     // Update Referral Info
@@ -248,6 +252,7 @@ async function init() {
                     try { await loadGifts(); } catch (e) { console.error('[Init] Gifts failed', e); }
                     try { initEventListeners(); } catch (e) { console.error('[Init] Listeners failed', e); }
                     try { initPlinko(); } catch (e) { console.error('[Init] Plinko failed', e); }
+                    try { initWheelLabels(); } catch (e) { }
 
                     finishLoading();
                     resolve();
@@ -1660,6 +1665,67 @@ async function startDailySpin() {
 
     } catch (e) {
         toast(e.message, 'error');
+    }
+}
+
+async function redeemPromo() {
+    const input = document.getElementById('promo-code-input');
+    const code = input.value.trim();
+    if (!code) return toast('Введите промокод', 'error');
+
+    try {
+        const res = await api('/api/promocodes/redeem', 'POST', { code });
+        toast(res.message, 'success');
+        setBalance(res.newBalance, true);
+        input.value = '';
+    } catch (e) {
+        toast(e.message, 'error');
+    }
+}
+
+function initWheelLabels() {
+    const wrap = document.getElementById('wheel-labels');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    const prizes = ['0.01', '💀', '0.05', '💀', '0.1', '💀', '0.5', '💀', '1.0', '💀', '10.0', '💀'];
+    prizes.forEach((p, i) => {
+        const lbl = document.createElement('div');
+        lbl.className = 'wheel-segment-label';
+        lbl.style.transform = `rotate(${i * 30 + 15}deg)`;
+        lbl.innerHTML = `<span style="display:block; transform: rotate(-90deg)">${p}</span>`;
+        wrap.appendChild(lbl);
+    });
+}
+
+async function tonDeposit() {
+    if (!tonConnectUI.connected) {
+        toast('Сначала подключите кошелек!', 'error');
+        tonConnectUI.openModal();
+        return;
+    }
+
+    const amt = parseFloat(document.getElementById('dep-amount').value) || 0;
+    const btn = document.getElementById('start-deposit-btn');
+    if (btn.disabled) return;
+    btn.disabled = true;
+
+    try {
+        const req = await api('/api/deposit/request', 'POST', { amount: amt });
+        const tx = {
+            validUntil: Math.floor(Date.now() / 1000) + 600,
+            messages: [{
+                address: req.address,
+                amount: (amt * 1e9).toString(),
+                payload: TonWeb.utils.bytesToBase64(new Uint8Array([0, 0, 0, 0, ...Buffer.from(req.comment)]))
+            }]
+        };
+
+        await tonConnectUI.sendTransaction(tx);
+        toast('Запрос отправлен! Ожидайте зачисления.', 'success');
+    } catch (e) {
+        toast(e.message || 'Ошибка оплаты', 'error');
+    } finally {
+        btn.disabled = false;
     }
 }
 

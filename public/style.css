@@ -4195,34 +4195,29 @@ input:checked+.toggle-slider:before {
 }
 
 /* Plinko Game Styles */
-.plinko-arena {
-  background: var(--bg2);
-  border-radius: 20px;
-  border: 1px solid var(--border);
+.plinko-arena-safe {
   position: relative;
+  width: 100%;
+  max-width: 100vw;
   overflow: hidden;
   margin-bottom: 20px;
-  display: flex;
-  flex-direction: column;
-  padding: 10px;
+}
+
+.plinko-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1.1;
+  /* slightly taller to fit pegs */
+  background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0f0f1a 100%);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1.5px solid var(--border3);
 }
 
 #plinko-canvas {
   width: 100%;
-  height: 340px;
-  background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0f0f1a 100%);
-  border-radius: 12px;
-  touch-action: none;
-}
-
-@media (max-width: 600px) {
-  .plinko-arena {
-    padding: 0;
-    border-radius: 0;
-    margin: -8px -8px 12px -8px;
-    background: transparent;
-    border: none;
-  }
+  height: 100%;
+  display: block;
 }
 
 .plinko-multipliers {
@@ -4333,4 +4328,87 @@ input:checked+.toggle-slider:before {
   100% {
     transform: translate(-1px, 1px) rotate(-0.4deg);
   }
+}
+
+/* --- WHEEL LABELS --- */
+.wheel-labels {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.wheel-segment-label {
+  position: absolute;
+  width: 40px;
+  height: 50%;
+  left: calc(50% - 20px);
+  top: 0;
+  transform-origin: 50% 100%;
+  display: flex;
+  justify-content: center;
+  padding-top: 25px;
+  font-size: 11px;
+  font-weight: 1000;
+  color: #fff;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.wheel-segment-label span {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 0, 0, 0.5);
+  display: block;
+  user-select: none;
+}
+
+/* --- PROMO SECTION --- */
+.promo-input-group {
+  display: flex;
+  gap: 8px;
+  background: var(--bg);
+  border: 1.5px solid var(--border3);
+  border-radius: 14px;
+  padding: 6px;
+  margin-top: 10px;
+}
+
+.promo-input-group input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #fff;
+  padding: 8px 12px;
+  font-weight: 900;
+  font-size: 14px;
+  text-transform: uppercase;
+  outline: none;
+  font-family: 'Outfit', sans-serif;
+}
+
+.promo-input-group button {
+  background: var(--gold);
+  color: #000;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 10px;
+  font-weight: 900;
+  font-size: 11px;
+  cursor: pointer;
+  transition: transform 0.1s;
+  box-shadow: 0 4px 10px rgba(255, 174, 0, 0.2);
+}
+
+.promo-input-group button:active {
+  transform: scale(0.96);
+}
+
+/* Fix mobile nav icon for bonuses */
+[data-tab="bonuses"] svg {
+  color: var(--t3);
+}
+
+.nav-tab.active[data-tab="bonuses"] svg {
+  color: var(--gold);
 }

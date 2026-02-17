@@ -185,12 +185,12 @@
           </svg></span>
         <span class="nav-label">Игра</span>
       </button>
-      <button class="nav-tab" data-tab="history" onclick="switchTab('history')">
+      <button class="nav-tab" data-tab="bonuses" onclick="switchTab('bonuses')">
         <span class="icon"><svg viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="9" />
-            <polyline points="12 7 12 12 15 15" />
+            <path d="M20 12l-8 8-8-8M12 4v16" stroke="currentColor" fill="none" stroke-width="2" />
+            <circle cx="12" cy="12" r="9" stroke="currentColor" fill="none" stroke-width="2" />
           </svg></span>
-        <span class="nav-label">История</span>
+        <span class="nav-label">Бонусы</span>
       </button>
       <button class="nav-tab" data-tab="shop" onclick="switchTab('shop')">
         <span class="icon"><svg viewBox="0 0 24 24">
@@ -229,18 +229,6 @@
           <button class="game-sel-btn active" id="game-tab-dice" onclick="selectGame('dice')">Dice</button>
           <button class="game-sel-btn" id="game-tab-crash" onclick="selectGame('crash')">Rocket</button>
           <button class="game-sel-btn" id="game-tab-plinko" onclick="selectGame('plinko')">Plinko</button>
-        </div>
-
-        <div class="daily-bonus glass-card" id="daily-spin-box"
-          style="margin-top: 5px; margin-bottom: 15px; border-color: var(--gold-dim);">
-          <div class="bonus-content">
-            <div class="bonus-icon">🎡</div>
-            <div class="bonus-info">
-              <div class="bonus-title">Колесо Фортуны</div>
-              <div class="bonus-text">Испытай удачу раз в 24 часа!</div>
-            </div>
-          </div>
-          <button class="claim-btn-premium" onclick="openDailySpin()">КРУТИТЬ</button>
         </div>
 
         <!-- КУБИКИ -->
@@ -362,8 +350,10 @@
 
         <!-- PLINKO -->
         <div id="game-view-plinko" class="hidden">
-          <div class="plinko-arena">
-            <canvas id="plinko-canvas"></canvas>
+          <div class="plinko-arena-safe">
+            <div class="plinko-canvas-wrapper">
+              <canvas id="plinko-canvas"></canvas>
+            </div>
             <div class="plinko-multipliers" id="plinko-mults">
               <!-- JS will fill this -->
             </div>
@@ -384,16 +374,38 @@
       </div> <!-- end tab-scrollable -->
     </div>
 
-    <div class="tab-content" id="content-history">
+    <div class="tab-content" id="content-bonuses">
       <div class="tab-scrollable">
-        <h3 class="section-title">История</h3>
+        <h3 class="section-title">Центр Бонусов</h3>
+
+        <!-- Wheel of Fortune Integration -->
+        <div class="daily-bonus glass-card" style="border-color: var(--gold-dim); margin-bottom: 25px;">
+          <div class="bonus-content">
+            <div class="bonus-icon">🎡</div>
+            <div class="bonus-info">
+              <div class="bonus-title">Колесо Фортуны</div>
+              <div class="bonus-text">Бесплатный спин каждые 24 часа!</div>
+            </div>
+          </div>
+          <button class="claim-btn-premium" onclick="openDailySpin()">КРУТИТЬ</button>
+        </div>
+
+        <!-- Promo Code Section -->
+        <div class="promo-section glass-card">
+          <h4 style="margin-bottom: 10px; font-weight: 800; color: var(--gold);">ПРОМОКОД</h4>
+          <p style="font-size: 11px; color: var(--t3); margin-bottom: 15px;">Введите бонусный код для мгновенного
+            зачисления средств на баланс.</p>
+          <div class="promo-input-group">
+            <input type="text" id="promo-code-input" placeholder="WINTER2026" maxlength="16">
+            <button onclick="redeemPromo()">АКТИВИРОВАТЬ</button>
+          </div>
+        </div>
+
+        <div style="height: 30px;"></div>
+        <h3 class="section-title">Последние игры</h3>
         <div class="history-list" id="history-list">
           <div class="empty-state">
-            <div class="empty-icon"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5">
-                <circle cx="12" cy="12" r="9" />
-                <polyline points="12 7 12 12 15 15" />
-              </svg></div>
-            <p>Пока пусто</p>
+            <p>Загрузка истории...</p>
           </div>
         </div>
       </div>
@@ -478,13 +490,21 @@
                   <input type="number" inputmode="decimal" id="dep-amount" placeholder="0.00" value="1.0">
                 </div>
                 <div class="quick-amounts">
+                  <button class="quick-amt-btn" onclick="document.getElementById('dep-amount').value='1.5'">1.5</button>
+                  <button class="quick-amt-btn" onclick="document.getElementById('dep-amount').value='5.0'">5.0</button>
+                  <button class="quick-amt-btn"
+                    onclick="document.getElementById('dep-amount').value='10.0'">10.0</button>
                 </div>
 
                 <div class="dep-info-box">
+                  <p id="dep-min-hint" style="margin-bottom: 5px; font-weight: 800; color: var(--gold);">Минимум: 0.1
+                    TON</p>
                   <p>Баланс зачисляется <span class="highlight">автоматически</span> сразу после подтверждения
-                    транзакции
-                    в сети TON.</p>
+                    транзакции в сети TON.</p>
                 </div>
+
+                <button class="claim-btn-premium" style="width: 100%; margin-top: 15px;" id="start-deposit-btn"
+                  onclick="tonDeposit()">ПОПОЛНИТЬ ЧЕРЕЗ КОШЕЛЕК</button>
               </div>
             </div>
           </div>
@@ -819,9 +839,11 @@
         </div>
         <div class="wheel-container">
           <div id="wheel" class="wheel-visual">
-            <div class="wheel-pointer">▼</div>
-            <div class="wheel-segments" id="wheel-segments"></div>
+            <div class="wheel-labels" id="wheel-labels">
+              <!-- Segments 1-12 -->
+            </div>
           </div>
+          <div class="wheel-pointer">▼</div>
         </div>
         <p class="spin-hint">Шанс на супер-приз (10 TON) — 0.1%!</p>
         <button id="spin-start-btn" class="roll-button" onclick="startDailySpin()">КРУТИТЬ</button>
