@@ -568,45 +568,21 @@
 
             <div id="ton-deposit-ui">
               <div class="dep-input-zone">
-                <div class="manual-deposit-box">
-                  <p class="manual-label">АДРЕС КОШЕЛЬКА (Нажми чтобы скопировать)</p>
-                  <div class="copy-field" onclick="copyAddress()">
-                    <span id="system-wallet">UQ...Loading</span>
-                    <svg viewBox="0 0 24 24" width="16" height="16">
-                      <path
-                        d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
-                        fill="currentColor" />
-                    </svg>
-                  </div>
-
-                  <p class="manual-label" style="margin-top:15px">КОММЕНТАРИЙ (MEMO) - ОБЯЗАТЕЛЬНО!</p>
-                  <div class="copy-field" onclick="copyComment()">
-                    <span id="user-memo">...</span>
-                    <svg viewBox="0 0 24 24" width="16" height="16">
-                      <path
-                        d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
-                        fill="currentColor" />
-                    </svg>
-                  </div>
-
-                  <div class="dep-info-box" style="margin-top:20px">
-                    <p>⚠️ Переводите <b>только TON</b>. Обязательно укажите <b>комментарий</b>, иначе средства не
-                      зачислятся!</p>
-                  </div>
+                <label class="dep-input-label">СУММА ПОПОЛНЕНИЯ (TON)</label>
+                <div class="premium-input-group">
+                  <input type="number" inputmode="decimal" id="dep-amount" placeholder="0.00" value="1.0">
                 </div>
+
+                <div class="dep-info-box">
+                  <p id="dep-min-hint">Минимум: <span class="highlight">0.1 TON</span></p>
+                  <p style="margin-top: 5px;">Баланс зачисляется <span class="highlight">автоматически</span> после
+                    транзакции.</p>
+                </div>
+
+                <button class="claim-btn-premium" style="width: 100%; margin-top: 20px; border-radius: 18px;"
+                  id="start-deposit-btn" onclick="directPay()">ПЕРЕЙТИ К ОПЛАТЕ</button>
               </div>
             </div>
-
-            <script>
-              function copyAddress() {
-                const txt = document.getElementById('system-wallet').textContent;
-                navigator.clipboard.writeText(txt).then(() => toast('Адрес скопирован', 'success'));
-              }
-              function copyComment() {
-                const txt = document.getElementById('user-memo').textContent;
-                navigator.clipboard.writeText(txt).then(() => toast('Комментарий скопирован', 'success'));
-              }
-            </script>
           </div>
         </div>
       </div>

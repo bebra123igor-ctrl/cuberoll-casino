@@ -250,15 +250,25 @@ async function init() {
                         if (h) h.textContent = `Минимум: ${window.appSettings.minDeposit} TON`;
                     }
 
-                    // POPULATE MANUAL DEPOSIT FIELDS
-                    if (window.appSettings.walletAddress) {
-                        const walEl = document.getElementById('system-wallet');
-                        if (walEl) walEl.textContent = window.appSettings.walletAddress;
-                    }
-                    if (user && user.telegramId) {
-                        const memoEl = document.getElementById('user-memo');
-                        if (memoEl) memoEl.textContent = user.telegramId;
-                    }
+                    // Direct Pay Helper
+                    window.directPay = function () {
+                        const amount = document.getElementById('dep-amount').value;
+                        if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
+
+                        const address = window.appSettings.walletAddress;
+                        const comment = user.telegramId;
+
+                        if (!address) return toast('Ошибка адреса системы', 'error');
+
+                        // Construct TON link
+                        // Format: ton://transfer/<address>?amount=<nanotons>&text=<comment>
+                        // 1 TON = 1,000,000,000 nanotons
+                        const nano = Math.floor(amount * 1000000000);
+                        const link = `ton://transfer/${address}?amount=${nano}&text=${comment}`;
+
+                        // Open deep link
+                        window.location.href = link;
+                    };
 
                     document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
                     document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
