@@ -250,25 +250,20 @@ async function init() {
                         if (h) h.textContent = `Минимум: ${window.appSettings.minDeposit} TON`;
                     }
 
-                    // Direct Pay Helper
-                    // Direct Pay Helper
                     window.directPay = function () {
-                        const amount = document.getElementById('dep-amount').value;
+                        const val = document.getElementById('dep-amount').value;
+                        const amount = parseFloat(val);
                         if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
 
-                        // Fallback address if settings missing (from user context)
+                        // Fallback address if settings missing
                         const address = window.appSettings.walletAddress || 'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7';
 
-                        // Random 9 digit number
                         const rnd = Math.floor(100000000 + Math.random() * 900000000);
                         const comment = `deposit_${rnd}`;
-
-                        if (!address) return toast('Ошибка адреса системы', 'error');
 
                         const nano = Math.floor(amount * 1000000000);
                         const link = `ton://transfer/${address}?amount=${nano}&text=${comment}`;
 
-                        // Open deep link
                         window.location.href = link;
                     };
 
@@ -2087,7 +2082,11 @@ window.openBetModal = function (game) {
 
     // RESTORED CONFIRM LOGIC
     const confirmBtn = document.getElementById('bet-confirm-btn');
-    confirmBtn.onclick = () => {
+    // Clear old listeners
+    const newBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+
+    newBtn.onclick = () => {
         if (activeBetGame === 'dice') {
             console.log('Confirm clicked for DICE');
             closeModal('bet-modal');
