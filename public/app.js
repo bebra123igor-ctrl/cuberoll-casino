@@ -1127,13 +1127,15 @@ window.selectGame = function (game) {
     const diceView = document.getElementById('game-view-dice');
     const crashView = document.getElementById('game-view-crash');
     const plinkoView = document.getElementById('game-view-plinko');
+    const hideView = document.getElementById('game-view-hide');
     const bDice = document.getElementById('game-tab-dice');
     const bCrash = document.getElementById('game-tab-crash');
     const bPlinko = document.getElementById('game-tab-plinko');
+    const bHide = document.getElementById('game-tab-hide');
 
     // Hide all views first
-    [diceView, crashView, plinkoView].forEach(v => v?.classList.add('hidden'));
-    [bDice, bCrash, bPlinko].forEach(b => b?.classList.remove('active'));
+    [diceView, crashView, plinkoView, hideView].forEach(v => v?.classList.add('hidden'));
+    [bDice, bCrash, bPlinko, bHide].forEach(b => b?.classList.remove('active'));
 
     currentGame = game;
 
@@ -1141,20 +1143,26 @@ window.selectGame = function (game) {
         diceView?.classList.remove('hidden');
         bDice?.classList.add('active');
         stopCrashPolling();
+        stopHidePolling();
     } else if (game === 'crash') {
         crashView?.classList.remove('hidden');
         bCrash?.classList.add('active');
+        stopHidePolling();
         startCrashPolling();
         if (!window._crashInited) initCrashCanvas();
-        else if (!crashAnimationId) renderCrash(); // Only start if not running
+        else if (!crashAnimationId) renderCrash();
     } else if (game === 'plinko') {
         plinkoView?.classList.remove('hidden');
         bPlinko?.classList.add('active');
         stopCrashPolling();
-        // Small delay to let browser show the element (needed for offsetWidth)
-        setTimeout(() => {
-            initPlinko();
-        }, 10);
+        stopHidePolling();
+        setTimeout(() => initPlinko(), 10);
+    } else if (game === 'hide') {
+        hideView?.classList.remove('hidden');
+        bHide?.classList.add('active');
+        stopCrashPolling();
+        startHidePolling();
+        setTimeout(() => initHide(), 10);
     }
 }
 
@@ -1928,6 +1936,7 @@ window.setBetMode = function (mode) {
     const selectors = [
         { ton: 'crash-ton-input-area', gift: 'crash-gift-input-area', bt: 'crash-mode-ton', bg: 'crash-mode-gift' },
         { ton: 'plinko-ton-input-area', gift: 'plinko-gift-input-area', bt: 'plinko-mode-ton', bg: 'plinko-mode-gift' },
+        { ton: 'hide-ton-input-area', gift: 'hide-gift-input-area', bt: 'hide-mode-ton', bg: 'hide-mode-gift' },
         { ton: 'bet-ton-input-area', gift: 'bet-gift-input-area', bt: 'bet-mode-ton', bg: 'bet-mode-gifts' }
     ];
 
@@ -2014,3 +2023,150 @@ function updatePlinkoPreviews() {
         if (preview) preview.textContent = (amt * m).toFixed(2);
     });
 }
+
+// --- HIDE AND SEEK (ПРЯТКИ) ---
+let hideStatus = null;
+let hidePolling = null;
+let hideCanvas = null;
+let hideCtx = null;
+let hideAnimId = null;
+
+function startHidePolling() {
+    if (hidePolling) return;
+    hidePolling = setInterval(pollHide, 1000);
+    pollHide();
+}
+
+function stopHidePolling() {
+    clearInterval(hidePolling);
+    hidePolling = null;
+    cancelAnimationFrame(hideAnimId);
+}
+
+async function pollHide() {
+    try {
+        hideStatus = await api('/api/hide/status');
+        updateHideUI();
+    } catch (e) { }
+}
+
+function updateHideUI() {
+    if (!hideStatus) return;
+    const timer = document.getElementById('hide-timer-display');
+    const phaseText = document.getElementById('hide-phase-text');
+    const voteControls = document.getElementById('hide-voting-controls');
+    const selectControls = document.getElementById('hide-selection-controls');
+
+    if (timer) timer.textContent = Math.ceil(hideStatus.timeLeft || 0);
+    if (phaseText) {
+        const texts = { 'VOTING': 'ГОЛОСОВАНИЕ', 'SELECTION': 'ВЫБОР КОМНАТЫ', 'SEARCHING': 'УБИЙЦА ВЫШЕЛ...', 'RESULT': 'ФИНАЛ' };
+        phaseText.textContent = texts[hideStatus.phase] || hideStatus.phase;
+    }
+
+    if (hideStatus.phase === 'VOTING') {
+        voteControls?.classList.remove('hidden');
+        selectControls?.classList.add('hidden');
+    } else if (hideStatus.phase === 'SELECTION') {
+        voteControls?.classList.add('hidden');
+        selectControls?.classList.remove('hidden');
+        renderRoomsList();
+    } else {
+        voteControls?.classList.add('hidden');
+        selectControls?.classList.add('hidden');
+    }
+}
+
+function renderRoomsList() {
+    const cont = document.getElementById('hide-rooms-container');
+    if (!cont) return;
+    let h = '';
+    for (let i = 1; i <= hideStatus.finalRoomCount; i++) {
+        const r = hideStatus.rooms[i] || [];
+        const isMy = hideStatus.myRoom == i;
+        h += `<div class="room-node ${isMy ? 'active' : ''} ${r.length >= 3 ? 'full' : ''}" onclick="selectHideRoom(${i})">
+                <span class="room-num">${i}</span>
+                <span class="room-p-count">${r.length}/3</span>
+              </div>`;
+    }
+    cont.innerHTML = h;
+}
+
+window.voteHide = async (count) => {
+    try { await api('/api/hide/vote', 'POST', { count }); toast('Голос принят!'); }
+    catch (e) { toast(e.message, 'error'); }
+};
+
+window.selectHideRoom = async (roomId) => {
+    try { await api('/api/hide/select', 'POST', { roomId }); if (window.haptic) haptic.impactOccurred('light'); }
+    catch (e) { toast(e.message, 'error'); }
+};
+
+window.placeHideBet = async () => {
+    const amt = parseFloat(document.getElementById('hide-bet-amount').value);
+    const body = { betAmount: amt };
+    if (betMode === 'gift' && selectedGift) body.giftInstanceId = selectedGift.instance_id;
+    try {
+        await api('/api/hide/bet', 'POST', body);
+        toast('Вы в игре!', 'success');
+        selectedGift = null;
+        pollHide(); // Immediate refresh
+    } catch (e) { toast(e.message, 'error'); }
+};
+
+function initHide() {
+    hideCanvas = document.getElementById('hide-canvas');
+    if (!hideCanvas) return;
+    hideCtx = hideCanvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = hideCanvas.getBoundingClientRect();
+    hideCanvas.width = rect.width * dpr;
+    hideCanvas.height = rect.height * dpr;
+    hideCtx.scale(dpr, dpr);
+    if (!hideAnimId) renderHide();
+}
+
+function renderHide() {
+    if (!hideCtx || currentGame !== 'hide') {
+        hideAnimId = null;
+        return;
+    }
+    hideAnimId = requestAnimationFrame(renderHide);
+
+    const w = hideCanvas.width / (window.devicePixelRatio || 1);
+    const h = hideCanvas.height / (window.devicePixelRatio || 1);
+    hideCtx.clearRect(0, 0, w, h);
+
+    // Grid
+    hideCtx.strokeStyle = 'rgba(255,255,255,0.03)';
+    for (let x = 0; x < w; x += 30) { hideCtx.beginPath(); hideCtx.moveTo(x, 0); hideCtx.lineTo(x, h); hideCtx.stroke(); }
+    for (let y = 0; y < h; y += 30) { hideCtx.beginPath(); hideCtx.moveTo(0, y); hideCtx.lineTo(w, y); hideCtx.stroke(); }
+
+    if (hideStatus && (hideStatus.phase === 'SEARCHING' || hideStatus.phase === 'RESULT')) {
+        const killX = w / 2 + Math.sin(Date.now() / 500) * 40;
+        const killY = h / 2 + Math.cos(Date.now() / 500) * 20;
+
+        hideCtx.save();
+        hideCtx.translate(killX, killY);
+        hideCtx.rotate(Date.now() / 1000);
+        hideCtx.fillStyle = '#e74c3c';
+        hideCtx.shadowBlur = 15; hideCtx.shadowColor = '#e74c3c';
+        hideCtx.fillRect(-20, -20, 40, 40);
+        hideCtx.fillStyle = '#fff';
+        [[0, 0], [-10, -10], [10, 10], [-10, 10], [10, -10]].forEach(p => {
+            hideCtx.beginPath(); hideCtx.arc(p[0], p[1], 3, 0, Math.PI * 2); hideCtx.fill();
+        });
+        hideCtx.restore();
+
+        if (hideStatus.phase === 'RESULT' && hideStatus.myRoom == hideStatus.killerTargetRoom) {
+            hideCtx.fillStyle = '#2ecc71';
+            hideCtx.beginPath();
+            hideCtx.arc(w / 2, h / 2 + 60, 10, 0, Math.PI * 2);
+            hideCtx.fill();
+            hideCtx.fillStyle = '#fff';
+            hideCtx.font = '10px Arial';
+            hideCtx.fillText('YOU SURVIVED', w / 2 - 35, h / 2 + 85);
+        }
+    }
+}
+
+

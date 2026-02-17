@@ -430,6 +430,157 @@ function tickCrash() {
 
 setInterval(tickCrash, 100);
 
+// --- HIDE AND SEEK (ПРЯТКИ) GAME ---
+const hideState = {
+    phase: 'VOTING', // VOTING, SELECTION, SEARCHING, RESULT
+    timeLeft: 15,
+    roomCountVotes: { 4: 0, 8: 0, 12: 0 },
+    finalRoomCount: 4,
+    rooms: {}, // { roomId: [ { telegramId, amount, isGift, giftInstanceId } ] }
+    bets: [], // { telegramId, amount, isGift, giftInstanceId }
+    killerTargetRoom: null,
+    history: [],
+    gameId: Math.random().toString(36).substring(2, 9)
+};
+
+function tickHide() {
+    if (hideState.timeLeft > 0) {
+        hideState.timeLeft -= 0.1;
+    } else {
+        if (hideState.phase === 'VOTING') {
+            // Determine winner of voting
+            const votes = hideState.roomCountVotes;
+            hideState.finalRoomCount = Number(Object.keys(votes).reduce((a, b) => votes[a] >= votes[b] ? a : b));
+            hideState.phase = 'SELECTION';
+            hideState.timeLeft = 15;
+            // Reset rooms
+            hideState.rooms = {};
+            for (let i = 1; i <= hideState.finalRoomCount; i++) hideState.rooms[i] = [];
+        } else if (hideState.phase === 'SELECTION') {
+            hideState.phase = 'SEARCHING';
+            hideState.timeLeft = 5; // Animation time
+
+            // Randomly pick winning room (only one stays alive)
+            const winningRoom = Math.floor(Math.random() * hideState.finalRoomCount) + 1;
+            hideState.killerTargetRoom = winningRoom; // In this game, it's the survivor
+
+            // Process results
+            const mult = hideState.finalRoomCount === 4 ? 1.3 : (hideState.finalRoomCount === 8 ? 2 : 2.5);
+
+            const activeBets = [...hideState.bets];
+            activeBets.forEach(b => {
+                // Find if user is in any room
+                let userRoom = null;
+                for (const rId in hideState.rooms) {
+                    if (hideState.rooms[rId].some(u => u.telegramId === b.telegramId)) {
+                        userRoom = Number(rId);
+                        break;
+                    }
+                }
+
+                if (userRoom === winningRoom) {
+                    // Win
+                    const payout = Math.round(b.amount * mult * 100) / 100;
+                    userOps.updateBalance(b.telegramId, payout, 'hide_win', `Won hide and seek ${mult}x`);
+                    gameOps.create({
+                        telegramId: b.telegramId, betAmount: b.amount, gameType: 'hide',
+                        playerChoice: `room_${userRoom}`, diceResult: String(winningRoom),
+                        multiplier: mult, payout: payout, profit: payout - b.amount, won: 1
+                    });
+                } else {
+                    // Loss (or didn't choose)
+                    gameOps.create({
+                        telegramId: b.telegramId, betAmount: b.amount, gameType: 'hide',
+                        playerChoice: userRoom ? `room_${userRoom}` : 'none', diceResult: String(winningRoom),
+                        multiplier: 0, payout: 0, profit: -b.amount, won: 0
+                    });
+                }
+            });
+        } else if (hideState.phase === 'SEARCHING') {
+            hideState.phase = 'RESULT';
+            hideState.timeLeft = 5;
+        } else if (hideState.phase === 'RESULT') {
+            // Reset game
+            hideState.phase = 'VOTING';
+            hideState.timeLeft = 15;
+            hideState.roomCountVotes = { 4: 0, 8: 0, 12: 0 };
+            hideState.bets = [];
+            hideState.rooms = {};
+            hideState.gameId = Math.random().toString(36).substring(2, 9);
+        }
+    }
+}
+setInterval(tickHide, 100);
+
+app.get('/api/hide/status', auth, (req, res) => {
+    res.secure({
+        ...hideState,
+        myBet: hideState.bets.find(b => b.telegramId === req.tgUser.id),
+        myRoom: Object.keys(hideState.rooms).find(rId => hideState.rooms[rId].some(u => u.telegramId === req.tgUser.id))
+    });
+});
+
+app.post('/api/hide/bet', auth, async (req, res) => {
+    if (hideState.phase !== 'VOTING') return res.status(400).secure({ error: 'Voting already finished' });
+    const u = req.tgUser;
+    const existing = hideState.bets.find(b => b.telegramId === u.id);
+    if (existing) return res.status(400).secure({ error: 'Already placed bet' });
+
+    const { betAmount, giftInstanceId } = req.body;
+    let amt = 0;
+
+    if (giftInstanceId) {
+        const inventory = inventoryOps.getByUser(u.id);
+        const item = inventory.find(i => i.instance_id === giftInstanceId);
+        if (!item) return res.status(404).secure({ error: 'Gift not found' });
+        amt = item.price;
+        inventoryOps.remove(giftInstanceId);
+    } else {
+        amt = parseFloat(betAmount);
+        const user = userOps.get(u.id);
+        if (user.balance < amt) return res.status(400).secure({ error: 'Insufficient balance' });
+        userOps.updateBalance(u.id, -amt, 'hide_bet', 'Hide and seek bet');
+    }
+
+    hideState.bets.push({ telegramId: u.id, amount: amt, isGift: !!giftInstanceId, giftInstanceId });
+    res.secure({ success: true });
+});
+
+app.post('/api/hide/vote', auth, (req, res) => {
+    if (hideState.phase !== 'VOTING') return res.status(400).secure({ error: 'Not in voting phase' });
+    const bet = hideState.bets.find(b => b.telegramId === req.tgUser.id);
+    if (!bet) return res.status(403).secure({ error: 'Must place bet to vote' });
+
+    const { count } = req.body;
+    if (![4, 8, 12].includes(Number(count))) return res.status(400).secure({ error: 'Invalid count' });
+
+    // One vote per person (update if already voted? let's stick to simple - increment)
+    hideState.roomCountVotes[count]++;
+    res.secure({ success: true });
+});
+
+app.post('/api/hide/select', auth, (req, res) => {
+    if (hideState.phase !== 'SELECTION') return res.status(400).secure({ error: 'Not in selection phase' });
+    const u = req.tgUser;
+    const bet = hideState.bets.find(b => b.telegramId === u.id);
+    if (!bet) return res.status(403).secure({ error: 'Must have bet to play' });
+
+    const { roomId } = req.body;
+    const rId = Number(roomId);
+    if (!hideState.rooms[rId]) return res.status(400).secure({ error: 'Invalid room' });
+
+    // Max 3 people
+    if (hideState.rooms[rId].length >= 3) return res.status(400).secure({ error: 'Room is full' });
+
+    // Remove from other rooms if any
+    for (const id in hideState.rooms) {
+        hideState.rooms[id] = hideState.rooms[id].filter(p => p.telegramId !== u.id);
+    }
+
+    hideState.rooms[rId].push({ telegramId: u.id });
+    res.secure({ success: true });
+});
+
 app.get('/api/crash/status', auth, (req, res) => {
     const myBet = crashState.bets.find(b => b.telegramId === req.tgUser.id);
     res.secure({

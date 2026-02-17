@@ -204,6 +204,7 @@
           <button class="game-sel-btn active" id="game-tab-dice" onclick="selectGame('dice')">Dice</button>
           <button class="game-sel-btn" id="game-tab-crash" onclick="selectGame('crash')">Rocket</button>
           <button class="game-sel-btn" id="game-tab-plinko" onclick="selectGame('plinko')">Plinko</button>
+          <button class="game-sel-btn" id="game-tab-hide" onclick="selectGame('hide')">Прятки</button>
         </div>
 
         <!-- КУБИКИ -->
@@ -371,6 +372,56 @@
             <button class="roll-button" id="plinko-drop-btn" onclick="plinkoDrop()">
               <span class="roll-text">БРОСИТЬ КУБИК</span>
             </button>
+          </div>
+        </div>
+
+        <!-- HIDE AND SEEK -->
+        <div id="game-view-hide" class="hidden">
+          <div class="hide-arena">
+            <canvas id="hide-canvas"></canvas>
+            <div id="hide-overlay" class="hide-overlay">
+              <div id="hide-timer-display" class="hide-timer">15</div>
+              <div id="hide-phase-text" class="hide-phase-title">ГОЛОСОВАНИЕ</div>
+            </div>
+          </div>
+
+          <div class="hide-controls-wrap">
+            <div id="hide-voting-controls" class="hide-phase-controls">
+              <p class="hide-info-label">СКОЛЬКО БУДЕТ КОМНАТ?</p>
+              <div class="hide-vote-grid">
+                <button class="vote-btn" onclick="voteHide(4)">4 (1.3x)</button>
+                <button class="vote-btn" onclick="voteHide(8)">8 (2.0x)</button>
+                <button class="vote-btn" onclick="voteHide(12)">12 (2.5x)</button>
+              </div>
+            </div>
+
+            <div id="hide-selection-controls" class="hide-phase-controls hidden">
+              <p class="hide-info-label">ВЫБЕРИТЕ КОМНАТУ</p>
+              <div id="hide-rooms-container" class="hide-rooms-grid">
+                <!-- Filled by JS -->
+              </div>
+            </div>
+
+            <div id="hide-bet-controls" class="hide-bet-section">
+              <div class="bet-modes-tabs">
+                <button class="bet-mode-tab active" id="hide-mode-ton" onclick="setBetMode('ton')">TON</button>
+                <button class="bet-mode-tab" id="hide-mode-gift" onclick="setBetMode('gift')">ПОДАРКИ</button>
+              </div>
+
+              <div id="hide-ton-input-area" class="bet-input-wrap premium-bet-input" style="margin-bottom: 8px;">
+                <input type="number" id="hide-bet-amount" placeholder="Ставка" value="1.0" step="0.1">
+                <span class="bet-input-unit">TON</span>
+              </div>
+
+              <div id="hide-gift-input-area" class="gift-selection-area hidden" style="margin-bottom: 12px;">
+                <label>ВЫБЕРИТЕ ПОДАРОК</label>
+                <div class="gift-selection-scroll" id="hide-gift-list"></div>
+              </div>
+
+              <button id="hide-place-bet-btn" class="roll-button" onclick="placeHideBet()">
+                <span class="roll-text">УЧАСТВОВАТЬ</span>
+              </button>
+            </div>
           </div>
         </div>
 
