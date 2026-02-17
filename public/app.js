@@ -162,116 +162,123 @@ window.retryTgAuth = function () {
 
 // инит
 async function init() {
-    console.log('[Init] Starting...');
-    initTg();
+    console.log('[Init] Starting robust entry sequence...');
 
-    // REFINED: Ultra-resilient check for Telegram environment
-    // We check for the OBJECT itself, regardless of whether data has arrived yet
-    const hasBridge = !!(window.Telegram && window.Telegram.WebApp);
-    const isDev = window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.hostname.includes('.local');
+    const lockMsg = document.querySelector('#tg-lock p');
+    const updateDebug = (msg) => {
+        if (lockMsg) lockMsg.innerHTML = `Это приложение доступно только внутри бота CubeRoll.<br><small style="opacity:0.5; font-size:10px;">Debug: ${msg}</small>`;
+    };
 
-    // Remove lock as soon as we detect ANY sign of life from Telegram
-    if (hasBridge || initData || isDev) {
-        console.log('[Init] Legitimate environment detected. Opening...');
-        document.getElementById('tg-lock')?.remove();
-    } else {
-        // Fallback delay for certain clients (Swiftgram/Desktop)
-        console.log('[Init] No bridge found yet, waiting 800ms...');
-        await new Promise(r => setTimeout(r, 800));
-        initTg(); // Try re-fetching
-        if (!!(window.Telegram && window.Telegram.WebApp) || initData || isDev) {
-            document.getElementById('tg-lock')?.remove();
-        } else {
-            console.error('Access denied: Authentication bridge not found.');
-            const lockMsg = document.querySelector('#tg-lock p');
-            if (lockMsg) lockMsg.innerHTML += '<br><small style="opacity:0.5">(Error: No legitimate Telegram session detected)</small>';
-            return;
-        }
-    }
+    // Polling loop for the bridge
+    let attempts = 0;
+    const maxAttempts = 25; // 5 seconds total
 
-    // Remove lock and show loader
-    document.getElementById('tg-lock')?.remove();
-    const loader = document.getElementById('loading-screen');
-    if (loader) loader.classList.remove('hidden');
+    return new Promise((resolve) => {
+        const checkInterval = setInterval(async () => {
+            attempts++;
+            initTg();
 
-    try {
-        buildExactPicker();
+            const hasBridge = !!(window.Telegram && window.Telegram.WebApp);
+            const hasData = !!(initData || window.Telegram?.WebApp?.initDataUnsafe?.user);
+            const isDev = window.location.hostname === 'localhost' ||
+                window.location.hostname === '127.0.0.1' ||
+                window.location.hostname.includes('.local');
 
-        // TonConnect
-        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-            manifestUrl: window.location.origin + '/tonconnect-manifest.json',
-            buttonRootId: null
-        });
+            updateDebug(`Bridge: ${hasBridge ? 'OK' : 'No'} | Data: ${hasData ? 'OK' : 'No'} | Atmt: ${attempts}`);
 
-        tonConnectUI.onStatusChange(async wallet => {
-            if (wallet) {
-                userWalletAddress = wallet.account.address;
-                document.getElementById('ton-connect').classList.add('connected');
+            if (hasBridge || isDev) {
+                clearInterval(checkInterval);
+                console.log('[Init] Environment verified. Opening app...');
+                document.getElementById('tg-lock')?.remove();
+
+                // Continue with actual loading
                 try {
-                    await api('/api/user/wallet', 'POST', { address: userWalletAddress });
-                } catch (e) { }
-                if (!isInitializing) toast('Кошелёк подключен', 'success');
-            } else {
-                userWalletAddress = null;
-                document.getElementById('ton-connect').classList.remove('connected');
-            }
-            isInitializing = false;
-        });
+                    const loader = document.getElementById('loading-screen');
+                    if (loader) loader.classList.remove('hidden');
 
-        console.log('[Init] Authenticating...');
-        const data = await api('/api/auth', 'POST');
-        user = data.user;
-        curSeeds = data.seeds;
-        window.appSettings = data.settings || {};
+                    buildExactPicker();
 
-        if (window.appSettings.minDeposit) {
-            const h = document.getElementById('dep-min-hint');
-            if (h) h.textContent = `Минимум: ${window.appSettings.minDeposit} TON`;
-            const inp = document.getElementById('dep-amount');
-            if (inp) inp.setAttribute('min', window.appSettings.minDeposit);
-        }
+                    tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+                        manifestUrl: window.location.origin + '/tonconnect-manifest.json',
+                        buttonRootId: null
+                    });
 
-        document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
-        document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
-        document.getElementById('user-initial').textContent = (user.firstName || user.username || 'P')[0].toUpperCase();
+                    tonConnectUI.onStatusChange(async wallet => {
+                        if (wallet) {
+                            userWalletAddress = wallet.account.address;
+                            document.getElementById('ton-connect').classList.add('connected');
+                            try {
+                                await api('/api/user/wallet', 'POST', { address: userWalletAddress });
+                            } catch (e) { }
+                            if (!isInitializing) toast('Кошелёк подключен', 'success');
+                        } else {
+                            userWalletAddress = null;
+                            document.getElementById('ton-connect').classList.remove('connected');
+                        }
+                        isInitializing = false;
+                    });
 
-        setBalance(user.balance);
-        // Initialize modules independently
-        try { await loadHistory(); } catch (e) { console.error('[Init] History failed', e); }
-        try { await loadGifts(); } catch (e) { console.error('[Init] Gifts failed', e); }
-        try { initEventListeners(); } catch (e) { console.error('[Init] Listeners failed', e); }
-        try { buildExactPicker(); } catch (e) { console.error('[Init] Picker failed', e); }
-        try { initPlinko(); } catch (e) { console.error('[Init] Plinko failed', e); }
-        setTimeout(() => {
-            const ldr = document.getElementById('loading-screen');
-            if (ldr) {
-                ldr.classList.add('fade-out');
-                setTimeout(() => {
-                    ldr.style.display = 'none';
-                    document.getElementById('app').classList.remove('hidden');
-                    if (!localStorage.getItem('onboarding_shown')) {
-                        document.getElementById('onboarding-modal').classList.remove('hidden');
-                        localStorage.setItem('onboarding_shown', 'true');
+                    console.log('[Init] Authenticating...');
+                    const data = await api('/api/auth', 'POST');
+                    user = data.user;
+                    curSeeds = data.seeds;
+                    window.appSettings = data.settings || {};
+
+                    if (window.appSettings.minDeposit) {
+                        const h = document.getElementById('dep-min-hint');
+                        if (h) h.textContent = `Минимум: ${window.appSettings.minDeposit} TON`;
                     }
-                }, 800);
+
+                    document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
+                    document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
+                    document.getElementById('user-initial').textContent = (user.firstName || user.username || 'P')[0].toUpperCase();
+
+                    setBalance(user.balance);
+
+                    // Initialize modules independently
+                    try { await loadHistory(); } catch (e) { console.error('[Init] History failed', e); }
+                    try { await loadGifts(); } catch (e) { console.error('[Init] Gifts failed', e); }
+                    try { initEventListeners(); } catch (e) { console.error('[Init] Listeners failed', e); }
+                    try { initPlinko(); } catch (e) { console.error('[Init] Plinko failed', e); }
+
+                    finishLoading();
+                    resolve();
+                } catch (err) {
+                    console.error('[Init] Fatal error:', err);
+                    if (err.message !== 'Banned') toast('Error: ' + err.message, 'error');
+                }
+            } else if (attempts >= maxAttempts) {
+                clearInterval(checkInterval);
+                updateDebug('Telegram bridge not detected. Please open from the official bot.');
+                console.error('[Init] Timeout waiting for Telegram bridge.');
             }
-        }, 1200);
+        }, 200);
+    });
+}
 
-        // BG Sync
-        setInterval(refreshBalance, 15000);
-
-    } catch (e) {
-        console.error('INIT ERROR:', e);
+function finishLoading() {
+    setTimeout(() => {
         const ldr = document.getElementById('loading-screen');
-        if (ldr) ldr.innerHTML = `<div style="padding:40px;text-align:center;color:white"><h3>Ошибка запуска</h3><p>${e.message}</p><button onclick="location.reload()" style="margin-top:10px;background:var(--gold);border:none;padding:10px 20px;border-radius:10px">Перезагрузить</button></div>`;
-        toast('Ошибка: ' + e.message, 'error');
-    }
+        if (ldr) {
+            ldr.classList.add('fade-out');
+            setTimeout(() => {
+                ldr.style.display = 'none';
+                document.getElementById('app').classList.remove('hidden');
+                if (!localStorage.getItem('onboarding_shown')) {
+                    document.getElementById('onboarding-modal').classList.remove('hidden');
+                    localStorage.setItem('onboarding_shown', 'true');
+                }
+            }, 800);
+        }
+    }, 1200);
+
+    // BG Sync
+    setInterval(refreshBalance, 30000); // 30s balance check
 }
 
 function toast(txt, type = 'info') {
     const t = document.getElementById('toast');
+    if (!t) return;
     t.textContent = txt;
     t.className = 'toast show ' + type;
     setTimeout(() => t.classList.remove('show'), 3000);
@@ -279,10 +286,12 @@ function toast(txt, type = 'info') {
 
 function setBalance(val, anim = false) {
     const el = document.getElementById('balance-amount');
-    const old = parseFloat(el.textContent);
+    if (!el) return;
+    const old = parseFloat(el.textContent) || 0;
     el.textContent = val.toFixed(2);
     if (anim) {
         const p = document.getElementById('balance-display');
+        if (!p) return;
         p.classList.remove('pulse', 'pulse-loss');
         void p.offsetWidth;
         p.classList.add(val > old ? 'pulse' : 'pulse-loss');
@@ -917,546 +926,544 @@ async function pollCrash() {
     } catch (e) { console.error('Crash poll failed:', e); }
 }
 
-const multEl = document.getElementById('crash-multiplier');
-const statusEl = document.getElementById('crash-status-text');
-const waitingUI = document.getElementById('crash-waiting-ui');
-const betBtn = document.getElementById('crash-bet-btn');
-const cashoutBtn = document.getElementById('crash-cashout-btn');
-const historyBar = document.getElementById('crash-history-bar');
+function updateCrashUI() {
+    if (!crashStatus) return;
 
-if (crashStatus.phase === 'FLYING') {
-    waitingUI.classList.add('hidden');
-    statusEl.textContent = 'ПОЛЁТ...';
-    multEl.classList.add('vibrating', 'flying');
-    document.querySelector('.crash-info').classList.remove('crashed');
-    document.querySelector('.crash-main').style.backdropFilter = 'none';
+    const multEl = document.getElementById('crash-multiplier');
+    const statusEl = document.getElementById('crash-status-text');
+    const waitingUI = document.getElementById('crash-waiting-ui');
+    const betBtn = document.getElementById('crash-bet-btn');
+    const cashoutBtn = document.getElementById('crash-cashout-btn');
+    const historyBar = document.getElementById('crash-history-bar');
 
-    if (crashStatus.myBet && !crashStatus.myBet.cashedOut) {
-        betBtn.classList.add('hidden');
-        cashoutBtn.classList.remove('hidden');
+    if (crashStatus.phase === 'FLYING') {
+        waitingUI.classList.add('hidden');
+        statusEl.textContent = 'ПОЛЁТ...';
+        multEl.classList.add('vibrating', 'flying');
+        document.querySelector('.crash-info').classList.remove('crashed');
+        document.querySelector('.crash-main').style.backdropFilter = 'none';
 
-        // Show real-time payout on button
-        const currentPayout = (crashStatus.myBet.amount * crashStatus.multiplier).toFixed(2);
-        cashoutBtn.innerHTML = `ЗАБРАТЬ <span style="display:block; font-size: 11px; opacity: 0.8;">(+${currentPayout} TON)</span>`;
-    } else {
+        if (crashStatus.myBet && !crashStatus.myBet.cashedOut) {
+            betBtn.classList.add('hidden');
+            cashoutBtn.classList.remove('hidden');
+
+            // Show real-time payout on button
+            const currentPayout = (crashStatus.myBet.amount * crashStatus.multiplier).toFixed(2);
+            cashoutBtn.innerHTML = `ЗАБРАТЬ <span style="display:block; font-size: 11px; opacity: 0.8;">(+${currentPayout} TON)</span>`;
+        } else {
+            betBtn.classList.remove('hidden');
+            betBtn.disabled = true;
+            betBtn.textContent = crashStatus.myBet?.cashedOut ? 'СТАВКА ЗАБРАНА' : 'РАУНД ИДЕТ';
+            cashoutBtn.classList.add('hidden');
+        }
+    } else if (crashStatus.phase === 'WAITING') {
+        waitingUI.classList.remove('hidden');
+        statusEl.textContent = 'ОЖИДАНИЕ...';
+        multEl.textContent = '1.00x';
+        multEl.classList.remove('vibrating', 'flying');
+        document.querySelector('.crash-info').classList.remove('crashed');
+        document.querySelector('.crash-main').style.backdropFilter = 'none';
+
+        const totalWait = 10000;
+        const remaining = crashStatus.timeLeft;
+        const progress = (1 - (remaining / totalWait)) * 100;
+        document.getElementById('timer-progress-bar').style.width = Math.min(100, progress) + '%';
+        document.getElementById('timer-seconds').textContent = Math.max(0, remaining / 1000).toFixed(1) + 's';
+
         betBtn.classList.remove('hidden');
-        betBtn.disabled = true;
-        betBtn.textContent = crashStatus.myBet?.cashedOut ? 'СТАВКА ЗАБРАНА' : 'РАУНД ИДЕТ';
+        betBtn.disabled = !!crashStatus.myBet;
+        betBtn.textContent = crashStatus.myBet ? 'СТАВКА ПРИНЯТА' : 'ПОСТАВИТЬ';
         cashoutBtn.classList.add('hidden');
+    } else if (crashStatus.phase === 'CRASHED') {
+        waitingUI.classList.add('hidden');
+        statusEl.textContent = 'КРАШ! 💥';
+        multEl.textContent = crashStatus.multiplier.toFixed(2) + 'x';
+        multEl.classList.remove('vibrating', 'flying');
+        document.querySelector('.crash-info').classList.add('crashed');
     }
-} else if (crashStatus.phase === 'WAITING') {
-    waitingUI.classList.remove('hidden');
-    statusEl.textContent = 'ОЖИДАНИЕ...';
-    multEl.textContent = '1.00x';
-    multEl.classList.remove('vibrating', 'flying');
-    document.querySelector('.crash-info').classList.remove('crashed');
-    document.querySelector('.crash-main').style.backdropFilter = 'none';
 
-    const totalWait = 10000;
-    const remaining = crashStatus.timeLeft;
-    const progress = (1 - (remaining / totalWait)) * 100;
-    document.getElementById('timer-progress-bar').style.width = Math.min(100, progress) + '%';
-    document.getElementById('timer-seconds').textContent = Math.max(0, remaining / 1000).toFixed(1) + 's';
-
-    betBtn.classList.remove('hidden');
-    betBtn.disabled = !!crashStatus.myBet;
-    betBtn.textContent = crashStatus.myBet ? 'СТАВКА ПРИНЯТА' : 'ПОСТАВИТЬ';
-    cashoutBtn.classList.add('hidden');
-} else if (crashStatus.phase === 'CRASHED') {
-    waitingUI.classList.add('hidden');
-    statusEl.textContent = 'КРАШ! 💥';
-    multEl.textContent = crashStatus.multiplier.toFixed(2) + 'x';
-    multEl.classList.remove('vibrating', 'flying');
-    document.querySelector('.crash-info').classList.add('crashed');
-}
-
-if (historyBar) {
-    historyBar.innerHTML = crashStatus.history.map(h => `
-            <div class="crash-history-item ${h >= 2 ? 'win' : 'loss'}">${h.toFixed(2)}x</div>
-        `).join('');
-}
+    if (historyBar) {
+        historyBar.innerHTML = crashStatus.history.map(h => `
+                <div class="crash-history-item ${h >= 2 ? 'win' : 'loss'}">${h.toFixed(2)}x</div>
+            `).join('');
+    }
 }
 
 function initCrashCanvas() {
+    if (window._crashInited) return;
+    window._crashInited = true;
+
     crashCanvas = document.getElementById('crash-canvas');
     if (!crashCanvas) return;
     crashCtx = crashCanvas.getContext('2d');
 
-    function initCrashCanvas() {
-        if (window._crashInited) return;
-        window._crashInited = true;
-
-        crashCanvas = document.getElementById('crash-canvas');
-        if (!crashCanvas) return;
-        crashCtx = crashCanvas.getContext('2d');
-
-        const resize = () => {
-            if (currentGame !== 'crash') return;
-            const dpr = window.devicePixelRatio || 1;
-            crashCanvas.width = crashCanvas.clientWidth * dpr;
-            crashCanvas.height = crashCanvas.clientHeight * dpr;
-            // Transform is reset on width/height change
-            crashCtx.scale(dpr, dpr);
-        };
-
-        window.removeEventListener('resize', resize); // Small safety
-        window.addEventListener('resize', resize);
-        resize();
-        renderCrash();
-    }
-
-    const stars = [];
-    function initStars() {
-        stars.length = 0;
-        const w = crashCanvas ? crashCanvas.clientWidth : window.innerWidth;
-        const h = crashCanvas ? crashCanvas.clientHeight : 400;
-        // Even fewer stars (8) for a natural, deep-space look
-        for (let i = 0; i < 8; i++) {
-            stars.push({
-                x: Math.random() * w,
-                y: Math.random() * h,
-                s: 0.4 + Math.random() * 1.2,
-                o: 0.3 + Math.random() * 0.5
-            });
-        }
-    }
-    initStars();
-
-    function renderCrash() {
+    const resize = () => {
         if (currentGame !== 'crash') return;
-        if (!crashCanvas || !crashCtx) return;
+        const dpr = window.devicePixelRatio || 1;
+        crashCanvas.width = crashCanvas.clientWidth * dpr;
+        crashCanvas.height = crashCanvas.clientHeight * dpr;
+        // Transform is reset on width/height change
+        crashCtx.scale(dpr, dpr);
+    };
 
-        // Direct loop control
-        cancelAnimationFrame(crashAnimationId);
-        const w = crashCanvas.width / (window.devicePixelRatio || 1);
-        const h = crashCanvas.height / (window.devicePixelRatio || 1);
+    window.removeEventListener('resize', resize); // Small safety
+    window.addEventListener('resize', resize);
+    resize();
+    renderCrash();
+}
 
-        crashCtx.clearRect(0, 0, w, h);
-
-        const now = Date.now() - timeOffset;
-        let t = (now - (crashStatus?.startTime || 0)) / 1000;
-        const isPlaying = crashStatus && crashStatus.phase === 'FLYING';
-        const isCrashed = crashStatus && crashStatus.phase === 'CRASHED';
-
-        if (isCrashed) {
-            t = Math.log(crashStatus.multiplier || 1) / Math.log(1.07);
-        }
-
-        const currentMult = isPlaying ? Math.pow(1.07, t) : (isCrashed ? (crashStatus.multiplier || 1) : 1);
-
-        // 1. КОСМОС С УСКОРЕНИЕМ (WARP EFFECT)
-        const speedFactor = isPlaying ? (1 + currentMult * 0.5) : (isCrashed ? 0 : 0.2);
-        crashCtx.strokeStyle = '#ffffff';
-        crashCtx.fillStyle = '#ffffff';
-
-        stars.forEach(s => {
-            const move = s.s * speedFactor * 10;
-            s.y += move;
-            if (s.y > h) { s.y = 0; s.x = Math.random() * w; }
-
-            crashCtx.globalAlpha = s.o;
-            if (currentMult > 3 && isPlaying) {
-                // Линии скорости
-                crashCtx.lineWidth = s.s;
-                crashCtx.beginPath();
-                crashCtx.moveTo(s.x, s.y);
-                crashCtx.lineTo(s.x, s.y + move * 0.8);
-                crashCtx.stroke();
-            } else {
-                // Обычные звезды
-                crashCtx.beginPath();
-                crashCtx.arc(s.x, s.y, s.s, 0, Math.PI * 2);
-                crashCtx.fill();
-            }
+const stars = [];
+function initStars() {
+    stars.length = 0;
+    const w = crashCanvas ? crashCanvas.clientWidth : window.innerWidth;
+    const h = crashCanvas ? crashCanvas.clientHeight : 400;
+    // Even fewer stars (8) for a natural, deep-space look
+    for (let i = 0; i < 8; i++) {
+        stars.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            s: 0.4 + Math.random() * 1.2,
+            o: 0.3 + Math.random() * 0.5
         });
-        crashCtx.globalAlpha = 1;
+    }
+}
+initStars();
 
-        // РАКЕТА
-        if (isPlaying || isCrashed || (crashStatus && crashStatus.phase === 'WAITING')) {
-            const timeFactor = (isPlaying || isCrashed) ? t : (Date.now() / 1000);
+function renderCrash() {
+    if (currentGame !== 'crash') return;
+    if (!crashCanvas || !crashCtx) return;
 
-            if (isPlaying) {
-                const multEl = document.getElementById('crash-multiplier');
-                if (multEl) multEl.textContent = currentMult.toFixed(2) + 'x';
-            }
+    // Direct loop control
+    cancelAnimationFrame(crashAnimationId);
+    const w = crashCanvas.width / (window.devicePixelRatio || 1);
+    const h = crashCanvas.height / (window.devicePixelRatio || 1);
 
-            // Позиция: Центр с нарастающей тряской
-            const shakeAmp = isPlaying ? (1 + currentMult / 8) : 0;
+    crashCtx.clearRect(0, 0, w, h);
 
-            // Адаптивный масштаб для мелких экранов
-            // Увеличиваем масштаб, чтобы на телефонах ракета была "на весь экран"
-            // Stable scale for all devices
-            const baseWidth = 360;
-            const s = Math.min(1.8, Math.max(0.8, w / baseWidth));
+    const now = Date.now() - timeOffset;
+    let t = (now - (crashStatus?.startTime || 0)) / 1000;
+    const isPlaying = crashStatus && crashStatus.phase === 'FLYING';
+    const isCrashed = crashStatus && crashStatus.phase === 'CRASHED';
 
-            const rx = Math.round(w / 2) + Math.sin(timeFactor * 30) * shakeAmp;
-            const ry = Math.round(h * 0.45);
-
-            crashCtx.save();
-            // Масштабируем всё относительно центра ракеты
-            crashCtx.translate(rx, ry);
-            crashCtx.scale(s, s);
-            crashCtx.translate(-rx, -ry);
-
-            // ПЛАМЯ (увеличивается и белеет при разгоне)
-            if (isPlaying || (isCrashed && t > 0)) {
-                const firePower = 1 + Math.min(2, currentMult / 15);
-                // Уменьшаем длину пламени на 20%
-                const fireLen = (40 + Math.random() * 30) * firePower;
-                const fireGrad = crashCtx.createLinearGradient(rx, ry + 20, rx, ry + fireLen);
-                fireGrad.addColorStop(0, '#ffffff'); // Очень горячее у сопла
-                fireGrad.addColorStop(0.2, '#f1c40f');
-                fireGrad.addColorStop(0.6, '#e67e22');
-                fireGrad.addColorStop(1, 'transparent');
-
-                crashCtx.fillStyle = fireGrad;
-                crashCtx.beginPath();
-                crashCtx.moveTo(rx - 12, ry + 15);
-                crashCtx.quadraticCurveTo(rx, ry + fireLen + 20, rx + 12, ry + 15);
-                crashCtx.fill();
-            }
-
-            // ЭФФЕКТ СВЕЧЕНИЯ (HEAT GLOW)
-            if (isPlaying) {
-                crashCtx.shadowBlur = 15 + currentMult * 3;
-                crashCtx.shadowColor = currentMult > 10 ? '#ff4400' : '#f1c40f';
-            }
-
-            // КОРПУС - ЦЕЛЬНЫЙ МОНОЛИТНЫЙ ДИЗАЙН (без швов)
-            const rocketGrad = crashCtx.createLinearGradient(rx - 15, ry, rx + 15, ry);
-            rocketGrad.addColorStop(0, '#bdc3c7');
-            rocketGrad.addColorStop(0.4, '#ffffff');
-            rocketGrad.addColorStop(1, '#95a5a6');
-
-            crashCtx.fillStyle = rocketGrad;
-            crashCtx.beginPath();
-            // Ракетный "купол" и тело одним контуром
-            crashCtx.moveTo(rx - 16, ry + 30); // Низ лево
-            crashCtx.lineTo(rx - 16, ry - 5);  // Левый борт
-            crashCtx.bezierCurveTo(rx - 16, ry - 60, rx + 16, ry - 60, rx + 16, ry - 5); // Нос
-            crashCtx.lineTo(rx + 16, ry + 30); // Правый борт
-            crashCtx.quadraticCurveTo(rx, ry + 40, rx - 16, ry + 30); // Закругленное дно
-            crashCtx.fill();
-
-            // Иллюминатор (встроен в монолит)
-            crashCtx.fillStyle = '#1a1a1a';
-            crashCtx.beginPath();
-            crashCtx.arc(rx, ry - 10, 7, 0, Math.PI * 2);
-            crashCtx.fill();
-            // Блик в иллюминаторе
-            const glassGrad = crashCtx.createRadialGradient(rx - 2, ry - 12, 1, rx, ry - 10, 7);
-            glassGrad.addColorStop(0, '#3498db');
-            glassGrad.addColorStop(1, '#2980b9');
-            crashCtx.fillStyle = glassGrad;
-            crashCtx.beginPath();
-            crashCtx.arc(rx, ry - 10, 5, 0, Math.PI * 2);
-            crashCtx.fill();
-
-            // Золотые элементы (плавники) - рисуем поверх, но без щелей
-            crashCtx.fillStyle = '#c2a74d';
-            // Левое крыло
-            crashCtx.beginPath();
-            crashCtx.moveTo(rx - 16, ry + 5);
-            crashCtx.lineTo(rx - 35, ry + 35);
-            crashCtx.lineTo(rx - 16, ry + 25);
-            crashCtx.fill();
-            // Правое крыло
-            crashCtx.beginPath();
-            crashCtx.moveTo(rx + 16, ry + 5);
-            crashCtx.lineTo(rx + 35, ry + 35);
-            crashCtx.lineTo(rx + 16, ry + 25);
-            crashCtx.fill();
-
-            // Финальная обводка для четкости
-            crashCtx.strokeStyle = 'rgba(0,0,0,0.1)';
-            crashCtx.lineWidth = 1;
-            crashCtx.stroke();
-
-            crashCtx.shadowBlur = 0;
-            crashCtx.restore(); // Сбрасываем трансформации (scale)
-
-            if (isPlaying && window.haptic && hapticEnabled && Math.random() > 0.96) {
-                haptic.impactOccurred('light');
-            }
-        }
-
-        const mainWrap = document.querySelector('.crash-main');
-        if (mainWrap) {
-            if (isCrashed) {
-                mainWrap.style.backdropFilter = 'blur(10px) brightness(0.7)';
-            } else {
-                mainWrap.style.backdropFilter = 'none';
-            }
-        }
-
-        crashAnimationId = requestAnimationFrame(renderCrash);
+    if (isCrashed) {
+        t = Math.log(crashStatus.multiplier || 1) / Math.log(1.07);
     }
 
-    window.crashPlaceBet = async function () {
-        const amtStr = document.getElementById('crash-bet-amount').value;
-        const amt = parseFloat(amtStr);
+    const currentMult = isPlaying ? Math.pow(1.07, t) : (isCrashed ? (crashStatus.multiplier || 1) : 1);
 
-        if (isNaN(amt) || amt < 0.1) return toast('Минимум 0.1 TON', 'error');
-        if (amt > user.balance) return toast('Недостаточно баланса', 'error');
+    // 1. КОСМОС С УСКОРЕНИЕМ (WARP EFFECT)
+    const speedFactor = isPlaying ? (1 + currentMult * 0.5) : (isCrashed ? 0 : 0.2);
+    crashCtx.strokeStyle = '#ffffff';
+    crashCtx.fillStyle = '#ffffff';
 
-        try {
-            const res = await api('/api/crash/bet', 'POST', { betAmount: amt });
-            setBalance(res.newBalance);
-            toast('Ставка принята!', 'success');
-            if (window.haptic && hapticEnabled) haptic.impactOccurred('medium');
-            pollCrash();
-        } catch (e) { toast(e.message, 'error'); }
-    };
+    stars.forEach(s => {
+        const move = s.s * speedFactor * 10;
+        s.y += move;
+        if (s.y > h) { s.y = 0; s.x = Math.random() * w; }
 
-    window.crashCashout = async function () {
-        try {
-            const res = await api('/api/crash/cashout', 'POST');
-            setBalance(res.newBalance);
-            triggerConfetti();
-            toast(`Вы забрали ${res.payout.toFixed(2)} TON! (${res.multiplier}x)`, 'success');
-            if (window.haptic && hapticEnabled) haptic.notificationOccurred('success');
-            pollCrash();
-        } catch (e) { toast(e.message, 'error'); }
-    };
+        crashCtx.globalAlpha = s.o;
+        if (currentMult > 3 && isPlaying) {
+            // Линии скорости
+            crashCtx.lineWidth = s.s;
+            crashCtx.beginPath();
+            crashCtx.moveTo(s.x, s.y);
+            crashCtx.lineTo(s.x, s.y + move * 0.8);
+            crashCtx.stroke();
+        } else {
+            // Обычные звезды
+            crashCtx.beginPath();
+            crashCtx.arc(s.x, s.y, s.s, 0, Math.PI * 2);
+            crashCtx.fill();
+        }
+    });
+    crashCtx.globalAlpha = 1;
 
-    window.setMaxCrashBet = function () {
-        document.getElementById('crash-bet-amount').value = Math.floor(user.balance);
-    };
+    // РАКЕТА
+    if (isPlaying || isCrashed || (crashStatus && crashStatus.phase === 'WAITING')) {
+        const timeFactor = (isPlaying || isCrashed) ? t : (Date.now() / 1000);
 
-    document.addEventListener('DOMContentLoaded', init);
-    // --- PLINKO GAME LOGIC ---
-    const PLINKO_ROWS = 8;
-    const PLINKO_MULTIS = [3, 2, 1.2, 0.9, 0.7, 0.9, 1.2, 2, 3];
+        if (isPlaying) {
+            const multEl = document.getElementById('crash-multiplier');
+            if (multEl) multEl.textContent = currentMult.toFixed(2) + 'x';
+        }
 
-    function initPlinko() {
-        console.log('[Plinko] Initializing...');
-        plinkoCanvas = document.getElementById('plinko-canvas');
-        if (!plinkoCanvas) return console.warn('[Plinko] Canvas not found in DOM');
+        // Позиция: Центр с нарастающей тряской
+        const shakeAmp = isPlaying ? (1 + currentMult / 8) : 0;
 
-        plinkoCtx = plinkoCanvas.getContext('2d');
-        if (!plinkoCtx) return console.error('[Plinko] Could not get 2D context');
+        // Адаптивный масштаб для мелких экранов
+        // Увеличиваем масштаб, чтобы на телефонах ракета была "на весь экран"
+        // Stable scale for all devices
+        const baseWidth = 360;
+        const s = Math.min(1.8, Math.max(0.8, w / baseWidth));
 
-        // Fill multipliers UI
-        const multsDiv = document.getElementById('plinko-mults');
-        if (multsDiv) {
-            multsDiv.innerHTML = '';
-            PLINKO_MULTIS.forEach(m => {
-                const slot = document.createElement('div');
-                slot.className = 'plinko-multiplier-slot';
-                slot.dataset.mult = m;
+        const rx = Math.round(w / 2) + Math.sin(timeFactor * 30) * shakeAmp;
+        const ry = Math.round(h * 0.45);
 
-                // Color logic
-                let color = '#fff';
-                let label = m + 'x';
-                if (m < 0.8) { color = '#ff3333'; label = '💀'; }
-                else if (m < 1.0) { color = '#ff9100'; }
-                else if (m < 1.5) { color = '#76ff03'; }
-                else { color = '#00e676'; }
+        crashCtx.save();
+        // Масштабируем всё относительно центра ракеты
+        crashCtx.translate(rx, ry);
+        crashCtx.scale(s, s);
+        crashCtx.translate(-rx, -ry);
 
-                slot.style.borderColor = color;
-                slot.style.color = color;
+        // ПЛАМЯ (увеличивается и белеет при разгоне)
+        if (isPlaying || (isCrashed && t > 0)) {
+            const firePower = 1 + Math.min(2, currentMult / 15);
+            // Уменьшаем длину пламени на 20%
+            const fireLen = (40 + Math.random() * 30) * firePower;
+            const fireGrad = crashCtx.createLinearGradient(rx, ry + 20, rx, ry + fireLen);
+            fireGrad.addColorStop(0, '#ffffff'); // Очень горячее у сопла
+            fireGrad.addColorStop(0.2, '#f1c40f');
+            fireGrad.addColorStop(0.6, '#e67e22');
+            fireGrad.addColorStop(1, 'transparent');
 
-                slot.innerHTML = `
+            crashCtx.fillStyle = fireGrad;
+            crashCtx.beginPath();
+            crashCtx.moveTo(rx - 12, ry + 15);
+            crashCtx.quadraticCurveTo(rx, ry + fireLen + 20, rx + 12, ry + 15);
+            crashCtx.fill();
+        }
+
+        // ЭФФЕКТ СВЕЧЕНИЯ (HEAT GLOW)
+        if (isPlaying) {
+            crashCtx.shadowBlur = 15 + currentMult * 3;
+            crashCtx.shadowColor = currentMult > 10 ? '#ff4400' : '#f1c40f';
+        }
+
+        // КОРПУС - ЦЕЛЬНЫЙ МОНОЛИТНЫЙ ДИЗАЙН (без швов)
+        const rocketGrad = crashCtx.createLinearGradient(rx - 15, ry, rx + 15, ry);
+        rocketGrad.addColorStop(0, '#bdc3c7');
+        rocketGrad.addColorStop(0.4, '#ffffff');
+        rocketGrad.addColorStop(1, '#95a5a6');
+
+        crashCtx.fillStyle = rocketGrad;
+        crashCtx.beginPath();
+        // Ракетный "купол" и тело одним контуром
+        crashCtx.moveTo(rx - 16, ry + 30); // Низ лево
+        crashCtx.lineTo(rx - 16, ry - 5);  // Левый борт
+        crashCtx.bezierCurveTo(rx - 16, ry - 60, rx + 16, ry - 60, rx + 16, ry - 5); // Нос
+        crashCtx.lineTo(rx + 16, ry + 30); // Правый борт
+        crashCtx.quadraticCurveTo(rx, ry + 40, rx - 16, ry + 30); // Закругленное дно
+        crashCtx.fill();
+
+        // Иллюминатор (встроен в монолит)
+        crashCtx.fillStyle = '#1a1a1a';
+        crashCtx.beginPath();
+        crashCtx.arc(rx, ry - 10, 7, 0, Math.PI * 2);
+        crashCtx.fill();
+        // Блик в иллюминаторе
+        const glassGrad = crashCtx.createRadialGradient(rx - 2, ry - 12, 1, rx, ry - 10, 7);
+        glassGrad.addColorStop(0, '#3498db');
+        glassGrad.addColorStop(1, '#2980b9');
+        crashCtx.fillStyle = glassGrad;
+        crashCtx.beginPath();
+        crashCtx.arc(rx, ry - 10, 5, 0, Math.PI * 2);
+        crashCtx.fill();
+
+        // Золотые элементы (плавники) - рисуем поверх, но без щелей
+        crashCtx.fillStyle = '#c2a74d';
+        // Левое крыло
+        crashCtx.beginPath();
+        crashCtx.moveTo(rx - 16, ry + 5);
+        crashCtx.lineTo(rx - 35, ry + 35);
+        crashCtx.lineTo(rx - 16, ry + 25);
+        crashCtx.fill();
+        // Правое крыло
+        crashCtx.beginPath();
+        crashCtx.moveTo(rx + 16, ry + 5);
+        crashCtx.lineTo(rx + 35, ry + 35);
+        crashCtx.lineTo(rx + 16, ry + 25);
+        crashCtx.fill();
+
+        // Финальная обводка для четкости
+        crashCtx.strokeStyle = 'rgba(0,0,0,0.1)';
+        crashCtx.lineWidth = 1;
+        crashCtx.stroke();
+
+        crashCtx.shadowBlur = 0;
+        crashCtx.restore(); // Сбрасываем трансформации (scale)
+
+        if (isPlaying && window.haptic && hapticEnabled && Math.random() > 0.96) {
+            haptic.impactOccurred('light');
+        }
+    }
+
+    const mainWrap = document.querySelector('.crash-main');
+    if (mainWrap) {
+        if (isCrashed) {
+            mainWrap.style.backdropFilter = 'blur(10px) brightness(0.7)';
+        } else {
+            mainWrap.style.backdropFilter = 'none';
+        }
+    }
+
+    crashAnimationId = requestAnimationFrame(renderCrash);
+}
+
+window.crashPlaceBet = async function () {
+    const amtStr = document.getElementById('crash-bet-amount').value;
+    const amt = parseFloat(amtStr);
+
+    if (isNaN(amt) || amt < 0.1) return toast('Минимум 0.1 TON', 'error');
+    if (amt > user.balance) return toast('Недостаточно баланса', 'error');
+
+    try {
+        const res = await api('/api/crash/bet', 'POST', { betAmount: amt });
+        setBalance(res.newBalance);
+        toast('Ставка принята!', 'success');
+        if (window.haptic && hapticEnabled) haptic.impactOccurred('medium');
+        pollCrash();
+    } catch (e) { toast(e.message, 'error'); }
+};
+
+window.crashCashout = async function () {
+    try {
+        const res = await api('/api/crash/cashout', 'POST');
+        setBalance(res.newBalance);
+        triggerConfetti();
+        toast(`Вы забрали ${res.payout.toFixed(2)} TON! (${res.multiplier}x)`, 'success');
+        if (window.haptic && hapticEnabled) haptic.notificationOccurred('success');
+        pollCrash();
+    } catch (e) { toast(e.message, 'error'); }
+};
+
+window.setMaxCrashBet = function () {
+    document.getElementById('crash-bet-amount').value = Math.floor(user.balance);
+};
+
+document.addEventListener('DOMContentLoaded', init);
+// --- PLINKO GAME LOGIC ---
+const PLINKO_ROWS = 8;
+const PLINKO_MULTIS = [3, 2, 1.2, 0.9, 0.7, 0.9, 1.2, 2, 3];
+
+function initPlinko() {
+    console.log('[Plinko] Initializing...');
+    plinkoCanvas = document.getElementById('plinko-canvas');
+    if (!plinkoCanvas) return console.warn('[Plinko] Canvas not found in DOM');
+
+    plinkoCtx = plinkoCanvas.getContext('2d');
+    if (!plinkoCtx) return console.error('[Plinko] Could not get 2D context');
+
+    // Fill multipliers UI
+    const multsDiv = document.getElementById('plinko-mults');
+    if (multsDiv) {
+        multsDiv.innerHTML = '';
+        PLINKO_MULTIS.forEach(m => {
+            const slot = document.createElement('div');
+            slot.className = 'plinko-multiplier-slot';
+            slot.dataset.mult = m;
+
+            // Color logic
+            let color = '#fff';
+            let label = m + 'x';
+            if (m < 0.8) { color = '#ff3333'; label = '💀'; }
+            else if (m < 1.0) { color = '#ff9100'; }
+            else if (m < 1.5) { color = '#76ff03'; }
+            else { color = '#00e676'; }
+
+            slot.style.borderColor = color;
+            slot.style.color = color;
+
+            slot.innerHTML = `
                 <div class="mult-val">${label}</div>
                 <div class="mult-payout-preview" style="font-size: 8px; opacity: 0.6; font-weight: 500;">0.00</div>
             `;
-                multsDiv.appendChild(slot);
-            });
-            updatePlinkoPreviews();
-        }
-
-        if (!window._pRunning) {
-            window._pRunning = true;
-            console.log('[Plinko] Loop started successfully');
-            requestAnimationFrame(renderPlinko);
-        } else {
-            console.log('[Plinko] Loop already running, skipping restart');
-        }
+            multsDiv.appendChild(slot);
+        });
+        updatePlinkoPreviews();
     }
 
-    window.addEventListener('resize', () => {
-        if (currentGame === 'plinko') {
-            plinkoCanvas.width = plinkoCanvas.offsetWidth;
-            plinkoCanvas.height = plinkoCanvas.offsetHeight;
+    if (!window._pRunning) {
+        window._pRunning = true;
+        console.log('[Plinko] Loop started successfully');
+        requestAnimationFrame(renderPlinko);
+    } else {
+        console.log('[Plinko] Loop already running, skipping restart');
+    }
+}
+
+window.addEventListener('resize', () => {
+    if (currentGame === 'plinko') {
+        plinkoCanvas.width = plinkoCanvas.offsetWidth;
+        plinkoCanvas.height = plinkoCanvas.offsetHeight;
+    }
+});
+
+function updatePlinkoPreviews() {
+    const amt = parseFloat(document.getElementById('plinko-bet-amount').value) || 0;
+    document.querySelectorAll('.plinko-multiplier-slot').forEach(slot => {
+        const m = parseFloat(slot.dataset.mult);
+        const preview = slot.querySelector('.mult-payout-preview');
+        if (preview) {
+            preview.textContent = (amt * m).toFixed(2);
         }
     });
+}
 
-    function updatePlinkoPreviews() {
-        const amt = parseFloat(document.getElementById('plinko-bet-amount').value) || 0;
-        document.querySelectorAll('.plinko-multiplier-slot').forEach(slot => {
-            const m = parseFloat(slot.dataset.mult);
-            const preview = slot.querySelector('.mult-payout-preview');
-            if (preview) {
-                preview.textContent = (amt * m).toFixed(2);
+async function plinkoDrop() {
+    const btn = document.getElementById('plinko-drop-btn');
+    const amountVal = document.getElementById('plinko-bet-amount').value;
+
+    if (btn.disabled) return;
+    btn.disabled = true;
+
+    try {
+        const res = await api('/api/plinko/bet', 'POST', { betAmount: parseFloat(amountVal) });
+
+        // Start animation
+        const ball = {
+            x: plinkoCanvas.width / 2 + (Math.random() - 0.5) * 10,
+            y: 20,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: 1.0,
+            radius: 10,
+            path: res.result.path,
+            step: 0,
+            targetSlot: res.result.slot,
+            payout: res.result.payout,
+            multiplier: res.result.multiplier,
+            color: '#ffffff',
+            dieValue: Math.floor(Math.random() * 6) + 1,
+            bounceCount: 0
+        };
+        plinkoBalls.push(ball);
+
+        // Update balance after ball reaches bottom (approx 8s now)
+        setTimeout(() => {
+            setBalance(res.result.newBalance, true);
+        }, 8500);
+
+    } catch (e) {
+        toast(e.message, 'error');
+    } finally {
+        setTimeout(() => { btn.disabled = false; }, 500);
+    }
+}
+
+function renderPlinko() {
+    // If context is lost or wasn't ready, try to re-init
+    if (!plinkoCanvas || !plinkoCtx) {
+        plinkoCanvas = document.getElementById('plinko-canvas');
+        if (plinkoCanvas) {
+            plinkoCtx = plinkoCanvas.getContext('2d');
+            console.log('[Plinko Renderer] Re-acquired canvas context');
+        }
+        return requestAnimationFrame(renderPlinko);
+    }
+
+    // Low-power mode when hidden
+    if (activeTab !== 'game' || currentGame !== 'plinko') {
+        return requestAnimationFrame(renderPlinko);
+    }
+
+    const curW = plinkoCanvas.offsetWidth;
+    const curH = plinkoCanvas.offsetHeight;
+
+    // Only draw and resize if visible
+    if (curW > 10 && curH > 10) {
+        if (plinkoCanvas.width !== curW) plinkoCanvas.width = curW;
+        if (plinkoCanvas.height !== curH) plinkoCanvas.height = curH;
+
+        const w = plinkoCanvas.width;
+        const h = plinkoCanvas.height;
+        plinkoCtx.clearRect(0, 0, w, h);
+
+        // Draw Pegs
+        const rowGap = (h - 60) / (PLINKO_ROWS + 1);
+        const colGap = w / (PLINKO_ROWS + 2);
+
+        plinkoCtx.fillStyle = 'rgba(255,255,255,0.2)';
+        for (let r = 1; r <= PLINKO_ROWS; r++) {
+            const rowY = 40 + r * rowGap;
+            const rowCols = r + 1;
+            const startX = (w - (rowCols - 1) * colGap) / 2;
+            for (let c = 0; c < rowCols; c++) {
+                plinkoCtx.beginPath();
+                plinkoCtx.arc(startX + c * colGap, rowY, 3, 0, Math.PI * 2);
+                plinkoCtx.fill();
             }
+        }
+
+        // Update and Draw Balls
+        const gravity = 0.05; // Even slower
+
+        plinkoBalls = plinkoBalls.filter(ball => {
+            ball.vy += gravity;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            // Wall bouncing
+            if (ball.x < 15) {
+                ball.x = 15;
+                ball.vx *= -0.6;
+            } else if (ball.x > w - 15) {
+                ball.x = w - 15;
+                ball.vx *= -0.6;
+            }
+
+            const currentRow = Math.floor((ball.y - 40) / rowGap);
+            if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
+                const move = ball.path[ball.step];
+                // Introduce some "bounce" logic
+                ball.vx = (move === 1 ? 1 : -1) * (colGap / 18) + (Math.random() - 0.5) * 0.5;
+                ball.vy = 1.2;
+                ball.step++;
+            }
+
+            // Draw dice instead of square
+            plinkoCtx.save();
+            plinkoCtx.translate(ball.x, ball.y);
+            plinkoCtx.rotate(ball.y / 15);
+
+            // Dice body
+            const size = 16;
+            const r = 4;
+            plinkoCtx.fillStyle = '#fff';
+            plinkoCtx.shadowBlur = 15;
+            plinkoCtx.shadowColor = 'rgba(255,255,255,0.5)';
+
+            plinkoCtx.beginPath();
+            plinkoCtx.roundRect(-size / 2, -size / 2, size, size, r);
+            plinkoCtx.fill();
+
+            // Dots
+            plinkoCtx.fillStyle = '#000';
+            const dotSize = 2;
+            const p = size / 4;
+            const drawDot = (dx, dy) => {
+                plinkoCtx.beginPath();
+                plinkoCtx.arc(dx, dy, dotSize, 0, Math.PI * 2);
+                plinkoCtx.fill();
+            };
+
+            const dots = {
+                1: [[0, 0]],
+                2: [[-p, -p], [p, p]],
+                3: [[-p, -p], [0, 0], [p, p]],
+                4: [[-p, -p], [p, -p], [-p, p], [p, p]],
+                5: [[-p, -p], [p, -p], [0, 0], [-p, p], [p, p]],
+                6: [[-p, -p], [p, -p], [-p, 0], [p, 0], [-p, p], [p, p]]
+            };
+
+            (dots[ball.dieValue] || []).forEach(d => drawDot(d[0], d[1]));
+
+            plinkoCtx.restore();
+
+            if (ball.y > h - 10) {
+                highlightSlot(ball.targetSlot);
+                if (ball.payout > 0) toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success');
+                return false;
+            }
+            return true;
         });
     }
 
-    async function plinkoDrop() {
-        const btn = document.getElementById('plinko-drop-btn');
-        const amountVal = document.getElementById('plinko-bet-amount').value;
+    requestAnimationFrame(renderPlinko);
+}
 
-        if (btn.disabled) return;
-        btn.disabled = true;
-
-        try {
-            const res = await api('/api/plinko/bet', 'POST', { betAmount: parseFloat(amountVal) });
-
-            // Start animation
-            const ball = {
-                x: plinkoCanvas.width / 2 + (Math.random() - 0.5) * 10,
-                y: 20,
-                vx: (Math.random() - 0.5) * 0.5,
-                vy: 1.0,
-                radius: 10,
-                path: res.result.path,
-                step: 0,
-                targetSlot: res.result.slot,
-                payout: res.result.payout,
-                multiplier: res.result.multiplier,
-                color: '#ffffff',
-                dieValue: Math.floor(Math.random() * 6) + 1,
-                bounceCount: 0
-            };
-            plinkoBalls.push(ball);
-
-            // Update balance after ball reaches bottom (approx 8s now)
-            setTimeout(() => {
-                setBalance(res.result.newBalance, true);
-            }, 8500);
-
-        } catch (e) {
-            toast(e.message, 'error');
-        } finally {
-            setTimeout(() => { btn.disabled = false; }, 500);
-        }
+function highlightSlot(idx) {
+    const slots = document.querySelectorAll('.plinko-multiplier-slot');
+    if (slots[idx]) {
+        slots[idx].classList.add('win');
+        setTimeout(() => slots[idx].classList.remove('win'), 1500);
     }
-
-    function renderPlinko() {
-        // If context is lost or wasn't ready, try to re-init
-        if (!plinkoCanvas || !plinkoCtx) {
-            plinkoCanvas = document.getElementById('plinko-canvas');
-            if (plinkoCanvas) {
-                plinkoCtx = plinkoCanvas.getContext('2d');
-                console.log('[Plinko Renderer] Re-acquired canvas context');
-            }
-            return requestAnimationFrame(renderPlinko);
-        }
-
-        // Low-power mode when hidden
-        if (activeTab !== 'game' || currentGame !== 'plinko') {
-            return requestAnimationFrame(renderPlinko);
-        }
-
-        const curW = plinkoCanvas.offsetWidth;
-        const curH = plinkoCanvas.offsetHeight;
-
-        // Only draw and resize if visible
-        if (curW > 10 && curH > 10) {
-            if (plinkoCanvas.width !== curW) plinkoCanvas.width = curW;
-            if (plinkoCanvas.height !== curH) plinkoCanvas.height = curH;
-
-            const w = plinkoCanvas.width;
-            const h = plinkoCanvas.height;
-            plinkoCtx.clearRect(0, 0, w, h);
-
-            // Draw Pegs
-            const rowGap = (h - 60) / (PLINKO_ROWS + 1);
-            const colGap = w / (PLINKO_ROWS + 2);
-
-            plinkoCtx.fillStyle = 'rgba(255,255,255,0.2)';
-            for (let r = 1; r <= PLINKO_ROWS; r++) {
-                const rowY = 40 + r * rowGap;
-                const rowCols = r + 1;
-                const startX = (w - (rowCols - 1) * colGap) / 2;
-                for (let c = 0; c < rowCols; c++) {
-                    plinkoCtx.beginPath();
-                    plinkoCtx.arc(startX + c * colGap, rowY, 3, 0, Math.PI * 2);
-                    plinkoCtx.fill();
-                }
-            }
-
-            // Update and Draw Balls
-            const gravity = 0.05; // Even slower
-
-            plinkoBalls = plinkoBalls.filter(ball => {
-                ball.vy += gravity;
-                ball.x += ball.vx;
-                ball.y += ball.vy;
-
-                // Wall bouncing
-                if (ball.x < 15) {
-                    ball.x = 15;
-                    ball.vx *= -0.6;
-                } else if (ball.x > w - 15) {
-                    ball.x = w - 15;
-                    ball.vx *= -0.6;
-                }
-
-                const currentRow = Math.floor((ball.y - 40) / rowGap);
-                if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
-                    const move = ball.path[ball.step];
-                    // Introduce some "bounce" logic
-                    ball.vx = (move === 1 ? 1 : -1) * (colGap / 18) + (Math.random() - 0.5) * 0.5;
-                    ball.vy = 1.2;
-                    ball.step++;
-                }
-
-                // Draw dice instead of square
-                plinkoCtx.save();
-                plinkoCtx.translate(ball.x, ball.y);
-                plinkoCtx.rotate(ball.y / 15);
-
-                // Dice body
-                const size = 16;
-                const r = 4;
-                plinkoCtx.fillStyle = '#fff';
-                plinkoCtx.shadowBlur = 15;
-                plinkoCtx.shadowColor = 'rgba(255,255,255,0.5)';
-
-                plinkoCtx.beginPath();
-                plinkoCtx.roundRect(-size / 2, -size / 2, size, size, r);
-                plinkoCtx.fill();
-
-                // Dots
-                plinkoCtx.fillStyle = '#000';
-                const dotSize = 2;
-                const p = size / 4;
-                const drawDot = (dx, dy) => {
-                    plinkoCtx.beginPath();
-                    plinkoCtx.arc(dx, dy, dotSize, 0, Math.PI * 2);
-                    plinkoCtx.fill();
-                };
-
-                const dots = {
-                    1: [[0, 0]],
-                    2: [[-p, -p], [p, p]],
-                    3: [[-p, -p], [0, 0], [p, p]],
-                    4: [[-p, -p], [p, -p], [-p, p], [p, p]],
-                    5: [[-p, -p], [p, -p], [0, 0], [-p, p], [p, p]],
-                    6: [[-p, -p], [p, -p], [-p, 0], [p, 0], [-p, p], [p, p]]
-                };
-
-                (dots[ball.dieValue] || []).forEach(d => drawDot(d[0], d[1]));
-
-                plinkoCtx.restore();
-
-                if (ball.y > h - 10) {
-                    highlightSlot(ball.targetSlot);
-                    if (ball.payout > 0) toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success');
-                    return false;
-                }
-                return true;
-            });
-        }
-
-        requestAnimationFrame(renderPlinko);
-    }
-
-    function highlightSlot(idx) {
-        const slots = document.querySelectorAll('.plinko-multiplier-slot');
-        if (slots[idx]) {
-            slots[idx].classList.add('win');
-            setTimeout(() => slots[idx].classList.remove('win'), 1500);
-        }
-    }
+}
