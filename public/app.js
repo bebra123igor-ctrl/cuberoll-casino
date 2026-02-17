@@ -487,6 +487,18 @@ function initEventListeners() {
     safeSetClick('btn-rotate-seed', rotateServerSeed);
     safeSetClick('btn-update-seed', updateClientSeed);
     safeSetClick('btn-verify', verifyGame);
+
+    // Delegated listener for bet confirm — works even if modal was opened dynamically (dice/plinko/crash/hide)
+    document.addEventListener('click', function betConfirmHandler(e) {
+        const btn = e.target && (e.target.closest ? e.target.closest('#bet-confirm-btn') : (e.target.id === 'bet-confirm-btn' ? e.target : null));
+        if (!btn || !document.getElementById('bet-modal') || document.getElementById('bet-modal').classList.contains('hidden')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (activeBetGame === 'dice') roll();
+        else if (activeBetGame === 'crash') crashPlaceBet();
+        else if (activeBetGame === 'plinko') { closeModal('bet-modal'); plinkoDrop(); }
+        else if (activeBetGame === 'hide') { closeModal('bet-modal'); placeHideBet(); }
+    }, true);
 }
 
 window.rotateServerSeed = async function () {
@@ -1657,8 +1669,8 @@ async function plinkoDrop() {
         const ball = {
             x: (plinkoCanvas.width * dropX),
             y: 20,
-            vx: (Math.random() - 0.5) * 0.5,
-            vy: 1.0,
+            vx: (Math.random() - 0.5) * 0.3,
+            vy: 0.3,
             radius: 10,
             path: res.result.path,
             step: 0,
@@ -1767,17 +1779,16 @@ function renderPlinko() {
                 const currentRow = Math.floor((ball.y - 40) / rowGap);
                 if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
                     const move = ball.path[ball.step];
-                    // Gentle peg nudge: add to vx instead of replacing, so no sharp jumps
-                    const nudge = (move === 1 ? 1 : -1) * (colGap * 0.08);
+                    // Small peg deflection only — no boost, like a real ball hitting a peg
+                    const nudge = (move === 1 ? 1 : -1) * (colGap * 0.04);
                     ball.vx += nudge;
-                    ball.vx *= 0.92;
-                    ball.vy = 1.2;
+                    ball.vx *= 0.96;
+                    // Do not set vy — let gravity only; ball keeps current vy (natural fall)
                     ball.step++;
                 }
 
                 if (ball.step >= PLINKO_ROWS) {
-                    // No magnetic pull — let ball fall naturally; we'll snap position on land
-                    ball.vy = Math.max(ball.vy, 1.0);
+                    // Free fall to bottom, no extra speed
                 }
 
                 if (ball.y >= h - 18) {
@@ -1909,16 +1920,16 @@ function initWheelLabels() {
     });
 }
 
-async function tonDeposit() {
-    if (!tonConnectUI.connected) {
-        toast('Сначала подключите кошелек!', 'error');
-        tonConnectUI.openModal();
-        return;
-    }
+function bytesToBase64(u8) {
+    let binary = '';
+    for (let i = 0; i < u8.length; i++) binary += String.fromCharCode(u8[i]);
+    return typeof btoa !== 'undefined' ? btoa(binary) : '';
+}
 
-    const TonWebLib = window.TonWeb || window.tonweb;
-    if (!TonWebLib || !TonWebLib.utils || typeof TonWebLib.utils.bytesToBase64 !== 'function') {
-        toast('Библиотека кошелька не загружена. Обновите страницу.', 'error');
+async function tonDeposit() {
+    if (!tonConnectUI || !tonConnectUI.connected) {
+        toast('Сначала подключите кошелек!', 'error');
+        if (tonConnectUI) tonConnectUI.openModal();
         return;
     }
 
@@ -1933,7 +1944,7 @@ async function tonDeposit() {
         const payloadBytes = new Uint8Array(4 + commentBytes.length);
         payloadBytes[0] = 0; payloadBytes[1] = 0; payloadBytes[2] = 0; payloadBytes[3] = 0;
         payloadBytes.set(commentBytes, 4);
-        const payloadB64 = TonWebLib.utils.bytesToBase64(payloadBytes);
+        const payloadB64 = bytesToBase64(payloadBytes);
 
         const tx = {
             validUntil: Math.floor(Date.now() / 1000) + 600,
@@ -2036,16 +2047,7 @@ window.openBetModal = function (game) {
     const title = { dice: 'Dice', crash: 'Rocket', plinko: 'Plinko', hide: 'Прятки' }[game] || 'Ставка';
     document.getElementById('bet-modal-title').textContent = title;
 
-    // Reset confirm btn — use activeBetGame so handler always matches opened game
-    const confirmBtn = document.getElementById('bet-confirm-btn');
-    if (confirmBtn) {
-        confirmBtn.onclick = function () {
-            if (activeBetGame === 'dice') roll();
-            else if (activeBetGame === 'crash') crashPlaceBet();
-            else if (activeBetGame === 'plinko') { closeModal('bet-modal'); plinkoDrop(); }
-            else if (activeBetGame === 'hide') { closeModal('bet-modal'); placeHideBet(); }
-        };
-    }
+    // Confirm button is handled by delegated listener below (so it always works)
 };
 
 // --- HIDE AND SEEK (ПРЯТКИ) ---
@@ -2248,29 +2250,25 @@ function renderHide() {
         }
 
         if (hideStatus.phase === 'SEARCHING') {
-            // ORGANIC KILLER MOVEMENT
+            // Killer moves ONLY between houses that will die (killerTargets)
             const totalDuration = 9;
             const elapsed = totalDuration - hideStatus.timeLeft;
-            const progress = (elapsed / totalDuration) * roomCount;
-            const currentRoomIdx = Math.floor(progress) % roomCount;
+            const targets = hideStatus.killerTargets || [];
+            const pathLength = targets.length > 0 ? targets.length : roomCount;
+            const progress = (elapsed / totalDuration) * pathLength;
+            const currentRoomIdx = Math.min(Math.floor(progress), pathLength - 1);
 
-            // Cubic ease-in-out for the walk, with a pause at each house
             const t = progress % 1;
             const smoothT = t < 0.2 ? 0 : (t > 0.8 ? 1 : (t - 0.2) / 0.6);
             const easeT = smoothT * smoothT * (3 - 2 * smoothT);
 
-            // Get path points
             let p1, p2;
-            const targets = hideStatus.killerTargets;
-
-            if (targets && targets.length > 0) {
-                // VISIT ONLY TARGETS
-                const idx1 = currentRoomIdx % targets.length;
-                const idx2 = (currentRoomIdx + 1) % targets.length;
+            if (targets.length > 0) {
+                const idx1 = Math.min(currentRoomIdx, targets.length - 1);
+                const idx2 = Math.min(currentRoomIdx + 1, targets.length - 1);
                 p1 = getHousePos(targets[idx1], roomCount);
-                p2 = getHousePos(targets[idx2], roomCount);
+                p2 = idx2 > idx1 ? getHousePos(targets[idx2], roomCount) : p1;
             } else {
-                // Fallback: Circular patrol
                 const p1Idx = (currentRoomIdx % roomCount) + 1;
                 const p2Idx = ((currentRoomIdx + 1) % roomCount) + 1;
                 p1 = getHousePos(p1Idx, roomCount);

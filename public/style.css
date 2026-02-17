@@ -3234,6 +3234,12 @@ button:active,
 .bet-modal-box #bet-confirm-btn {
   position: relative;
   z-index: 2;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+#bet-modal .modal-box {
+  pointer-events: auto;
 }
 
 #toast {
@@ -3879,10 +3885,18 @@ input:checked+.toggle-slider:before {
 }
 
 /* ═══ CRASH (ROCKET) ═══ */
+#game-view-crash {
+  display: flex;
+  flex-direction: column;
+  min-height: 60vh;
+}
+
 .crash-container {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
+  min-height: 0;
   background: var(--card);
   border: 1px solid var(--border2);
   border-radius: var(--r);
@@ -3891,12 +3905,14 @@ input:checked+.toggle-slider:before {
 }
 
 @media (max-width: 600px) {
+  #game-view-crash {
+    min-height: 55vh;
+  }
+
   .crash-container {
     padding: 8px;
-    /* Less padding to fit more content */
     margin-bottom: 10px;
     border: none;
-    /* Cleaner look on mobile */
     background: transparent;
   }
 
@@ -3933,8 +3949,9 @@ input:checked+.toggle-slider:before {
 
 .crash-main {
   position: relative;
-  aspect-ratio: 16 / 12;
-  /* Чуть выше для десктопа */
+  flex: 1;
+  min-height: 50vh;
+  aspect-ratio: 16 / 10;
   background: radial-gradient(circle at center, #0a0a1a 0%, #050505 100%);
   border-radius: 12px;
   overflow: hidden;
@@ -3944,12 +3961,12 @@ input:checked+.toggle-slider:before {
 
 @media (max-width: 600px) {
   .crash-main {
-    aspect-ratio: 1 / 1;
-    height: auto;
-    max-height: 45vh;
+    aspect-ratio: 16 / 10;
+    min-height: 40vh;
+    flex: 1;
     width: calc(100% + 16px);
-    border-radius: 0;
     margin: -8px -8px 10px -8px;
+    border-radius: 0;
     border: none;
   }
 
