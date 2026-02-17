@@ -718,15 +718,7 @@ body {
   z-index: 50;
 }
 
-.nav-tabs {
-  flex-shrink: 0;
-  display: flex;
-  background: var(--card2);
-  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid var(--border2);
-  gap: 4px;
-  z-index: 200;
-}
+/* Removed duplicate nav-tabs definition to use the main one below */
 
 .nav-tab {
   flex: 1;
@@ -1116,11 +1108,10 @@ button:active,
   padding: 8px 10px calc(12px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--border2);
   gap: 2px;
-  z-index: 9999;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  z-index: 1000;
+  position: relative;
+  /* Back to relative in flex flow */
+  /* Remove fixed/sticky which causes issues with scrolling */
   width: 100%;
 }
 
@@ -1181,7 +1172,7 @@ button:active,
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 14px 16px 80px;
+  padding: 14px 16px 20px;
   /* Padding for content + space for nav */
   -webkit-overflow-scrolling: touch;
   width: 100%;
