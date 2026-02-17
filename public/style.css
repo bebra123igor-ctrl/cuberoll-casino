@@ -1102,17 +1102,19 @@ button:active,
 /* ═══ nav ═══ */
 /* Consolidate Nav Tabs and Fix Visibility */
 /* Consolidate Nav Tabs and Fix Visibility */
+/* Consolidate Nav Tabs and Fix Visibility */
 .nav-tabs {
   flex-shrink: 0;
   display: flex;
-  /* Flex layout places it naturally at bottom */
   background: var(--card2);
   padding: 8px 10px calc(12px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--border2);
   gap: 2px;
   z-index: 1000;
-  position: relative;
-  /* Default back to relative */
+  position: absolute;
+  /* Absolute ensures it sits at bottom of relative parent */
+  bottom: 0;
+  left: 0;
   width: 100%;
 }
 
@@ -1169,6 +1171,8 @@ button:active,
 
 .tab-content.active {
   display: flex !important;
+  height: 100%;
+  /* Ensure it fills space */
   animation: fadeUp .25s ease;
 }
 
@@ -1176,8 +1180,8 @@ button:active,
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 14px 16px 20px;
-  /* Standard padding since menu is below, not over */
+  padding: 14px 16px 120px !important;
+  /* Huge padding to ensure content is scrollable ABOVE nav */
   -webkit-overflow-scrolling: touch;
   width: 100%;
 }
