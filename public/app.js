@@ -220,7 +220,7 @@ async function init() {
                             try {
                                 await api('/api/user/wallet', 'POST', { address: userWalletAddress });
                             } catch (e) { }
-                            if (!isInitializing) toast('Кошелёк подключен', 'success');
+                            if (!window.isInitializing) toast('Кошелёк подключен', 'success');
                         } else {
                             userWalletAddress = null;
                             document.getElementById('ton-connect').classList.remove('connected');
@@ -2182,62 +2182,71 @@ function renderHide() {
             const easeT = smoothT * smoothT * (3 - 2 * smoothT);
 
             // Get path points
-            const p1Idx = (currentRoomIdx % roomCount) + 1;
-            const p2Idx = ((currentRoomIdx + 1) % roomCount) + 1;
+            let p1, p2;
+            const targets = hideStatus.killerTargets;
 
-            // Map 0-based circular index to 1-based room ID correctly
-            // If roomCount=4: 0->1, 1->2, 2->3, 3->4, 4->1...
-            // currentRoomIdx is 0..3.
-            // p1 is currentRoomIdx + 1. Correct.
-            // p2 is (currentRoomIdx + 1)%4 + 1. Correct. (e.g. 3->4, 4->1)
+            if (targets && targets.length > 0) {
+                // VISIT ONLY TARGETS
+                const idx1 = currentRoomIdx % targets.length;
+                const idx2 = (currentRoomIdx + 1) % targets.length;
+                p1 = getHousePos(targets[idx1], roomCount);
+                p2 = getHousePos(targets[idx2], roomCount);
+            } else {
+                // Fallback: Circular patrol
+                const p1Idx = (currentRoomIdx % roomCount) + 1;
+                const p2Idx = ((currentRoomIdx + 1) % roomCount) + 1;
+                p1 = getHousePos(p1Idx, roomCount);
+                p2 = getHousePos(p2Idx, roomCount);
+            }
 
-            const p1 = getHousePos(p1Idx, roomCount);
-            const p2 = getHousePos(p2Idx, roomCount);
-
-            const startX = p1.x + 30; const startY = p1.y + 50;
-            const endX = p2.x + 30; const endY = p2.y + 50;
+            const startX = p1.x + 30; const startY = p1.y + 60;
+            const endX = p2.x + 30; const endY = p2.y + 60;
 
             const kX = startX + (endX - startX) * easeT;
             const kY = startY + (endY - startY) * easeT - 10;
             const isWalking = (t > 0.2 && t < 0.8);
 
-            // Draw "THE KILLER" (Shadowy figure)
+            // Draw "THE KILLER" (CUBE FORM)
             hideCtx.save();
             hideCtx.translate(kX, kY);
 
-            // Glow
-            hideCtx.shadowBlur = 30; hideCtx.shadowColor = '#e74c3c';
+            // Glow and Shadow
+            hideCtx.shadowBlur = 35;
+            hideCtx.shadowColor = '#e74c3c';
 
-            // Bobbing & Leg animation
-            const bob = isWalking ? Math.abs(Math.sin(Date.now() / 150)) * 5 : 0;
-            const legW = isWalking ? Math.sin(Date.now() / 100) * 10 : 0;
+            // Bobbing animation for the cube
+            const hover = Math.sin(Date.now() / 200) * 8;
+            hideCtx.translate(0, hover);
 
-            // Body
-            hideCtx.fillStyle = '#1a1a1a';
+            // Isometric Cube Draw
+            const kSize = 16;
+
+            // Top Face
+            hideCtx.fillStyle = '#ff0000'; // Bright red top
             hideCtx.beginPath();
-            hideCtx.moveTo(-10, 20); hideCtx.lineTo(0, -15 - bob); hideCtx.lineTo(10, 20);
-            hideCtx.fill();
+            hideCtx.moveTo(0, -kSize);
+            hideCtx.lineTo(kSize, -kSize / 2);
+            hideCtx.lineTo(0, 0);
+            hideCtx.lineTo(-kSize, -kSize / 2);
+            hideCtx.closePath(); hideCtx.fill();
 
-            // Head (Red Eye Glow)
-            hideCtx.fillStyle = '#e74c3c';
+            // Right Face
+            hideCtx.fillStyle = '#8b0000'; // Dark red side
             hideCtx.beginPath();
-            hideCtx.arc(0, -22 - bob, 8, 0, Math.PI * 2);
-            hideCtx.fill();
+            hideCtx.moveTo(0, 0);
+            hideCtx.lineTo(kSize, -kSize / 2);
+            hideCtx.lineTo(kSize, kSize / 2);
+            hideCtx.lineTo(0, kSize);
+            hideCtx.closePath(); hideCtx.fill();
 
-            // Eye
-            hideCtx.fillStyle = '#fff';
+            // Left Face
+            hideCtx.fillStyle = '#c00000'; // Mid red side
             hideCtx.beginPath();
-            hideCtx.arc(2, -24 - bob, 1.5, 0, Math.PI * 2);
-            hideCtx.fill();
-
-            // Legs
-            hideCtx.strokeStyle = '#1a1a1a';
-            hideCtx.lineWidth = 4;
-            hideCtx.lineCap = 'round';
-            hideCtx.beginPath();
-            hideCtx.moveTo(-4, 15); hideCtx.lineTo(-4 - legW, 25);
-            hideCtx.moveTo(4, 15); hideCtx.lineTo(4 + legW, 25);
-            hideCtx.stroke();
+            hideCtx.moveTo(0, 0);
+            hideCtx.lineTo(-kSize, -kSize / 2);
+            hideCtx.lineTo(-kSize, kSize / 2);
+            hideCtx.lineTo(0, kSize);
+            hideCtx.closePath(); hideCtx.fill();
 
             hideCtx.restore();
         }
