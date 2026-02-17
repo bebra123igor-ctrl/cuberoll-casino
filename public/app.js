@@ -256,7 +256,9 @@ async function init() {
                         const amount = document.getElementById('dep-amount').value;
                         if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
 
-                        const address = window.appSettings.walletAddress;
+                        // Fallback address if settings missing (from user context)
+                        const address = window.appSettings.walletAddress || 'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7';
+
                         // Random 9 digit number
                         const rnd = Math.floor(100000000 + Math.random() * 900000000);
                         const comment = `deposit_${rnd}`;
@@ -2087,6 +2089,8 @@ window.openBetModal = function (game) {
     const confirmBtn = document.getElementById('bet-confirm-btn');
     confirmBtn.onclick = () => {
         if (activeBetGame === 'dice') {
+            console.log('Confirm clicked for DICE');
+            closeModal('bet-modal');
             roll();
         } else if (activeBetGame === 'crash') {
             closeModal('bet-modal');
