@@ -402,516 +402,525 @@
         </div>
 
         <div style="height: 30px;"></div>
-        <h3 class="section-title">Последние игры</h3>
-        <div class="history-list" id="history-list">
-          <div class="empty-state">
-            <p>Загрузка истории...</p>
-          </div>
-        </div>
       </div>
     </div>
 
     <div class="tab-content" id="content-leaderboard">
-      <div class="tab-scrollable">
-        <h3 class="section-title">Таблица лидеров</h3>
-        <div class="leaderboard-list" id="leaderboard-list">
-          <div class="empty-state">
-            <p>Загрузка...</p>
-          </div>
+      <div style="height: 30px;"></div>
+    </div>
+  </div>
+
+
+
+  <div class="tab-content" id="content-shop">
+    <div class="tab-scrollable">
+      <div class="shop-tabs">
+        <button class="shop-tab-btn active" onclick="switchShopTab('official')">ОФИЦИАЛЬНЫЕ</button>
+        <button class="shop-tab-btn" onclick="switchShopTab('marketplace')">МАРКЕТПЛЕЙС</button>
+        <button class="shop-tab-btn" onclick="openInventory()"
+          style="background: var(--bg3); border-color: var(--border);">МОИ ВЕЩИ</button>
+      </div>
+      <div id="shop-official-section">
+        <h3 class="section-title">Магазин подарков</h3>
+        <div class="shop-grid" id="shop-list">
+          <!-- Подарки будут здесь -->
+        </div>
+      </div>
+      <div id="shop-marketplace-section" class="hidden">
+        <h3 class="section-title">Рынок игроков</h3>
+        <div class="shop-grid" id="marketplace-list">
+          <!-- Объявления будут здесь -->
         </div>
       </div>
     </div>
+  </div>
 
-
-
-    <div class="tab-content" id="content-shop">
-      <div class="tab-scrollable">
-        <div class="shop-tabs">
-          <button class="shop-tab-btn active" onclick="switchShopTab('official')">ОФИЦИАЛЬНЫЕ</button>
-          <button class="shop-tab-btn" onclick="switchShopTab('marketplace')">МАРКЕТПЛЕЙС</button>
-          <button class="shop-tab-btn" onclick="openInventory()"
-            style="background: var(--bg3); border-color: var(--border);">МОИ ВЕЩИ</button>
+  <div class="tab-content" id="content-wallet">
+    <div class="tab-scrollable">
+      <div class="wallet-content">
+        <div class="deposit-hero">
+          <div class="hero-icon">🏦</div>
+          <h2>Пополнение счета</h2>
+          <p>Выберите удобный способ оплаты и средства будут зачислены моментально.</p>
         </div>
-        <div id="shop-official-section">
-          <h3 class="section-title">Магазин подарков</h3>
-          <div class="shop-grid" id="shop-list">
-            <!-- Подарки будут здесь -->
-          </div>
-        </div>
-        <div id="shop-marketplace-section" class="hidden">
-          <h3 class="section-title">Рынок игроков</h3>
-          <div class="shop-grid" id="marketplace-list">
-            <!-- Объявления будут здесь -->
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <div class="tab-content" id="content-wallet">
-      <div class="tab-scrollable">
-        <div class="wallet-content">
-          <div class="deposit-hero">
-            <div class="hero-icon">🏦</div>
-            <h2>Пополнение счета</h2>
-            <p>Выберите удобный способ оплаты и средства будут зачислены моментально.</p>
-          </div>
-
-          <!-- Dealer Method -->
-          <div class="wallet-method-card premium-card">
-            <div class="method-header">
-              <div class="method-icon-shimmer">🎁</div>
-              <div class="method-title-wrap">
-                <h4>Через дилера</h4>
-                <span class="method-badge">БЫСТРО</span>
-              </div>
-            </div>
-            <p class="method-desc">
-              Обменяйте ваши <b>Telegram Gifts</b> на игровой баланс. Самый популярный способ среди игроков.
-            </p>
-            <a href="https://t.me/dealer_cuberoll" target="_blank" class="dealer-btn-gold">
-              СВЯЗАТЬСЯ С ДИЛЕРОМ
-            </a>
-          </div>
-
-          <!-- Direct Method -->
-          <div class="wallet-method-card glass-card">
-            <div class="method-header">
-              <div class="method-icon">💎</div>
-              <div class="method-title-wrap">
-                <h4>TON Кошелек</h4>
-              </div>
-            </div>
-            <p class="method-desc">Прямое пополнение через TonConnect. Средства зачисляются после 1 подтверждения.</p>
-
-            <div id="ton-deposit-ui">
-              <div class="dep-input-zone">
-                <label class="dep-input-label">Сумма пополнения (TON)</label>
-                <div class="premium-input-group">
-                  <input type="number" inputmode="decimal" id="dep-amount" placeholder="0.00" value="1.0">
-                </div>
-                <div class="quick-amounts">
-                  <button class="quick-amt-btn" onclick="document.getElementById('dep-amount').value='1.5'">1.5</button>
-                  <button class="quick-amt-btn" onclick="document.getElementById('dep-amount').value='5.0'">5.0</button>
-                  <button class="quick-amt-btn"
-                    onclick="document.getElementById('dep-amount').value='10.0'">10.0</button>
-                </div>
-
-                <div class="dep-info-box">
-                  <p id="dep-min-hint" style="margin-bottom: 5px; font-weight: 800; color: var(--gold);">Минимум: 0.1
-                    TON</p>
-                  <p>Баланс зачисляется <span class="highlight">автоматически</span> сразу после подтверждения
-                    транзакции в сети TON.</p>
-                </div>
-
-                <button class="claim-btn-premium" style="width: 100%; margin-top: 15px;" id="start-deposit-btn"
-                  onclick="tonDeposit()">ПОПОЛНИТЬ ЧЕРЕЗ КОШЕЛЕК</button>
-              </div>
+        <!-- Dealer Method -->
+        <div class="wallet-method-card premium-card">
+          <div class="method-header">
+            <div class="method-icon-shimmer">🎁</div>
+            <div class="method-title-wrap">
+              <h4>Через дилера</h4>
+              <span class="method-badge">БЫСТРО</span>
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- настройки -->
-      <div class="tab-content" id="content-invite">
-        <div class="tab-scrollable">
-          <div class="invite-hero">
-            <div class="hero-icon">🤝</div>
-            <h2>Приглашай друзей</h2>
-            <p>Получай <b>10%</b> с каждого <b>проигрыша</b> твоего реферала ПОЖИЗНЕННО!</p>
-          </div>
-
-          <div class="stats-grid" style="margin-bottom: 20px;">
-            <div class="stat-card">
-              <span class="stat-label">Заработано</span>
-              <span class="stat-value" id="ref-earned-value">0.00 TON</span>
-            </div>
-          </div>
-
-          <div class="referral-link-card">
-            <label>Твоя ссылка:</label>
-            <div class="copy-box" id="ref-link-box">
-              <span id="referral-link">Загрузка...</span>
-              <button onclick="copyReferralLink()">📋</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="tab-content" id="content-settings">
-        <div class="tab-scrollable">
-          <h3 class="section-title">Настройки</h3>
-          <div class="settings-list">
-            <div class="settings-group">
-              <div class="promo-section">
-                <span class="settings-name">Промокод</span>
-                <div class="promo-input-group">
-                  <input type="text" id="promo-input" placeholder="Введите код...">
-                  <button onclick="redeemPromo()">АКТИВИРОВАТЬ</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="settings-group">
-              <div class="settings-item clickable" onclick="switchTab('leaderboard')">
-                <div class="settings-info">
-                  <span class="settings-name">Топ игроков</span>
-                  <span class="settings-desc">Глобальный рейтинг лидеров</span>
-                </div>
-                <span class="icon"
-                  style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;">
-                  <svg viewBox="0 0 24 24" fill="var(--gold)" width="20" height="20">
-                    <path
-                      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                </span>
-              </div>
-
-              <div class="settings-item">
-                <div class="settings-info">
-                  <span class="settings-name">Вибрация (Haptic)</span>
-                  <span class="settings-desc">Отклик устройства во время игры</span>
-                </div>
-                <label class="toggle">
-                  <input type="checkbox" id="settings-haptic" checked onchange="toggleHaptic()">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-
-              <a href="https://t.me/cuberoll_support" target="_blank" class="settings-item clickable">
-                <div class="settings-info">
-                  <span class="settings-name">Поддержка</span>
-                  <span class="settings-desc">Связаться с администрацией</span>
-                </div>
-                <span class="icon"><svg viewBox="0 0 24 24">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                  </svg></span>
-              </a>
-
-              <div class="settings-item clickable"
-                onclick="document.getElementById('fairness-modal').classList.remove('hidden')">
-                <div class="settings-info">
-                  <span class="settings-name">Provably Fair</span>
-                  <span class="settings-desc">Честная игра и проверка сидов</span>
-                </div>
-                <span class="icon"><svg viewBox="0 0 24 24">
-                    <rect x="3" y="11" width="18" height="11" rx="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg></span>
-              </div>
-            </div>
-
-            <div class="settings-group">
-              <div class="settings-item">
-                <div class="settings-info">
-                  <span class="settings-name">Версия</span>
-                  <span class="settings-desc">Build 1.4.2 Golden Era</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="settings-footer"
-              style="text-align: center; margin-top: 20px; font-size: 11px; color: var(--t4); display: flex; justify-content: center; gap: 10px;">
-              <a href="/terms.html" style="color: inherit; text-decoration: none;">Условия использования</a>
-              <span>•</span>
-              <a href="/privacy.html" style="color: inherit; text-decoration: none;">Конфиденциальность</a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- подтверждение покупки -->
-      <div class="modal-overlay hidden" id="purchase-modal">
-        <div class="modal-box">
-          <div class="modal-gift-icon" id="modal-gift-icon">🎁</div>
-          <h3 class="modal-title">Подтверждение</h3>
-          <p class="modal-desc">Вы уверены, что хотите купить <strong id="modal-gift-name">...</strong> за <span
-              id="modal-gift-price">...</span> TON?</p>
-          <div class="modal-btns">
-            <button class="modal-btn cancel" onclick="closeModal('purchase-modal')">Отмена</button>
-            <button class="modal-btn confirm" id="modal-confirm-buy">Купить</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- результат -->
-      <div class="result-overlay hidden" id="result-overlay">
-        <div class="result-modal">
-          <div class="result-icon-wrap" id="result-icon-wrap"></div>
-          <h2 class="result-title" id="result-title">Победа!</h2>
-          <div class="result-dice-display" id="result-dice-display"></div>
-          <p class="result-amount" id="result-amount">+100.00</p>
-          <p class="result-streak" id="result-streak"></p>
-          <button class="result-close" id="result-close">Продолжить</button>
-        </div>
-      </div>
-
-      <!-- объявление для выдачи подарков -->
-      <div class="modal-overlay hidden" id="dealer-warning-modal">
-        <div class="modal-box premium-modal dealer-modal">
-          <div class="modal-glow-bg"></div>
-          <div class="modal-gift-icon shiny">🤖</div>
-          <h3 class="modal-title">Важное уведомление!</h3>
-          <p class="modal-desc">Для того чтобы мы могли отправить вам купленный подарок, вам <b>обязательно</b> нужно
-            написать нашему боту-дилеру. <br><br>Без первого сообщения от вас Телеграм запрещает нам отправлять подарки!
+          <p class="method-desc">
+            Обменяйте ваши <b>Telegram Gifts</b> на игровой баланс. Самый популярный способ среди игроков.
           </p>
-          <div class="modal-btns column">
-            <a href="https://t.me/dealer_cuberoll" target="_blank" class="modal-btn confirm pulse-btn"
-              onclick="closeModal('dealer-warning-modal'); localStorage.setItem('dealer_warned', '1')">НАПИСАТЬ
-              ДИЛЕРУ</a>
-            <button class="modal-btn cancel"
-              onclick="closeModal('dealer-warning-modal'); localStorage.setItem('dealer_warned', '1')">Я ПОНЯЛ</button>
-          </div>
+          <a href="https://t.me/dealer_cuberoll" target="_blank" class="dealer-btn-gold">
+            СВЯЗАТЬСЯ С ДИЛЕРОМ
+          </a>
         </div>
-      </div>
 
-      <!-- Модальное окно ставки -->
-      <div class="modal-overlay hidden" id="bet-modal">
-        <div class="modal-box bet-modal-box">
-          <div class="modal-header">
-            <h3>Сделать ставку</h3>
-            <button class="close-modal-btn" onclick="closeModal('bet-modal')">×</button>
+        <!-- Direct Method -->
+        <div class="wallet-method-card glass-card">
+          <div class="method-header">
+            <div class="method-icon">💎</div>
+            <div class="method-title-wrap">
+              <h4>TON Кошелек</h4>
+            </div>
           </div>
+          <p class="method-desc">Прямое пополнение через TonConnect. Средства зачисляются после 1 подтверждения.</p>
 
-          <div class="bet-amount-section-modal">
-            <label>Сумма ставки</label>
-            <div class="bet-input-container">
-              <button class="bet-adjust" id="btn-half">/2</button>
-              <div class="bet-input-wrapper">
-                <input type="number" id="bet-amount" class="bet-input" value="1.0" min="0.1" max="100" step="0.1">
-                <span class="bet-input-unit">TON</span>
+          <div id="ton-deposit-ui">
+            <div class="dep-input-zone">
+              <label class="dep-input-label">Сумма пополнения (TON)</label>
+              <div class="premium-input-group">
+                <input type="number" inputmode="decimal" id="dep-amount" placeholder="0.00" value="1.0">
               </div>
-              <button class="bet-adjust" id="btn-double">×2</button>
-            </div>
-            <div class="quick-bets">
-              <button class="quick-bet" data-amount="1">1</button>
-              <button class="quick-bet" data-amount="5">5</button>
-              <button class="quick-bet active" data-amount="10">10</button>
-              <button class="quick-bet" data-amount="20">20</button>
-              <button class="quick-bet" data-amount="max">MAX</button>
-            </div>
-          </div>
+              <div class="quick-amounts">
+                <button class="quick-amt-btn" onclick="document.getElementById('dep-amount').value='1.5'">1.5</button>
+                <button class="quick-amt-btn" onclick="document.getElementById('dep-amount').value='5.0'">5.0</button>
+                <button class="quick-amt-btn" onclick="document.getElementById('dep-amount').value='10.0'">10.0</button>
+              </div>
 
-          <div class="bet-type-section-modal">
-            <label>Исход</label>
-            <div class="bet-grid">
-              <button class="bet-type-btn active" data-bet="high">
-                <span class="bet-name">Больше (8-12)</span><span class="bet-mult">x1.95</span>
-              </button>
-              <button class="bet-type-btn" data-bet="low">
-                <span class="bet-name">Меньше (2-6)</span><span class="bet-mult">x1.95</span>
-              </button>
-              <button class="bet-type-btn" data-bet="even">
-                <span class="bet-name">Чётное</span><span class="bet-mult">x1.95</span>
-              </button>
-              <button class="bet-type-btn" data-bet="odd">
-                <span class="bet-name">Нечёт</span><span class="bet-mult">x1.95</span>
-              </button>
-              <button class="bet-type-btn" data-bet="seven">
-                <span class="bet-name">Семёрка (7)</span><span class="bet-mult">x5.8</span>
-              </button>
-              <button class="bet-type-btn" data-bet="doubles">
-                <span class="bet-name">Дубль</span><span class="bet-mult">x5.0</span>
-              </button>
-              <button class="bet-type-btn" data-bet="exact">
-                <span class="bet-name">Точное</span><span class="bet-mult">x11</span>
-              </button>
-            </div>
-          </div>
+              <div class="dep-info-box">
+                <p id="dep-min-hint" style="margin-bottom: 5px; font-weight: 800; color: var(--gold);">Минимум: 0.1
+                  TON</p>
+                <p>Баланс зачисляется <span class="highlight">автоматически</span> сразу после подтверждения
+                  транзакции в сети TON.</p>
+              </div>
 
-          <div class="exact-picker-container" id="exact-picker" style="display:none;">
-            <label class="picker-label">Выберите точное число</label>
-            <div class="exact-nums" id="exact-nums"></div>
-          </div>
-
-          <button class="roll-button main-action" id="roll-btn-confirm">
-            БРОСИТЬ КОСТИ
-          </button>
-        </div>
-      </div>
-      <!-- ONBOARDING MODAL -->
-      <div class="modal-overlay hidden" id="onboarding-modal">
-        <div class="onboarding-box">
-          <button class="close-cross" onclick="closeModal('onboarding-modal')">×</button>
-          <div class="onboarding-media">
-            <div class="cube-media-container">
-              <div class="cube-wireframe"></div>
-            </div>
-          </div>
-          <div class="onboarding-body">
-            <h2 class="onboarding-title">Добро пожаловать в <span class="text-gold">CubeRoll</span></h2>
-            <p class="onboarding-text">Испытай удачу в самом честном казино на TON. Бросай кости и выигрывай!</p>
-            <p class="onboarding-subtext">Подпишись на наш канал, чтобы не пропустить бонусы и обновления.</p>
-
-            <div class="onboarding-actions">
-              <a href="https://t.me/cubewilltaketheworld" target="_blank" class="onboarding-btn primary">ПОДПИСАТЬСЯ</a>
-              <button class="onboarding-btn secondary" onclick="closeModal('onboarding-modal')">НАЧАТЬ ИГРАТЬ</button>
+              <button class="claim-btn-premium" style="width: 100%; margin-top: 15px;" id="start-deposit-btn"
+                onclick="tonDeposit()">ПОПОЛНИТЬ ЧЕРЕЗ КОШЕЛЕК</button>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- FAIRNESS MODAL (moved from tab) -->
-      <div class="modal-overlay hidden" id="fairness-modal">
-        <div class="modal-box premium-modal" style="max-height: 80vh; overflow-y: auto; text-align: left;">
-          <div class="modal-header"
-            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="margin: 0; color: var(--gold);">Provably Fair</h3>
-            <button class="close-modal-btn" onclick="closeModal('fairness-modal')"
-              style="background: none; border: none; color: white; font-size: 24px;">×</button>
+    <!-- настройки -->
+    <div class="tab-content" id="content-invite">
+      <div class="tab-scrollable">
+        <div class="invite-hero">
+          <div class="hero-icon">🤝</div>
+          <h2>Приглашай друзей</h2>
+          <p>Получай <b>10%</b> с каждого <b>проигрыша</b> твоего реферала ПОЖИЗНЕННО!</p>
+        </div>
+
+        <div class="stats-grid" style="margin-bottom: 20px;">
+          <div class="stat-card">
+            <span class="stat-label">Заработано</span>
+            <span class="stat-value" id="ref-earned-value">0.00 TON</span>
           </div>
-          <div class="fairness-info">
-            <div class="fair-card"
-              style="background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
-              <h4 style="margin-top: 0;">Как это работает</h4>
-              <p style="font-size: 13px; color: var(--t3);">HMAC-SHA256 из серверного сида, клиентского сида и нонса.
-                Результат можно проверить после смены серверного сида.</p>
-            </div>
-            <div class="fair-card"
-              style="background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
-              <h4 style="margin-top: 0;">Текущие сиды</h4>
-              <div class="seed-field" style="margin-bottom: 8px;"><label
-                  style="font-size: 11px; color: var(--t4);">Server
-                  Seed Hash</label>
-                <div class="seed-value" id="server-seed-hash"
-                  style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
-              </div>
-              <div class="seed-field" style="margin-bottom: 8px;">
-                <label style="font-size: 11px; color: var(--t4);">Client Seed</label>
-                <div class="seed-input-row" style="display: flex; gap: 5px;">
-                  <input type="text" id="client-seed-input" class="seed-input" placeholder="Твой seed"
-                    style="flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 5px; border-radius: 5px;">
-                  <button class="seed-btn" id="btn-update-seed"
-                    style="background: var(--gold); border: none; padding: 5px 10px; border-radius: 5px;">Save</button>
-                </div>
-              </div>
-              <div class="seed-field"><label style="font-size: 11px; color: var(--t4);">Nonce</label>
-                <div class="seed-value" id="nonce-value">0</div>
+        </div>
+
+        <div class="referral-link-card">
+          <label>Твоя ссылка:</label>
+          <div class="copy-box" id="ref-link-box">
+            <span id="referral-link">Загрузка...</span>
+            <button onclick="copyReferralLink()">📋</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tab-content" id="content-settings">
+      <div class="tab-scrollable">
+        <h3 class="section-title">Настройки</h3>
+        <div class="settings-list">
+          <div class="settings-group">
+            <div class="promo-section">
+              <span class="settings-name">Промокод</span>
+              <div class="promo-input-group">
+                <input type="text" id="promo-input" placeholder="Введите код...">
+                <button onclick="redeemPromo()">АКТИВИРОВАТЬ</button>
               </div>
             </div>
-            <button class="rotate-btn" id="btn-rotate-seed"
-              style="width: 100%; background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold); padding: 10px; border-radius: 10px; cursor: pointer; margin-bottom: 15px;">
-              Сменить Server Seed
+          </div>
+
+          <div class="settings-group">
+            <div class="settings-item clickable" onclick="switchTab('leaderboard')">
+              <div class="settings-info">
+                <span class="settings-name">Топ игроков</span>
+                <span class="settings-desc">Глобальный рейтинг лидеров</span>
+              </div>
+              <span class="icon" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;">
+                <svg viewBox="0 0 24 24" fill="var(--gold)" width="20" height="20">
+                  <path
+                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+              </span>
+            </div>
+
+            <div class="settings-item">
+              <div class="settings-info">
+                <span class="settings-name">Вибрация (Haptic)</span>
+                <span class="settings-desc">Отклик устройства во время игры</span>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="settings-haptic" checked onchange="toggleHaptic()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <a href="https://t.me/cuberoll_support" target="_blank" class="settings-item clickable">
+              <div class="settings-info">
+                <span class="settings-name">Поддержка</span>
+                <span class="settings-desc">Связаться с администрацией</span>
+              </div>
+              <span class="icon"><svg viewBox="0 0 24 24">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg></span>
+            </a>
+
+            <div class="settings-item clickable"
+              onclick="document.getElementById('fairness-modal').classList.remove('hidden')">
+              <div class="settings-info">
+                <span class="settings-name">Provably Fair</span>
+                <span class="settings-desc">Честная игра и проверка сидов</span>
+              </div>
+              <span class="icon"><svg viewBox="0 0 24 24">
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg></span>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <div class="settings-item">
+              <div class="settings-info">
+                <span class="settings-name">Версия</span>
+                <span class="settings-desc">Build 1.5.0 Golden Era</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="height: 30px;"></div>
+          <h3 class="section-title">Последние игры</h3>
+          <div class="history-list" id="history-list">
+            <div class="empty-state">
+              <p>Загрузка истории...</p>
+            </div>
+          </div>
+
+          <div class="settings-footer"
+            style="text-align: center; margin-top: 20px; font-size: 11px; color: var(--t4); display: flex; justify-content: center; gap: 10px;">
+            <a href="/terms.html" style="color: inherit; text-decoration: none;">Условия использования</a>
+            <span>•</span>
+            <a href="/privacy.html" style="color: inherit; text-decoration: none;">Конфиденциальность</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- подтверждение покупки -->
+    <div class="modal-overlay hidden" id="purchase-modal">
+      <div class="modal-box">
+        <div class="modal-gift-icon" id="modal-gift-icon">🎁</div>
+        <h3 class="modal-title">Подтверждение</h3>
+        <p class="modal-desc">Вы уверены, что хотите купить <strong id="modal-gift-name">...</strong> за <span
+            id="modal-gift-price">...</span> TON?</p>
+        <div class="modal-btns">
+          <button class="modal-btn cancel" onclick="closeModal('purchase-modal')">Отмена</button>
+          <button class="modal-btn confirm" id="modal-confirm-buy">Купить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- результат -->
+    <div class="result-overlay hidden" id="result-overlay">
+      <div class="result-modal">
+        <div class="result-icon-wrap" id="result-icon-wrap"></div>
+        <h2 class="result-title" id="result-title">Победа!</h2>
+        <div class="result-dice-display" id="result-dice-display"></div>
+        <p class="result-amount" id="result-amount">+100.00</p>
+        <p class="result-streak" id="result-streak"></p>
+        <button class="result-close" id="result-close">Продолжить</button>
+      </div>
+    </div>
+
+    <!-- объявление для выдачи подарков -->
+    <div class="modal-overlay hidden" id="dealer-warning-modal">
+      <div class="modal-box premium-modal dealer-modal">
+        <div class="modal-glow-bg"></div>
+        <div class="modal-gift-icon shiny">🤖</div>
+        <h3 class="modal-title">Важное уведомление!</h3>
+        <p class="modal-desc">Для того чтобы мы могли отправить вам купленный подарок, вам <b>обязательно</b> нужно
+          написать нашему боту-дилеру. <br><br>Без первого сообщения от вас Телеграм запрещает нам отправлять подарки!
+        </p>
+        <div class="modal-btns column">
+          <a href="https://t.me/dealer_cuberoll" target="_blank" class="modal-btn confirm pulse-btn"
+            onclick="closeModal('dealer-warning-modal'); localStorage.setItem('dealer_warned', '1')">НАПИСАТЬ
+            ДИЛЕРУ</a>
+          <button class="modal-btn cancel"
+            onclick="closeModal('dealer-warning-modal'); localStorage.setItem('dealer_warned', '1')">Я ПОНЯЛ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Модальное окно ставки -->
+    <div class="modal-overlay hidden" id="bet-modal">
+      <div class="modal-box bet-modal-box">
+        <div class="modal-header">
+          <h3>Сделать ставку</h3>
+          <button class="close-modal-btn" onclick="closeModal('bet-modal')">×</button>
+        </div>
+
+        <div class="bet-amount-section-modal">
+          <label>Сумма ставки</label>
+          <div class="bet-input-container">
+            <button class="bet-adjust" id="btn-half">/2</button>
+            <div class="bet-input-wrapper">
+              <input type="number" id="bet-amount" class="bet-input" value="1.0" min="0.1" max="100" step="0.1">
+              <span class="bet-input-unit">TON</span>
+            </div>
+            <button class="bet-adjust" id="btn-double">×2</button>
+          </div>
+          <div class="quick-bets">
+            <button class="quick-bet" data-amount="1">1</button>
+            <button class="quick-bet" data-amount="5">5</button>
+            <button class="quick-bet active" data-amount="10">10</button>
+            <button class="quick-bet" data-amount="20">20</button>
+            <button class="quick-bet" data-amount="max">MAX</button>
+            <button class="quick-bet gift-bet-trigger" onclick="openGiftBetModal()"
+              style="background: var(--gold-dim); border-color: var(--gold);">🎁</button>
+          </div>
+        </div>
+
+        <div class="bet-type-section-modal">
+          <label>Исход</label>
+          <div class="bet-grid">
+            <button class="bet-type-btn active" data-bet="high">
+              <span class="bet-name">Больше (8-12)</span><span class="bet-mult">x1.95</span>
             </button>
+            <button class="bet-type-btn" data-bet="low">
+              <span class="bet-name">Меньше (2-6)</span><span class="bet-mult">x1.95</span>
+            </button>
+            <button class="bet-type-btn" data-bet="even">
+              <span class="bet-name">Чётное</span><span class="bet-mult">x1.95</span>
+            </button>
+            <button class="bet-type-btn" data-bet="odd">
+              <span class="bet-name">Нечёт</span><span class="bet-mult">x1.95</span>
+            </button>
+            <button class="bet-type-btn" data-bet="seven">
+              <span class="bet-name">Семёрка (7)</span><span class="bet-mult">x5.8</span>
+            </button>
+            <button class="bet-type-btn" data-bet="doubles">
+              <span class="bet-name">Дубль</span><span class="bet-mult">x5.0</span>
+            </button>
+            <button class="bet-type-btn" data-bet="exact">
+              <span class="bet-name">Точное</span><span class="bet-mult">x11</span>
+            </button>
+          </div>
+        </div>
 
-            <div class="fair-card" id="old-seed-reveal"
-              style="display:none; background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
-              <h4 style="margin-top: 0;">Предыдущий Seed</h4>
-              <div class="seed-field" style="margin-bottom: 8px;"><label
-                  style="font-size: 11px; color: var(--t4);">Seed</label>
-                <div class="seed-value" id="old-server-seed"
-                  style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
-              </div>
-              <div class="seed-field"><label style="font-size: 11px; color: var(--t4);">Hash</label>
-                <div class="seed-value" id="old-server-hash"
-                  style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
+        <div class="exact-picker-container" id="exact-picker" style="display:none;">
+          <label class="picker-label">Выберите точное число</label>
+          <div class="exact-nums" id="exact-nums"></div>
+        </div>
+
+        <button class="roll-button main-action" id="roll-btn-confirm">
+          БРОСИТЬ КОСТИ
+        </button>
+      </div>
+    </div>
+    <!-- ONBOARDING MODAL -->
+    <div class="modal-overlay hidden" id="onboarding-modal">
+      <div class="onboarding-box">
+        <button class="close-cross" onclick="closeModal('onboarding-modal')">×</button>
+        <div class="onboarding-media">
+          <div class="cube-media-container">
+            <div class="cube-wireframe"></div>
+          </div>
+        </div>
+        <div class="onboarding-body">
+          <h2 class="onboarding-title">Добро пожаловать в <span class="text-gold">CubeRoll</span></h2>
+          <p class="onboarding-text">Испытай удачу в самом честном казино на TON. Бросай кости и выигрывай!</p>
+          <p class="onboarding-subtext">Подпишись на наш канал, чтобы не пропустить бонусы и обновления.</p>
+
+          <div class="onboarding-actions">
+            <a href="https://t.me/cubewilltaketheworld" target="_blank" class="onboarding-btn primary">ПОДПИСАТЬСЯ</a>
+            <button class="onboarding-btn secondary" onclick="closeModal('onboarding-modal')">НАЧАТЬ ИГРАТЬ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAIRNESS MODAL (moved from tab) -->
+    <div class="modal-overlay hidden" id="fairness-modal">
+      <div class="modal-box premium-modal" style="max-height: 80vh; overflow-y: auto; text-align: left;">
+        <div class="modal-header"
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3 style="margin: 0; color: var(--gold);">Provably Fair</h3>
+          <button class="close-modal-btn" onclick="closeModal('fairness-modal')"
+            style="background: none; border: none; color: white; font-size: 24px;">×</button>
+        </div>
+        <div class="fairness-info">
+          <div class="fair-card"
+            style="background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
+            <h4 style="margin-top: 0;">Как это работает</h4>
+            <p style="font-size: 13px; color: var(--t3);">HMAC-SHA256 из серверного сида, клиентского сида и нонса.
+              Результат можно проверить после смены серверного сида.</p>
+          </div>
+          <div class="fair-card"
+            style="background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
+            <h4 style="margin-top: 0;">Текущие сиды</h4>
+            <div class="seed-field" style="margin-bottom: 8px;"><label style="font-size: 11px; color: var(--t4);">Server
+                Seed Hash</label>
+              <div class="seed-value" id="server-seed-hash"
+                style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
+            </div>
+            <div class="seed-field" style="margin-bottom: 8px;">
+              <label style="font-size: 11px; color: var(--t4);">Client Seed</label>
+              <div class="seed-input-row" style="display: flex; gap: 5px;">
+                <input type="text" id="client-seed-input" class="seed-input" placeholder="Твой seed"
+                  style="flex: 1; background: var(--bg); border: 1px solid var(--border); color: white; padding: 5px; border-radius: 5px;">
+                <button class="seed-btn" id="btn-update-seed"
+                  style="background: var(--gold); border: none; padding: 5px 10px; border-radius: 5px;">Save</button>
               </div>
             </div>
+            <div class="seed-field"><label style="font-size: 11px; color: var(--t4);">Nonce</label>
+              <div class="seed-value" id="nonce-value">0</div>
+            </div>
+          </div>
+          <button class="rotate-btn" id="btn-rotate-seed"
+            style="width: 100%; background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold); padding: 10px; border-radius: 10px; cursor: pointer; margin-bottom: 15px;">
+            Сменить Server Seed
+          </button>
 
-            <div class="fair-card" style="background: var(--card); padding: 12px; border-radius: 10px;">
-              <h4 style="margin-top: 0;">Проверить игру</h4>
-              <div class="verify-form" style="display: flex; flex-direction: column; gap: 8px;">
-                <input type="text" id="verify-server-seed" class="verify-input" placeholder="Server Seed"
-                  style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
-                <input type="text" id="verify-client-seed" class="verify-input" placeholder="Client Seed"
-                  style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
-                <input type="number" id="verify-nonce" class="verify-input" placeholder="Nonce"
-                  style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
-                <button class="verify-btn" id="btn-verify"
-                  style="background: var(--gold); border: none; padding: 10px; border-radius: 5px; color: black; font-weight: 800;">Проверить</button>
-              </div>
-              <div class="verify-result" id="verify-result" style="display:none; margin-top: 10px;">
-                <p style="font-size: 13px;">Результат: <strong id="verify-dice">—</strong></p>
-                <p style="font-size: 13px;">Сумма: <strong id="verify-total">—</strong></p>
-              </div>
+          <div class="fair-card" id="old-seed-reveal"
+            style="display:none; background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 10px;">
+            <h4 style="margin-top: 0;">Предыдущий Seed</h4>
+            <div class="seed-field" style="margin-bottom: 8px;"><label
+                style="font-size: 11px; color: var(--t4);">Seed</label>
+              <div class="seed-value" id="old-server-seed"
+                style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
+            </div>
+            <div class="seed-field"><label style="font-size: 11px; color: var(--t4);">Hash</label>
+              <div class="seed-value" id="old-server-hash"
+                style="font-family: monospace; font-size: 10px; word-break: break-all;">—</div>
+            </div>
+          </div>
+
+          <div class="fair-card" style="background: var(--card); padding: 12px; border-radius: 10px;">
+            <h4 style="margin-top: 0;">Проверить игру</h4>
+            <div class="verify-form" style="display: flex; flex-direction: column; gap: 8px;">
+              <input type="text" id="verify-server-seed" class="verify-input" placeholder="Server Seed"
+                style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
+              <input type="text" id="verify-client-seed" class="verify-input" placeholder="Client Seed"
+                style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
+              <input type="number" id="verify-nonce" class="verify-input" placeholder="Nonce"
+                style="background: var(--bg); border: 1px solid var(--border); color: white; padding: 8px; border-radius: 5px;">
+              <button class="verify-btn" id="btn-verify"
+                style="background: var(--gold); border: none; padding: 10px; border-radius: 5px; color: black; font-weight: 800;">Проверить</button>
+            </div>
+            <div class="verify-result" id="verify-result" style="display:none; margin-top: 10px;">
+              <p style="font-size: 13px;">Результат: <strong id="verify-dice">—</strong></p>
+              <p style="font-size: 13px;">Сумма: <strong id="verify-total">—</strong></p>
             </div>
           </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <div id="toast" class="toast"></div>
-    <script src="app.js?v=7.0"></script>
-    <!-- Daily Spin Modal -->
-    <div id="daily-spin-modal" class="modal-overlay hidden">
-      <div class="modal-box daily-spin-box">
-        <div class="modal-header">
-          <h3>КОЛЕСО ФОРТУНЫ</h3>
-          <button class="close-modal-btn" onclick="closeModal('daily-spin-modal')">&times;</button>
-        </div>
-        <div class="wheel-container">
-          <div id="wheel" class="wheel-visual">
-            <div class="wheel-labels" id="wheel-labels">
-              <!-- Segments 1-12 -->
-            </div>
-          </div>
-          <div class="wheel-pointer">▼</div>
-        </div>
-        <p class="spin-hint">Шанс на супер-приз (10 TON) — 0.1%!</p>
-        <button id="spin-start-btn" class="roll-button" onclick="startDailySpin()">КРУТИТЬ</button>
+  <div id="toast" class="toast"></div>
+  <script src="app.js?v=7.0"></script>
+  <!-- Daily Spin Modal -->
+  <div id="daily-spin-modal" class="modal-overlay hidden">
+    <div class="modal-box daily-spin-box">
+      <div class="modal-header">
+        <h3>КОЛЕСО ФОРТУНЫ</h3>
+        <button class="close-modal-btn" onclick="closeModal('daily-spin-modal')">&times;</button>
       </div>
-    </div>
-
-    <!-- Stats Modal (New Profile Tab could be better, but we use existing structure) -->
-    <div id="stats-modal" class="modal-overlay hidden">
-      <div class="modal-box stats-modal-box">
-        <div class="modal-header">
-          <h3>МОЯ СТАТИСТИКА</h3>
-          <button class="close-modal-btn" onclick="closeModal('stats-modal')">&times;</button>
-        </div>
-        <div class="stats-grid-detailed">
-          <div class="stat-item">
-            <label>ВСЕГО СТАВОК</label>
-            <span id="stat-wagered">0.00</span>
-          </div>
-          <div class="stat-item">
-            <label>ВЫИГРАНО</label>
-            <span id="stat-won" style="color:var(--green)">0.00</span>
-          </div>
-          <div class="stat-item">
-            <label>ПРОИГРАНО</label>
-            <span id="stat-lost" style="color:var(--red)">0.00</span>
-          </div>
-          <div class="stat-item">
-            <label>РЕКОРДНЫЙ ИКС</label>
-            <span id="stat-max-mult" style="color:var(--gold)">0.00x</span>
+      <div class="wheel-container">
+        <div id="wheel" class="wheel-visual">
+          <div class="wheel-labels" id="wheel-labels">
+            <!-- Segments 1-12 -->
           </div>
         </div>
-        <button class="result-close" onclick="closeModal('stats-modal')">ЗАКРЫТЬ</button>
+        <div class="wheel-pointer">▼</div>
       </div>
+      <p class="spin-hint">Шанс на супер-приз (10 TON) — 0.1%!</p>
+      <button id="spin-start-btn" class="roll-button" onclick="startDailySpin()">КРУТИТЬ</button>
     </div>
+  </div>
 
-    <!-- Inventory Modal -->
-    <div id="inventory-modal" class="modal-overlay hidden">
-      <div class="modal-box inventory-box">
-        <div class="modal-header">
-          <h3>МОЙ ИНВЕНТАРЬ</h3>
-          <button class="close-modal-btn" onclick="closeModal('inventory-modal')">&times;</button>
-        </div>
-        <div class="inventory-grid" id="inventory-list">
-          <!-- User items here -->
-        </div>
-        <p class="inventory-hint">Здесь ваши уникальные подарки. Вы можете выставить их на продажу в Маркетплейс.</p>
+  <!-- Stats Modal (New Profile Tab could be better, but we use existing structure) -->
+  <div id="stats-modal" class="modal-overlay hidden">
+    <div class="modal-box stats-modal-box">
+      <div class="modal-header">
+        <h3>МОЯ СТАТИСТИКА</h3>
+        <button class="close-modal-btn" onclick="closeModal('stats-modal')">&times;</button>
       </div>
-    </div>
-
-    <!-- List for Sale Modal -->
-    <div id="list-sale-modal" class="modal-overlay hidden">
-      <div class="modal-box small-modal">
-        <div class="modal-header">
-          <h3>ПРОДАЖА</h3>
-          <button class="close-modal-btn" onclick="closeModal('list-sale-modal')">&times;</button>
+      <div class="stats-grid-detailed">
+        <div class="stat-item">
+          <label>ВСЕГО СТАВОК</label>
+          <span id="stat-wagered">0.00</span>
         </div>
-        <div class="sale-form">
-          <input type="hidden" id="sale-instance-id">
-          <label>ЦЕНА (TON)</label>
-          <div class="premium-input-group">
-            <input type="number" id="sale-price" value="1.0" step="0.1">
-            <span class="unit">TON</span>
-          </div>
-          <button class="claim-btn-premium" style="margin-top:15px; width:100%;"
-            onclick="confirmListSale()">ВЫСТАВИТЬ</button>
+        <div class="stat-item">
+          <label>ВЫИГРАНО</label>
+          <span id="stat-won" style="color:var(--green)">0.00</span>
+        </div>
+        <div class="stat-item">
+          <label>ПРОИГРАНО</label>
+          <span id="stat-lost" style="color:var(--red)">0.00</span>
+        </div>
+        <div class="stat-item">
+          <label>РЕКОРДНЫЙ ИКС</label>
+          <span id="stat-max-mult" style="color:var(--gold)">0.00x</span>
         </div>
       </div>
+      <button class="result-close" onclick="closeModal('stats-modal')">ЗАКРЫТЬ</button>
     </div>
+  </div>
+
+  <!-- Inventory Modal -->
+  <div id="inventory-modal" class="modal-overlay hidden">
+    <div class="modal-box inventory-box">
+      <div class="modal-header">
+        <h3>МОЙ ИНВЕНТАРЬ</h3>
+        <button class="close-modal-btn" onclick="closeModal('inventory-modal')">&times;</button>
+      </div>
+      <div class="inventory-grid" id="inventory-list">
+        <!-- User items here -->
+      </div>
+      <p class="inventory-hint">Здесь ваши уникальные подарки. Вы можете выставить их на продажу в Маркетплейс.</p>
+    </div>
+  </div>
+
+  <!-- List for Sale Modal -->
+  <div id="list-sale-modal" class="modal-overlay hidden">
+    <div class="modal-box small-modal">
+      <div class="modal-header">
+        <h3>ПРОДАЖА</h3>
+        <button class="close-modal-btn" onclick="closeModal('list-sale-modal')">&times;</button>
+      </div>
+      <div class="sale-form">
+        <input type="hidden" id="sale-instance-id">
+        <label>ЦЕНА (TON)</label>
+        <div class="premium-input-group">
+          <input type="number" id="sale-price" value="1.0" step="0.1">
+          <span class="unit">TON</span>
+        </div>
+        <button class="claim-btn-premium" style="margin-top:15px; width:100%;"
+          onclick="confirmListSale()">ВЫСТАВИТЬ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gift Selection for Bet Modal -->
+  <div id="gift-bet-modal" class="modal-overlay hidden">
+    <div class="modal-box inventory-box">
+      <div class="modal-header">
+        <h3>ВЫБЕРИТЕ ПОДАРОК</h3>
+        <button class="close-modal-btn" onclick="closeModal('gift-bet-modal')">&times;</button>
+      </div>
+      <div class="inventory-grid" id="gift-bet-list">
+        <!-- Inventory items for betting -->
+      </div>
+      <p class="inventory-hint">Ставка будет равна рыночной стоимости подарка.</p>
+    </div>
+  </div>
 
 </body>
 

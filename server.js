@@ -205,24 +205,41 @@ app.post('/api/user/wallet', auth, (req, res) => {
 });
 
 // ставка
-app.post('/api/bet', auth, (req, res) => {
+app.post('/api/bet', auth, async (req, res) => {
     const u = req.tgUser;
     const user = userOps.get(u.id);
     if (!user) return res.status(404).secure({ error: 'User not found' });
     if (user.is_banned) return res.status(403).secure({ error: 'Account is banned' });
     if (settingsOps.get('maintenance_mode') === '1') return res.status(503).secure({ error: 'Casino is under maintenance' });
 
-    const { betAmount, betType, exactNumber, rangeMin, rangeMax } = req.body;
-    if (!betAmount || !betType) return res.status(400).secure({ error: 'Missing bet amount or type' });
+    const { betAmount, betType, exactNumber, rangeMin, rangeMax, giftInstanceId } = req.body;
+    if ((!betAmount && !giftInstanceId) || !betType) return res.status(400).secure({ error: 'Missing bet amount or type' });
 
-    const amt = Math.round(parseFloat(betAmount) * 1e9) / 1e9;
-    const minBet = parseFloat(settingsOps.get('min_bet') || '10');
-    const maxBet = parseFloat(settingsOps.get('max_bet') || '10000');
+    let amt = 0;
+    if (giftInstanceId) {
+        // Betting with a gift
+        const inventory = inventoryOps.getByUser(u.id);
+        const item = inventory.find(i => i.instance_id === giftInstanceId);
+        if (!item) return res.status(404).secure({ error: 'Gift not found in inventory' });
 
-    if (isNaN(amt) || amt < minBet || amt > maxBet) return res.status(400).secure({ error: `Bet must be between ${minBet} and ${maxBet}` });
+        // Initial price from DB as floor price fallback
+        amt = item.price;
 
-    // Используем микро-погрешность для сравнения, чтобы 0.1 > 0.1 не выдавало ошибку из-за точности
-    if (amt > user.balance + 0.000000001) return res.status(400).secure({ error: 'Insufficient balance' });
+        // Try to get fresh floor price if possible
+        const livePrice = await fetchNftFloorPrice(item.title);
+        if (livePrice && livePrice.price > 0) {
+            amt = livePrice.price;
+        }
+
+        if (amt < 0.01) return res.status(400).secure({ error: 'Gift has no market value' });
+
+        // Remove from inventory as it's a stake
+        inventoryOps.remove(giftInstanceId);
+        console.log(`[Game] User ${u.id} betting with gift ${item.title} (Value: ${amt} TON)`);
+    } else {
+        amt = Math.round(parseFloat(betAmount) * 1e9) / 1e9;
+        if (amt > user.balance + 0.000000001) return res.status(400).secure({ error: 'Insufficient balance' });
+    }
 
     // тип ставки — exact и range обрабатываем отдельно
     const validBets = ['high', 'low', 'seven', 'even', 'odd', 'doubles', 'exact', 'range'];

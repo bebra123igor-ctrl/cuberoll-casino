@@ -471,9 +471,6 @@ function initEventListeners() {
     safeSetClick('roll-btn-confirm', roll);
 
     // Инпуты
-    const betAmt = document.getElementById('bet-amount');
-    if (betAmt) betAmt.oninput = updatePayoutUI;
-
     const pBetAmt = document.getElementById('plinko-bet-amount');
     if (pBetAmt) pBetAmt.oninput = updatePlinkoPreviews;
 
@@ -535,8 +532,12 @@ window.roll = async function () {
     }
 
     const amt = parseFloat(document.getElementById('bet-amount').value);
-    if (isNaN(amt) || amt < 0.1) return toast('Мин. ставка 0.1 TON', 'error');
-    if (amt > user.balance) return toast('Недостаточно баланса', 'error');
+
+    // Check if gift is selected
+    if (!selectedGiftForBet) {
+        if (isNaN(amt) || amt < 0.1) return toast('Мин. ставка 0.1 TON', 'error');
+        if (amt > user.balance) return toast('Недостаточно баланса', 'error');
+    }
 
     document.getElementById('bet-modal').classList.add('hidden');
 
@@ -550,8 +551,20 @@ window.roll = async function () {
     try {
         const payload = { betAmount: amt, betType: betType };
         if (betType === 'exact') payload.exactNumber = exactNum;
+        if (selectedGiftForBet) {
+            payload.giftInstanceId = selectedGiftForBet.instanceId;
+            // Visual reset
+            const giftBtn = document.querySelector('.gift-bet-trigger');
+            if (giftBtn) giftBtn.innerHTML = '🎁';
+            const betInput = document.getElementById('bet-amount');
+            if (betInput) {
+                betInput.disabled = false;
+                betInput.style.color = '';
+            }
+        }
 
         const res = await api('/api/bet', 'POST', payload);
+        selectedGiftForBet = null;
 
         if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
         animateDice(res.result.dice);
@@ -567,6 +580,7 @@ window.roll = async function () {
         }, 1200);
     } catch (e) {
         rolling = false;
+        selectedGiftForBet = null; // Reset on error
         const rb = document.getElementById('roll-btn-confirm');
         if (rb) {
             rb.disabled = false;
@@ -607,6 +621,63 @@ function setDiceFace(el, val) {
     el.style.transform = rotations[val] || rotations[1];
 }
 
+// --- GIFT BETTING LOGIC ---
+let selectedGiftForBet = null;
+
+window.openGiftBetModal = async function () {
+    const list = document.getElementById('gift-bet-list');
+    list.innerHTML = '<div class="empty-state">Загрузка...</div>';
+    document.getElementById('gift-bet-modal').classList.remove('hidden');
+
+    try {
+        const { inventory } = await api('/api/inventory');
+        if (!inventory || inventory.length === 0) {
+            list.innerHTML = '<div class="premium-empty"><p>Инвентарь пуст</p></div>';
+            return;
+        }
+
+        list.innerHTML = inventory.map(item => `
+            <div class="shop-item glass-card" onclick="selectGiftForBet(${item.instance_id}, '${item.title}', ${item.price})">
+                <div class="shop-item-icon">${getGiftEmoji(item.model)}</div>
+                <div class="shop-item-info">
+                    <div class="shop-item-title">${item.title}</div>
+                    <div class="shop-item-price">${item.price} TON</div>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        list.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+    }
+};
+
+window.selectGiftForBet = function (instanceId, title, price) {
+    selectedGiftForBet = { instanceId, title, price };
+    const betInput = document.getElementById('bet-amount');
+    if (betInput) {
+        betInput.value = price;
+        betInput.disabled = true;
+        betInput.style.color = 'var(--gold)';
+    }
+    toast(`Выбран подарок: ${title}`, 'success');
+    closeModal('gift-bet-modal');
+
+    // Add visual indicator to the trigger
+    const btn = document.querySelector('.gift-bet-trigger');
+    if (btn) btn.innerHTML = '✅';
+};
+
+// Reset gift bet when typing manually
+document.getElementById('bet-amount')?.addEventListener('input', () => {
+    if (selectedGiftForBet) {
+        selectedGiftForBet = null;
+        const betInput = document.getElementById('bet-amount');
+        betInput.disabled = false;
+        betInput.style.color = '';
+        const btn = document.querySelector('.gift-bet-trigger');
+        if (btn) btn.innerHTML = '🎁';
+    }
+});
+
 // --- SHOP TAB LOGIC ---
 function switchShopTab(tab) {
     document.querySelectorAll('.shop-tab-btn').forEach(b => b.classList.remove('active'));
@@ -625,12 +696,12 @@ function switchShopTab(tab) {
 async function loadMarketplace() {
     const list = document.getElementById('marketplace-list');
     if (!list) return;
-    list.innerHTML = '<p class="empty-state">Загрузка товаров...</p>';
+    list.innerHTML = '<div class="empty-state">Загрузка товаров...</div>';
 
     try {
         const { listings } = await api('/api/marketplace/items');
-        if (listings.length === 0) {
-            list.innerHTML = '<p class="empty-state">На рынке пока пусто</p>';
+        if (!listings || listings.length === 0) {
+            list.innerHTML = '<div class="premium-empty"><div class="empty-glow"></div><div class="empty-icon-wrap"><svg viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-14L4 7m8 4v10M4 7v10l8 4"/></svg></div><p>Товары не найдены</p></div>';
             return;
         }
 
@@ -641,13 +712,13 @@ async function loadMarketplace() {
                 <div class="shop-item-info">
                     <div class="shop-item-title" style="font-size: 11px; font-weight: 800;">${item.title}</div>
                     <div class="shop-item-price" style="color: var(--gold);">${item.price.toFixed(2)} TON</div>
-                    <div class="shop-item-seller" style="font-size: 8px; opacity: 0.5;">@${item.seller_name}</div>
+                    <div class="shop-item-seller" style="font-size: 8px; opacity: 0.5;">@${item.seller_name || 'Anonymous'}</div>
                 </div>
                 <button class="buy-btn" onclick="buyFromMarket(${item.id})" style="margin-top: 5px;">КУПИТЬ</button>
             </div>
         `).join('');
     } catch (e) {
-        list.innerHTML = `<p class="empty-state" style="color:var(--red)">Ошибка: ${e.message}</p>`;
+        list.innerHTML = `<div class="empty-state" style="color:var(--red)">Ошибка: ${e.message}</div>`;
     }
 }
 
@@ -1531,6 +1602,17 @@ function renderPlinko() {
             }
         }
 
+        // Draw Slots Dividers
+        const slotWidth = w / PLINKO_MULTIS.length;
+        plinkoCtx.strokeStyle = 'rgba(255,255,255,0.1)';
+        plinkoCtx.lineWidth = 2;
+        for (let i = 1; i < PLINKO_MULTIS.length; i++) {
+            plinkoCtx.beginPath();
+            plinkoCtx.moveTo(i * slotWidth, h - 30);
+            plinkoCtx.lineTo(i * slotWidth, h);
+            plinkoCtx.stroke();
+        }
+
         // Update and Draw Balls
         const gravity = 0.05; // Even slower
 
@@ -1552,19 +1634,36 @@ function renderPlinko() {
                 const currentRow = Math.floor((ball.y - 40) / rowGap);
                 if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
                     const move = ball.path[ball.step];
-                    ball.vx = (move === 1 ? 1 : -1) * (colGap / 18) + (Math.random() - 0.5) * 0.5;
-                    ball.vy = 1.2;
+                    // Smoother side push
+                    ball.vx = (move === 1 ? 1 : -1) * (colGap / 10) + (Math.random() - 0.5) * 0.2;
+                    ball.vy = 1.8; // Stronger drop through pegs
                     ball.step++;
                 }
 
-                if (ball.y > h - 18) {
+                // Final stretch: Guide to precisely the center of the target slot
+                if (ball.step >= PLINKO_ROWS) {
+                    const slotWidth = w / PLINKO_MULTIS.length;
+                    const targetX = (ball.targetSlot + 0.5) * slotWidth;
+                    // Faster guidance near the end
+                    ball.vx += (targetX - ball.x) * 0.15;
+                    ball.vx *= 0.85; // Dampen horizontal movement
+                    ball.vy = Math.max(ball.vy, 2.5);
+                }
+
+                if (ball.y >= h - 18) { // Result slightly before hitting bottom for better feel
                     ball.landed = true;
-                    ball.y = h - 18;
+                    ball.y = h - 10;
                     ball.vx = 0;
                     ball.vy = 0;
+
                     highlightSlot(ball.targetSlot);
-                    if (ball.payout > 0) toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success');
+                    if (ball.payout > 0) {
+                        toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success');
+                        triggerConfetti();
+                    }
                     if (ball.newBalance !== undefined) setBalance(ball.newBalance, true);
+
+                    if (window.haptic && hapticEnabled) haptic.notificationOccurred('success');
                 }
             }
 
@@ -1727,6 +1826,21 @@ async function tonDeposit() {
     } finally {
         btn.disabled = false;
     }
+}
+
+// Final helper for gift icons
+function getGiftEmoji(model) {
+    if (!model) return '🎁';
+    const m = model.toLowerCase();
+    if (m.includes('star')) return '⭐';
+    if (m.includes('heart')) return '❤️';
+    if (m.includes('fire')) return '🔥';
+    if (m.includes('crystal') || m.includes('diamond')) return '💎';
+    if (m.includes('crown')) return '👑';
+    if (m.includes('bag') || m.includes('money')) return '💰';
+    if (m.includes('dice')) return '🎲';
+    if (m.includes('rocket')) return '🚀';
+    return '🎁';
 }
 
 // Stats listener to user Avatar
