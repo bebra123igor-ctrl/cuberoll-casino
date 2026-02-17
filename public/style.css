@@ -1149,15 +1149,29 @@ button:active,
   transform: scale(.92);
 }
 
-/* tabs */
+/* RESTORED TABS STYLES */
 .tab-content {
   display: none;
-  padding: 14px 16px 20px;
-  animation: fadeUp .25s ease;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
 }
 
 .tab-content.active {
-  display: flex;
+  display: flex !important;
+  animation: fadeUp .25s ease;
+}
+
+.tab-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 16px 80px;
+  /* Padding for content + space for nav */
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
 }
 
 @keyframes fadeUp {

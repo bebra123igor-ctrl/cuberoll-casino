@@ -24,9 +24,18 @@ db.exec(`
     games_won INTEGER DEFAULT 0,
     is_banned INTEGER DEFAULT 0,
     last_daily_claim TEXT DEFAULT NULL,
+    last_daily_spin TEXT DEFAULT NULL,
+    wallet_address TEXT DEFAULT NULL,
+    referral_earned REAL DEFAULT 0,
+    auto_cashout REAL DEFAULT NULL,
+    biggest_win_mult REAL DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     last_active TEXT DEFAULT (datetime('now'))
   );
+
+  -- Migration: Add missing columns if they don't exist
+  PRAGMA table_info(users);
+  -- columns will be added below via JS safely
 
   CREATE TABLE IF NOT EXISTS games (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,7 +140,19 @@ try {
 } catch (e) { }
 
 try {
-  db.exec('ALTER TABLE users ADD COLUMN auto_cashout REAL DEFAULT 0');
+  db.exec('ALTER TABLE users ADD COLUMN auto_cashout REAL DEFAULT NULL');
+} catch (e) { }
+
+try {
+  db.exec('ALTER TABLE users ADD COLUMN wallet_address TEXT DEFAULT NULL');
+} catch (e) { }
+
+try {
+  db.exec("ALTER TABLE users ADD COLUMN last_active TEXT DEFAULT (datetime('now'))");
+} catch (e) { }
+
+try {
+  db.exec('ALTER TABLE users ADD COLUMN wallet_address TEXT DEFAULT NULL');
 } catch (e) { }
 
 // Marketplace Table
