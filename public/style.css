@@ -1101,19 +1101,18 @@ button:active,
 
 /* ═══ nav ═══ */
 /* Consolidate Nav Tabs and Fix Visibility */
+/* Consolidate Nav Tabs and Fix Visibility */
 .nav-tabs {
   flex-shrink: 0;
   display: flex;
+  /* Flex layout places it naturally at bottom */
   background: var(--card2);
   padding: 8px 10px calc(12px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--border2);
   gap: 2px;
-  z-index: 9999;
-  position: fixed;
-  /* Force fixed bottom */
-  bottom: 0;
-  left: 0;
-  right: 0;
+  z-index: 1000;
+  position: relative;
+  /* Default back to relative */
   width: 100%;
 }
 
@@ -1161,8 +1160,11 @@ button:active,
   flex: 1;
   flex-direction: column;
   overflow: hidden;
+  /* Contains the scrollable area */
   position: relative;
   width: 100%;
+  min-height: 0;
+  /* Critical for nested flex scrolling */
 }
 
 .tab-content.active {
@@ -1174,9 +1176,8 @@ button:active,
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 14px 16px 100px;
-  /* Big padding to clear fixed nav */
-  /* Padding for content + space for nav */
+  padding: 14px 16px 20px;
+  /* Standard padding since menu is below, not over */
   -webkit-overflow-scrolling: touch;
   width: 100%;
 }
