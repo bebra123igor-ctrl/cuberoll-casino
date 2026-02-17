@@ -268,16 +268,15 @@ async function init() {
                         const comment = `deposit_${rnd}`;
                         const nano = Math.floor(amount * 1000000000).toString();
 
-                        // Universal link for better mobile support
-                        // https://app.tonkeeper.com/transfer/<addr>?amount=<nano>&text=<comment>
-                        const link = `https://app.tonkeeper.com/transfer/${address}?amount=${nano}&text=${encodeURIComponent(comment)}`;
+                        // Standard ton:// link is often most reliable on mobile if openLink is used
+                        const link = `ton://transfer/${address}?amount=${nano}&text=${encodeURIComponent(comment)}`;
 
                         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
                             window.Telegram.WebApp.openLink(link);
                         } else {
-                            window.location.href = link;
+                            window.open(link, '_blank');
                         }
-                    }
+                    };
                     window.directPay = doDirectPay;
                     window._goToPaymentImpl = function () {
                         if (tonConnectUI && tonConnectUI.connected) tonDeposit();
@@ -616,9 +615,12 @@ window.roll = async function () {
     if (rollBtn) rollBtn.disabled = true;
 
     try {
+        const activeBtn = document.querySelector('.bet-type-btn.active');
+        const bType = activeBtn ? activeBtn.dataset.bet : 'high';
+
         const payload = {
             betAmount: amt,
-            betType: document.querySelector('.bet-type-btn.active')?.dataset.bet || 'high'
+            betType: bType
         };
         if (betMode === 'gift' && selectedGift) {
             payload.giftInstanceId = selectedGift.instance_id;
@@ -2092,7 +2094,17 @@ window.openBetModal = function (game) {
     modal.classList.remove('hidden');
 
     // Config modal for game
-    document.getElementById('dice-options-area').classList.toggle('hidden', game !== 'dice');
+    const diceArea = document.getElementById('dice-options-area');
+    if (diceArea) {
+        // Force display style to ensure visibility 
+        if (game === 'dice') {
+            diceArea.classList.remove('hidden');
+            diceArea.style.display = 'block';
+        } else {
+            diceArea.classList.add('hidden');
+            diceArea.style.display = 'none';
+        }
+    }
     document.getElementById('crash-auto-cashout-area').classList.toggle('hidden', game !== 'crash');
 
     // Global handler for the button
