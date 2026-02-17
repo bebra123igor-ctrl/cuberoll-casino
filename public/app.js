@@ -954,15 +954,12 @@ async function loadHistory() {
 
             return `
                 <div class="history-item animated-history">
-                    <div class="hist-left">
                         <div class="hist-badge ${(g.payout > 0) ? 'badge-win' : 'badge-loss'}">${statusLabel}</div>
                         <div class="hist-meta">
                             <span class="hist-type">${g.game_type.toUpperCase()}</span>
                             <span class="hist-time">${timeStr}</span>
                         </div>
                     </div>
-                    <div class="hist-res ${(g.payout > 0) ? 'win' : 'loss'}">${amountStr} TON</div>
-                </div>
             `;
         }).join('') : '<div class="premium-empty"><p>История пуста</p></div>';
     } catch (e) { }
@@ -1194,7 +1191,8 @@ function updateCrashUI() {
         document.querySelector('.crash-main').style.backdropFilter = 'none';
 
         // AUTO CASHOUT LOGIC
-        const autoMult = parseFloat(document.getElementById('crash-auto-cashout').value) || 0;
+        const autoInput = document.getElementById('bet-auto-cashout');
+        const autoMult = autoInput ? parseFloat(autoInput.value) : 0;
         if (autoMult > 1 && crashStatus.multiplier >= autoMult && crashStatus.myBet && !crashStatus.myBet.cashedOut) {
             crashCashout(); // Trigger local cashout which calls API
         }
@@ -1313,42 +1311,20 @@ function renderCrash() {
     const currentMult = isPlaying ? Math.pow(1.07, t) : (isCrashed ? (crashStatus.multiplier || 1) : 1);
 
     // 1. STARFIELD (Optimization: reduce count for mobile speed)
-    const speedFactor = isPlaying ? (0.4 + currentMult * 0.7) : (isCrashed ? 0 : 0.15);
-    crashCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-    crashCtx.fillStyle = '#ffffff';
+    const speedFactor = isPlaying ? (0.2 + Math.log(currentMult) * 0.5) : (isCrashed ? 0 : 0.05);
 
     stars.forEach(s => {
-        const move = s.s * speedFactor * 10;
+        const move = s.s * speedFactor * 15;
         s.y += move;
         if (s.y > h) { s.y = 0; s.x = Math.random() * w; }
 
         crashCtx.globalAlpha = s.o;
-        if (currentMult > 2 && isPlaying) {
-            crashCtx.lineWidth = s.s;
-            crashCtx.beginPath();
-            crashCtx.moveTo(s.x, s.y);
-            crashCtx.lineTo(s.x, s.y + move * 1.2);
-            crashCtx.stroke();
-        } else {
-            crashCtx.beginPath();
-            crashCtx.arc(s.x, s.y, s.s, 0, Math.PI * 2);
-            crashCtx.fill();
-        }
+        crashCtx.fillStyle = '#fff';
+        crashCtx.beginPath();
+        crashCtx.arc(s.x, s.y, s.s, 0, Math.PI * 2);
+        crashCtx.fill();
     });
     crashCtx.globalAlpha = 1;
-
-    // ROCKET ENGINE GLOW
-    if (isPlaying || (isCrashed && t > 0)) {
-        const rx = Math.round(w / 2);
-        const ry = Math.round(isPlaying ? (h * 0.5 - Math.min(h * 0.1, (currentMult - 1) * 4)) : (h * 0.5));
-
-        const glowRad = 50 + currentMult * 5;
-        const glowGrad = crashCtx.createRadialGradient(rx, ry + 20, 0, rx, ry + 20, glowRad);
-        glowGrad.addColorStop(0, isCrashed ? 'rgba(255, 61, 0, 0.15)' : 'rgba(241, 196, 15, 0.1)');
-        glowGrad.addColorStop(1, 'transparent');
-        crashCtx.fillStyle = glowGrad;
-        crashCtx.fillRect(rx - glowRad, ry + 20 - glowRad, glowRad * 2, glowRad * 2);
-    }
 
     // ROCKET
     if (isPlaying || isCrashed || (crashStatus && crashStatus.phase === 'WAITING')) {
@@ -1356,30 +1332,17 @@ function renderCrash() {
 
         if (isPlaying) {
             const multEl = document.getElementById('crash-multiplier');
-            if (multEl) {
-                multEl.textContent = currentMult.toFixed(2) + 'x';
-                if (currentMult > 5) multEl.classList.add('vibrating');
-            }
+            if (multEl) multEl.textContent = currentMult.toFixed(2) + 'x';
         }
 
-        const shakeAmp = isPlaying ? (0.4 + currentMult / 15) : 0;
-        const s = Math.min(1.5, Math.max(0.9, w / 400));
-
-        const rx = Math.round(w / 2) + Math.sin(timeFactor * 32) * shakeAmp;
-        const targetRy = isPlaying ? (h * 0.5 - Math.min(h * 0.15, (currentMult - 1) * 6)) : (h * 0.5);
-        const ry = Math.round(targetRy);
+        const s = Math.min(1.2, Math.max(0.7, h / 500));
+        const rx = w / 2;
+        // Cap vertical movement to avoid "infinite" feel
+        const ry = h * 0.65 - Math.min(h * 0.3, Math.pow(currentMult - 1, 0.7) * 15);
 
         crashCtx.save();
         crashCtx.translate(rx, ry);
         crashCtx.scale(s, s);
-        crashCtx.translate(-rx, -ry);
-
-        // --- PREMIUM ROCKET DESIGN ---
-        const rx_base = rx;
-        const ry_base = ry;
-
-        crashCtx.save();
-        crashCtx.translate(rx_base, ry_base);
 
         // Dynamic Flame
         if (isPlaying || (isCrashed && t > 0)) {
@@ -1536,6 +1499,8 @@ function initPlinko() {
             multsDiv.appendChild(slot);
         });
         updatePlinkoPreviews();
+        // Sync with bet amount input
+        document.getElementById('bet-amount')?.addEventListener('input', updatePlinkoPreviews);
     }
 
     initPlinkoDropZone();
@@ -1560,7 +1525,8 @@ function updatePlinkoPreviews() {
     if (betMode === 'gift' && selectedGift) {
         amt = selectedGift.price;
     } else {
-        amt = parseFloat(document.getElementById('plinko-bet-amount').value) || 0;
+        const bInput = document.getElementById('bet-amount');
+        amt = bInput ? parseFloat(bInput.value) : 0;
     }
 
     document.querySelectorAll('.plinko-multiplier-slot').forEach(slot => {
@@ -2078,7 +2044,7 @@ window.selectHideRoom = async (roomId) => {
     if (hideStatus?.phase !== 'SELECTION') return;
     try {
         await api('/api/hide/select', 'POST', { roomId });
-        if (window.haptic) haptic.impactOccurred('light');
+        if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
     } catch (e) { toast(e.message, 'error'); }
 };
 
@@ -2133,46 +2099,53 @@ function renderHide() {
         const cols = (roomCount === 4) ? 2 : 4;
         const rows = Math.ceil(roomCount / cols);
 
-        const canvasPad = 50;
+        // Increased padding for distancing
+        const canvasPad = 80;
         const gridW = w - canvasPad * 2;
         const gridH = h - canvasPad * 2;
         const cellW = gridW / cols;
         const cellH = gridH / rows;
 
-        const targets = hideStatus.killerTargets || [];
-        const activeTargetId = hideStatus.phase === 'SEARCHING' ? targets[hideStatus.currentSearchingIdx] : null;
-
         for (let i = 1; i <= roomCount; i++) {
             const ix = (i - 1) % cols;
             const iy = Math.floor((i - 1) / cols);
-
             const rx = canvasPad + ix * cellW + cellW / 2 - 30;
             const ry = canvasPad + iy * cellH + cellH / 2 - 40;
 
-            const isActive = activeTargetId === i;
-            const wasHit = (hideStatus.phase === 'RESULT' || hideStatus.phase === 'SEARCHING') && targets.slice(0, hideStatus.phase === 'RESULT' ? 3 : hideStatus.currentSearchingIdx + 1).includes(i);
+            const wasHit = (hideStatus.phase === 'RESULT' || hideStatus.phase === 'SEARCHING') && (hideStatus.killerTargets || []).slice(0, hideStatus.phase === 'RESULT' ? 3 : hideStatus.currentSearchingIdx + 1).includes(i);
+            const isUserRoom = hideStatus.myRoom === i;
 
-            drawHouse(rx, ry, i, isActive, wasHit);
+            drawHouse(rx, ry, i, isUserRoom, wasHit);
         }
 
         if (hideStatus.phase === 'SEARCHING') {
-            const targetId = targets[hideStatus.currentSearchingIdx];
-            if (targetId) {
-                const ix = (targetId - 1) % cols;
-                const iy = Math.floor((targetId - 1) / cols);
-                const tx = canvasPad + ix * cellW + cellW / 2;
-                const ty = canvasPad + iy * cellH + cellH / 2 - 10;
+            // SMOOTH KILLER PATHING through ALL houses
+            const totalDuration = 9;
+            const elapsed = totalDuration - hideStatus.timeLeft;
+            const progress = (elapsed / totalDuration) * roomCount;
+            const currentRoomIdx = Math.floor(progress) % roomCount;
+            const roomT = progress % 1;
 
-                const kX = tx + Math.sin(Date.now() / 200) * 5;
-                const kY = ty + Math.cos(Date.now() / 200) * 5;
+            const r1 = currentRoomIdx;
+            const r2 = (currentRoomIdx + 1) % roomCount;
 
-                hideCtx.fillStyle = '#e74c3c';
-                hideCtx.shadowBlur = 30; hideCtx.shadowColor = '#e74c3c';
-                hideCtx.beginPath();
-                hideCtx.arc(kX, kY, 15, 0, Math.PI * 2);
-                hideCtx.fill();
-                hideCtx.shadowBlur = 0;
-            }
+            const ix1 = r1 % cols; const iy1 = Math.floor(r1 / cols);
+            const ix2 = r2 % cols; const iy2 = Math.floor(r2 / cols);
+
+            const x1 = canvasPad + ix1 * cellW + cellW / 2;
+            const y1 = canvasPad + iy1 * cellH + cellH / 2;
+            const x2 = canvasPad + ix2 * cellW + cellW / 2;
+            const y2 = canvasPad + iy2 * cellH + cellH / 2;
+
+            const kX = x1 + (x2 - x1) * roomT;
+            const kY = y1 + (y2 - y1) * roomT - 10;
+
+            hideCtx.fillStyle = '#e74c3c';
+            hideCtx.shadowBlur = 40; hideCtx.shadowColor = '#e74c3c';
+            hideCtx.beginPath();
+            hideCtx.arc(kX, kY + Math.sin(Date.now() / 100) * 5, 18, 0, Math.PI * 2);
+            hideCtx.fill();
+            hideCtx.shadowBlur = 0;
         }
     }
 }
@@ -2181,47 +2154,54 @@ function drawHouse(hx, hy, id, active, hit) {
     hideCtx.save();
     hideCtx.translate(hx, hy);
 
-    // House structure
-    hideCtx.fillStyle = hit ? '#441111' : '#1a1a1a';
-    hideCtx.beginPath();
-    hideCtx.moveTo(30, 0); hideCtx.lineTo(60, 20); hideCtx.lineTo(30, 40); hideCtx.lineTo(0, 20);
-    hideCtx.closePath(); hideCtx.fill(); // Top roof
+    // House structure (True isometric cube)
+    const size = 30;
+    const h = 40;
 
-    hideCtx.fillStyle = hit ? '#330000' : '#222';
+    // Roof Top
+    hideCtx.fillStyle = hit ? '#441111' : '#2c3e50';
     hideCtx.beginPath();
-    hideCtx.moveTo(0, 20); hideCtx.lineTo(30, 40); hideCtx.lineTo(30, 70); hideCtx.lineTo(0, 50);
-    hideCtx.closePath(); hideCtx.fill(); // Left wall
+    hideCtx.moveTo(size, 0); hideCtx.lineTo(size * 2, size * 0.5); hideCtx.lineTo(size, size); hideCtx.lineTo(0, size * 0.5);
+    hideCtx.closePath(); hideCtx.fill();
 
-    hideCtx.fillStyle = hit ? '#220000' : '#111';
+    // Side Left
+    hideCtx.fillStyle = hit ? '#330000' : '#34495e';
     hideCtx.beginPath();
-    hideCtx.moveTo(60, 20); hideCtx.lineTo(30, 40); hideCtx.lineTo(30, 70); hideCtx.lineTo(60, 50);
-    hideCtx.closePath(); hideCtx.fill(); // Right wall
+    hideCtx.moveTo(0, size * 0.5); hideCtx.lineTo(size, size); hideCtx.lineTo(size, size + h); hideCtx.lineTo(0, size * 0.5 + h);
+    hideCtx.closePath(); hideCtx.fill();
 
-    // Glow
+    // Side Right
+    hideCtx.fillStyle = hit ? '#220000' : '#2c3e50';
+    hideCtx.beginPath();
+    hideCtx.moveTo(size * 2, size * 0.5); hideCtx.lineTo(size, size); hideCtx.lineTo(size, size + h); hideCtx.lineTo(size * 2, size * 0.5 + h);
+    hideCtx.closePath(); hideCtx.fill();
+
+    // Glow Effect
     if (active) {
-        hideCtx.shadowBlur = 15; hideCtx.shadowColor = '#e74c3c';
+        hideCtx.shadowBlur = 20; hideCtx.shadowColor = 'rgba(231, 76, 60, 0.6)';
         hideCtx.strokeStyle = '#e74c3c';
-        hideCtx.lineWidth = 2;
-        hideCtx.strokeRect(0, 20, 60, 50);
+        hideCtx.lineWidth = 3;
+        hideCtx.stroke();
     }
 
-    hideCtx.fillStyle = active ? '#e74c3c' : (hit ? '#ff0000' : '#f1c40f');
-    hideCtx.globalAlpha = active ? (0.5 + Math.sin(Date.now() / 100) * 0.5) : (hit ? 0.8 : 0.3);
-    hideCtx.fillRect(10, 40, 8, 8);
-    hideCtx.fillRect(42, 40, 8, 8);
+    // Windows (Glowing)
+    hideCtx.fillStyle = active ? '#e74c3c' : (hit ? '#ff3d00' : '#f1c40f');
+    hideCtx.globalAlpha = active ? (0.6 + Math.sin(Date.now() / 150) * 0.4) : 0.3;
+    hideCtx.fillRect(10, 35, 8, 10);
+    hideCtx.fillRect(42, 35, 8, 10);
     hideCtx.globalAlpha = 1.0;
-    hideCtx.shadowBlur = 0;
 
     // Label
-    hideCtx.fillStyle = hit ? '#e74c3c' : '#fff';
-    hideCtx.font = '900 12px Inter';
+    hideCtx.fillStyle = hit ? '#e74c3c' : '#ffffff';
+    hideCtx.font = '900 13px "Outfit", sans-serif';
     hideCtx.textAlign = 'center';
-    hideCtx.fillText(hit ? '💀' : 'ДОМ ' + id, 30, 90);
+    hideCtx.fillText(hit ? '💥' : 'HOUSE ' + id, size, size + h + 20);
 
-    if (hideStatus.myRoom == id) {
+    if (active) {
         hideCtx.fillStyle = hit ? '#e74c3c' : '#2ecc71';
-        hideCtx.fillText('ВЫ ТУТ', 30, -10);
+        hideCtx.fillText('YOU ARE HERE', size, -10);
     }
+
     hideCtx.restore();
 }
 
