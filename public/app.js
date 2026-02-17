@@ -1707,10 +1707,13 @@ function renderPlinko() {
 
                 if (ball.step >= PLINKO_ROWS) {
                     const targetX = (ball.targetSlot + 0.5) * slotWidth;
-                    // Softer pull towards target to avoid "jumping"
+                    // Minimal guidance only when very close to ensure it settles in the slot
+                    // The path is already physics-derived from server, so we trust it mostly.
                     const diff = (targetX - ball.x);
-                    ball.vx += diff * 0.04;
-                    ball.vx *= 0.95;
+                    if (Math.abs(diff) > slotWidth * 0.1) {
+                        ball.vx += diff * 0.02;
+                        ball.vx *= 0.98;
+                    }
                     ball.vy = Math.max(ball.vy, 1.8);
                 }
 
@@ -2131,17 +2134,18 @@ function renderHide() {
         const roomCount = hideStatus.finalRoomCount || 4;
         // Helper to get house position
         const getHousePos = (idx, total) => {
-            if (total === 4) {
-                // CORNERS
-                const marginX = 60;
-                const marginY = 80;
-                if (idx === 1) return { x: marginX, y: marginY }; // TL
-                if (idx === 2) return { x: w - marginX - 40, y: marginY }; // TR
-                if (idx === 3) return { x: marginX, y: h - marginY - 40 }; // BL
-                if (idx === 4) return { x: w - marginX - 40, y: h - marginY - 40 }; // BR
+            // FORCE CORNERS for 4 players
+            if (total <= 4) {
+                const marginX = 50;
+                const marginY = 60;
+                // 1: Top-Left, 2: Top-Right, 3: Bottom-Left, 4: Bottom-Right
+                if (idx === 1) return { x: marginX, y: marginY };
+                if (idx === 2) return { x: w - marginX - 40, y: marginY };
+                if (idx === 3) return { x: marginX, y: h - marginY - 40 };
+                if (idx === 4) return { x: w - marginX - 40, y: h - marginY - 40 };
             }
-            // Fallback grid
-            const cols = (total <= 4) ? 2 : 4;
+            // Fallback grid for >4
+            const cols = 4;
             const rows = Math.ceil(total / cols);
             const canvasPad = 80;
             const gridW = w - canvasPad * 2;
@@ -2175,24 +2179,21 @@ function renderHide() {
             const smoothT = t < 0.2 ? 0 : (t > 0.8 ? 1 : (t - 0.2) / 0.6);
             const easeT = smoothT * smoothT * (3 - 2 * smoothT);
 
-            const r1 = (currentRoomIdx % roomCount) + 1;
-            const r2 = ((currentRoomIdx + 1) % roomCount) + 1;
+            // Get path points
+            const p1Idx = (currentRoomIdx % roomCount) + 1;
+            const p2Idx = ((currentRoomIdx + 1) % roomCount) + 1;
 
-            const p1 = getHousePos(r1, roomCount);
-            // Fix circular wrapping logically (1->2->3->4->1)
-            // But if r2 is actually 1 (wrapped), getHousePos(1) handles it.
-            // Wait, for 4 rooms: 0->1 (idx 1->2), 1->2 (idx 2->3), 2->3 (idx 3->4), 3->0 (idx 4->1)
-            // In loop above: r2 = (currentRoomIdx + 1) % roomCount. If current=3, +1=4, %4=0. +1 => 1. Correct.
+            // Map 0-based circular index to 1-based room ID correctly
+            // If roomCount=4: 0->1, 1->2, 2->3, 3->4, 4->1...
+            // currentRoomIdx is 0..3.
+            // p1 is currentRoomIdx + 1. Correct.
+            // p2 is (currentRoomIdx + 1)%4 + 1. Correct. (e.g. 3->4, 4->1)
 
-            const p2 = getHousePos((r2 === 0 ? roomCount : r2), roomCount); // getHousePos checks 1-based index
+            const p1 = getHousePos(p1Idx, roomCount);
+            const p2 = getHousePos(p2Idx, roomCount);
 
-            // Interpolate center points (approximate center of house based on size)
-            // House draw offset is (x, y) top-left. Center is roughly x+30, y+40?
-            // drawHouse uses translate(x,y). House size ~60x80 bounding box.
-            // Let's aim for the "door" area for the killer.
-
-            const startX = p1.x + 30; const startY = p1.y + 60;
-            const endX = p2.x + 30; const endY = p2.y + 60;
+            const startX = p1.x + 30; const startY = p1.y + 50;
+            const endX = p2.x + 30; const endY = p2.y + 50;
 
             const kX = startX + (endX - startX) * easeT;
             const kY = startY + (endY - startY) * easeT - 10;
