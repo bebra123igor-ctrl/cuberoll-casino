@@ -712,13 +712,12 @@ body {
 .nav-tabs {
   flex-shrink: 0;
   display: flex;
-  background: var(--card);
-  padding: 6px;
-  border-bottom: 1px solid var(--border);
+  background: var(--card2);
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
   gap: 4px;
   position: relative;
   z-index: 200;
-  /* Очень высокий приоритет для навигации */
   pointer-events: auto !important;
 }
 
@@ -777,7 +776,7 @@ body {
 }
 
 .tab-content.active {
-  display: block !important;
+  display: flex !important;
 }
 
 button:active,
@@ -1104,12 +1103,11 @@ button:active,
 }
 
 /* ═══ nav ═══ */
+/* Bottom Nav Consistency */
 .nav-tabs {
-  display: flex;
-  padding: 4px 10px;
-  gap: 2px;
-  background: rgba(13, 13, 13, .7);
-  border-bottom: 1px solid var(--border);
+  background: var(--card2);
+  border-bottom: none;
+  border-top: 1px solid var(--border2);
 }
 
 .nav-tab {
@@ -1158,7 +1156,7 @@ button:active,
 }
 
 .tab-content.active {
-  display: block;
+  display: flex;
 }
 
 @keyframes fadeUp {

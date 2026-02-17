@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
-const { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps, sessionOps, setOnChange } = require('./database');
+const { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps, sessionOps, inventoryOps, marketplaceOps, setOnChange } = require('./database');
 const syncOps = require('./sync');
 const ProvablyFair = require('./provably-fair');
 
