@@ -1103,7 +1103,7 @@ window.selectGame = function (game) {
         bCrash?.classList.add('active');
         startCrashPolling();
         if (!window._crashInited) initCrashCanvas();
-        else renderCrash(); // Restart loop if stopped
+        else if (!crashAnimationId) renderCrash(); // Only start if not running
     } else if (game === 'plinko') {
         plinkoView?.classList.remove('hidden');
         bPlinko?.classList.add('active');
@@ -1250,11 +1250,15 @@ function initStars() {
 initStars();
 
 function renderCrash() {
-    if (currentGame !== 'crash') return;
-    if (!crashCanvas || !crashCtx) return;
+    if (currentGame !== 'crash') {
+        crashAnimationId = null; // Mark as stopped
+        return;
+    }
+    if (!crashCanvas || !crashCtx) {
+        crashAnimationId = requestAnimationFrame(renderCrash);
+        return;
+    }
 
-    // Direct loop control
-    cancelAnimationFrame(crashAnimationId);
     const w = crashCanvas.width / (window.devicePixelRatio || 1);
     const h = crashCanvas.height / (window.devicePixelRatio || 1);
 
@@ -1268,12 +1272,13 @@ function renderCrash() {
     if (isCrashed) {
         t = Math.log(crashStatus.multiplier || 1) / Math.log(1.07);
     }
+    if (t < 0) t = 0;
 
     const currentMult = isPlaying ? Math.pow(1.07, t) : (isCrashed ? (crashStatus.multiplier || 1) : 1);
 
-    // 1. КОСМОС С УСКОРЕНИЕМ (WARP EFFECT)
-    const speedFactor = isPlaying ? (1 + currentMult * 0.5) : (isCrashed ? 0 : 0.2);
-    crashCtx.strokeStyle = '#ffffff';
+    // 1. STARFIELD (Optimization: reduce count for mobile speed)
+    const speedFactor = isPlaying ? (0.4 + currentMult * 0.7) : (isCrashed ? 0 : 0.15);
+    crashCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
     crashCtx.fillStyle = '#ffffff';
 
     stars.forEach(s => {
@@ -1282,15 +1287,13 @@ function renderCrash() {
         if (s.y > h) { s.y = 0; s.x = Math.random() * w; }
 
         crashCtx.globalAlpha = s.o;
-        if (currentMult > 3 && isPlaying) {
-            // Линии скорости
+        if (currentMult > 2 && isPlaying) {
             crashCtx.lineWidth = s.s;
             crashCtx.beginPath();
             crashCtx.moveTo(s.x, s.y);
-            crashCtx.lineTo(s.x, s.y + move * 0.8);
+            crashCtx.lineTo(s.x, s.y + move * 1.2);
             crashCtx.stroke();
         } else {
-            // Обычные звезды
             crashCtx.beginPath();
             crashCtx.arc(s.x, s.y, s.s, 0, Math.PI * 2);
             crashCtx.fill();
@@ -1298,41 +1301,50 @@ function renderCrash() {
     });
     crashCtx.globalAlpha = 1;
 
-    // РАКЕТА
+    // ROCKET ENGINE GLOW
+    if (isPlaying || (isCrashed && t > 0)) {
+        const rx = Math.round(w / 2);
+        const ry = Math.round(isPlaying ? (h * 0.5 - Math.min(h * 0.1, (currentMult - 1) * 4)) : (h * 0.5));
+
+        const glowRad = 50 + currentMult * 5;
+        const glowGrad = crashCtx.createRadialGradient(rx, ry + 20, 0, rx, ry + 20, glowRad);
+        glowGrad.addColorStop(0, isCrashed ? 'rgba(255, 61, 0, 0.15)' : 'rgba(241, 196, 15, 0.1)');
+        glowGrad.addColorStop(1, 'transparent');
+        crashCtx.fillStyle = glowGrad;
+        crashCtx.fillRect(rx - glowRad, ry + 20 - glowRad, glowRad * 2, glowRad * 2);
+    }
+
+    // ROCKET
     if (isPlaying || isCrashed || (crashStatus && crashStatus.phase === 'WAITING')) {
         const timeFactor = (isPlaying || isCrashed) ? t : (Date.now() / 1000);
 
         if (isPlaying) {
             const multEl = document.getElementById('crash-multiplier');
-            if (multEl) multEl.textContent = currentMult.toFixed(2) + 'x';
+            if (multEl) {
+                multEl.textContent = currentMult.toFixed(2) + 'x';
+                if (currentMult > 5) multEl.classList.add('vibrating');
+            }
         }
 
-        // Позиция: Центр с нарастающей тряской
-        const shakeAmp = isPlaying ? (1 + currentMult / 8) : 0;
+        const shakeAmp = isPlaying ? (0.4 + currentMult / 15) : 0;
+        const s = Math.min(1.5, Math.max(0.9, w / 400));
 
-        // Адаптивный масштаб для мелких экранов
-        // Увеличиваем масштаб, чтобы на телефонах ракета была "на весь экран"
-        // Stable scale for all devices
-        const baseWidth = 360;
-        const s = Math.min(1.8, Math.max(0.8, w / baseWidth));
-
-        const rx = Math.round(w / 2) + Math.sin(timeFactor * 30) * shakeAmp;
-        const ry = Math.round(h * 0.45);
+        const rx = Math.round(w / 2) + Math.sin(timeFactor * 32) * shakeAmp;
+        const targetRy = isPlaying ? (h * 0.5 - Math.min(h * 0.15, (currentMult - 1) * 6)) : (h * 0.5);
+        const ry = Math.round(targetRy);
 
         crashCtx.save();
-        // Масштабируем всё относительно центра ракеты
         crashCtx.translate(rx, ry);
         crashCtx.scale(s, s);
         crashCtx.translate(-rx, -ry);
 
-        // ПЛАМЯ (увеличивается и белеет при разгоне)
+        // FIRE
         if (isPlaying || (isCrashed && t > 0)) {
-            const firePower = 1 + Math.min(2, currentMult / 15);
-            // Уменьшаем длину пламени на 20%
+            const firePower = 1 + Math.min(3, currentMult / 10);
             const fireLen = (40 + Math.random() * 30) * firePower;
-            const fireGrad = crashCtx.createLinearGradient(rx, ry + 20, rx, ry + fireLen);
-            fireGrad.addColorStop(0, '#ffffff'); // Очень горячее у сопла
-            fireGrad.addColorStop(0.2, '#f1c40f');
+            const fireGrad = crashCtx.createLinearGradient(rx, ry + 15, rx, ry + fireLen);
+            fireGrad.addColorStop(0, '#ffffff');
+            fireGrad.addColorStop(0.3, '#f1c40f');
             fireGrad.addColorStop(0.6, '#e67e22');
             fireGrad.addColorStop(1, 'transparent');
 
@@ -1343,66 +1355,50 @@ function renderCrash() {
             crashCtx.fill();
         }
 
-        // ЭФФЕКТ СВЕЧЕНИЯ (HEAT GLOW)
-        if (isPlaying) {
-            crashCtx.shadowBlur = 15 + currentMult * 3;
-            crashCtx.shadowColor = currentMult > 10 ? '#ff4400' : '#f1c40f';
-        }
-
-        // КОРПУС - ЦЕЛЬНЫЙ МОНОЛИТНЫЙ ДИЗАЙН (без швов)
-        const rocketGrad = crashCtx.createLinearGradient(rx - 15, ry, rx + 15, ry);
-        rocketGrad.addColorStop(0, '#bdc3c7');
-        rocketGrad.addColorStop(0.4, '#ffffff');
-        rocketGrad.addColorStop(1, '#95a5a6');
+        // DESIGN - PREMIUM ROCKET
+        const rocketGrad = crashCtx.createLinearGradient(rx - 16, ry, rx + 16, ry);
+        rocketGrad.addColorStop(0, '#95a5a6');
+        rocketGrad.addColorStop(0.5, '#ffffff');
+        rocketGrad.addColorStop(1, '#7f8c8d');
 
         crashCtx.fillStyle = rocketGrad;
         crashCtx.beginPath();
-        // Ракетный "купол" и тело одним контуром
-        crashCtx.moveTo(rx - 16, ry + 30); // Низ лево
-        crashCtx.lineTo(rx - 16, ry - 5);  // Левый борт
-        crashCtx.bezierCurveTo(rx - 16, ry - 60, rx + 16, ry - 60, rx + 16, ry - 5); // Нос
-        crashCtx.lineTo(rx + 16, ry + 30); // Правый борт
-        crashCtx.quadraticCurveTo(rx, ry + 40, rx - 16, ry + 30); // Закругленное дно
+        crashCtx.moveTo(rx - 16, ry + 25);
+        crashCtx.lineTo(rx - 16, ry);
+        crashCtx.bezierCurveTo(rx - 16, ry - 60, rx + 16, ry - 60, rx + 16, ry);
+        crashCtx.lineTo(rx + 16, ry + 25);
+        crashCtx.quadraticCurveTo(rx, ry + 38, rx - 16, ry + 25);
         crashCtx.fill();
 
-        // Иллюминатор (встроен в монолит)
-        crashCtx.fillStyle = '#1a1a1a';
+        // Window
+        crashCtx.fillStyle = '#2c3e50';
         crashCtx.beginPath();
-        crashCtx.arc(rx, ry - 10, 7, 0, Math.PI * 2);
+        crashCtx.arc(rx, ry - 12, 7, 0, Math.PI * 2);
         crashCtx.fill();
-        // Блик в иллюминаторе
-        const glassGrad = crashCtx.createRadialGradient(rx - 2, ry - 12, 1, rx, ry - 10, 7);
-        glassGrad.addColorStop(0, '#3498db');
-        glassGrad.addColorStop(1, '#2980b9');
-        crashCtx.fillStyle = glassGrad;
+        // Window Reflection
+        crashCtx.fillStyle = 'rgba(255,255,255,0.1)';
         crashCtx.beginPath();
-        crashCtx.arc(rx, ry - 10, 5, 0, Math.PI * 2);
+        crashCtx.arc(rx - 2, ry - 14, 2, 0, Math.PI * 2);
         crashCtx.fill();
 
-        // Золотые элементы (плавники) - рисуем поверх, но без щелей
-        crashCtx.fillStyle = '#c2a74d';
-        // Левое крыло
+        // Fins
+        crashCtx.fillStyle = '#f39c12';
+        // Left
         crashCtx.beginPath();
         crashCtx.moveTo(rx - 16, ry + 5);
         crashCtx.lineTo(rx - 35, ry + 35);
         crashCtx.lineTo(rx - 16, ry + 25);
         crashCtx.fill();
-        // Правое крыло
+        // Right
         crashCtx.beginPath();
         crashCtx.moveTo(rx + 16, ry + 5);
         crashCtx.lineTo(rx + 35, ry + 35);
         crashCtx.lineTo(rx + 16, ry + 25);
         crashCtx.fill();
 
-        // Финальная обводка для четкости
-        crashCtx.strokeStyle = 'rgba(0,0,0,0.1)';
-        crashCtx.lineWidth = 1;
-        crashCtx.stroke();
+        crashCtx.restore();
 
-        crashCtx.shadowBlur = 0;
-        crashCtx.restore(); // Сбрасываем трансформации (scale)
-
-        if (isPlaying && window.haptic && hapticEnabled && Math.random() > 0.96) {
+        if (isPlaying && window.haptic && hapticEnabled && Math.random() > 0.98) {
             haptic.impactOccurred('light');
         }
     }
@@ -1790,8 +1786,10 @@ function initWheelLabels() {
     prizes.forEach((p, i) => {
         const lbl = document.createElement('div');
         lbl.className = 'wheel-segment-label';
+        // Precise center of each 30-degree segment
         lbl.style.transform = `rotate(${i * 30 + 15}deg)`;
-        lbl.innerHTML = `<span style="display:block; transform: rotate(-90deg)">${p}</span>`;
+        // Simple span without fighting double-rotations
+        lbl.innerHTML = `<span>${p}</span>`;
         wrap.appendChild(lbl);
     });
 }

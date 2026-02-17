@@ -4355,19 +4355,27 @@ input:checked+.toggle-slider:before {
 
 .wheel-segment-label {
   position: absolute;
-  width: 40px;
+  width: 60px;
   height: 50%;
-  left: calc(50% - 20px);
+  left: calc(50% - 30px);
   top: 0;
   transform-origin: 50% 100%;
   display: flex;
   justify-content: center;
-  padding-top: 25px;
-  font-size: 11px;
-  font-weight: 1000;
+  align-items: flex-start;
+  padding-top: 22px;
+  font-size: 13px;
+  font-weight: 900;
   color: #fff;
   pointer-events: none;
   z-index: 10;
+}
+
+.wheel-segment-label span {
+  display: block;
+  transform: rotate(0deg);
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
+  user-select: none;
 }
 
 .wheel-segment-label span {
