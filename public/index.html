@@ -244,7 +244,8 @@
 
         <div class="game-selector">
           <button class="game-sel-btn active" id="game-tab-dice" onclick="selectGame('dice')">Dice</button>
-          <button class="game-sel-btn" id="game-tab-crash" onclick="selectGame('crash')">Rocket</button>
+          <button class="game-sel-btn hidden" id="game-tab-crash" style="display:none;"
+            onclick="selectGame('crash')">Rocket</button>
           <button class="game-sel-btn" id="game-tab-plinko" onclick="selectGame('plinko')">Plinko</button>
           <button class="game-sel-btn" id="game-tab-hide" onclick="selectGame('hide')">Прятки</button>
         </div>
@@ -830,7 +831,7 @@
             style="display:block; text-align:center; margin-bottom:12px; font-weight:800; color:var(--t4);">ВЫБЕРИТЕ
             ИСХОД</label>
           <div class="bet-grid">
-            <button class="bet-type-btn active" data-bet="high">
+            <button class="bet-type-btn active" data-bet="high" id="bet-type-default">
               <span class="bet-name">Больше</span><span class="bet-mult">1.95x</span>
             </button>
             <button class="bet-type-btn" data-bet="low">

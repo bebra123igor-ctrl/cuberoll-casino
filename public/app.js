@@ -1789,21 +1789,27 @@ function renderPlinko() {
                 const currentRow = Math.floor((ball.y - 40) / rowGap);
                 if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
                     const move = ball.path[ball.step];
-                    // Small peg deflection only — no boost, like a real ball hitting a peg
-                    const nudge = (move === 1 ? 1 : -1) * (colGap * 0.04);
-                    ball.vx += nudge;
-                    ball.vx *= 0.96;
-                    // Do not set vy — let gravity only; ball keeps current vy (natural fall)
+                    // STRICTLY follow the path with minimal physics noise
+                    const direction = (move === 1 ? 0.5 : -0.5); // 0.5 unit right or left
+
+                    // We need to nudge velocity towards the target column center
+                    const currentMapX = (ball.step + 1) * colGap; // Rough center
+
+                    ball.vx = direction * (colGap * 0.15); // Consistent push
+                    ball.vy = 2.0; // Reset vertical speed slightly on impact
                     ball.step++;
                 }
 
                 if (ball.step >= PLINKO_ROWS) {
-                    // Free fall to bottom, no extra speed
+                    // Final descent: guide to exact slot center
+                    const targetX = (ball.targetSlot + 0.5) * slotWidth;
+                    const diff = targetX - ball.x;
+                    ball.vx += diff * 0.1; // Stronger guidance at very end
                 }
 
                 if (ball.y >= h - 18) {
                     ball.landed = true;
-                    ball.y = h - 10;
+                    ball.y = h - 20;
                     ball.vx = 0; ball.vy = 0;
                     // Snap x to target slot so it visually lands in correct hole (no teleport during fall)
                     ball.x = (ball.targetSlot + 0.5) * slotWidth;
