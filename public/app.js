@@ -232,7 +232,6 @@ async function init() {
 
                     document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
                     document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
-                    document.getElementById('user-initial').textContent = (user.firstName || user.username || 'P')[0].toUpperCase();
 
                     setBalance(user.balance);
 
