@@ -869,150 +869,149 @@
         </div>
       </div>
     </div>
-  </div>
 
-  <div id="toast" class="toast"></div>
-  <script src="app.js?v=8.0"></script>
-  <!-- Daily Spin Modal -->
-  <div id="daily-spin-modal" class="modal-overlay hidden">
-    <div class="modal-box daily-spin-box">
-      <div class="modal-header">
-        <h3>КОЛЕСО ФОРТУНЫ</h3>
-        <button class="close-modal-btn" onclick="closeModal('daily-spin-modal')">&times;</button>
+    <div id="toast" class="toast"></div>
+    <script src="app.js?v=8.0"></script>
+    <!-- Daily Spin Modal -->
+    <div id="daily-spin-modal" class="modal-overlay hidden">
+      <div class="modal-box daily-spin-box">
+        <div class="modal-header">
+          <h3>КОЛЕСО ФОРТУНЫ</h3>
+          <button class="close-modal-btn" onclick="closeModal('daily-spin-modal')">&times;</button>
+        </div>
+        <div class="wheel-container">
+          <div id="wheel" class="wheel-visual">
+            <div class="wheel-labels" id="wheel-labels">
+              <!-- Segments 1-12 -->
+            </div>
+          </div>
+          <div class="wheel-pointer">▼</div>
+        </div>
+        <p class="spin-hint">Шанс на супер-приз (10 TON) — 0.1%!</p>
+        <button id="spin-start-btn" class="roll-button" onclick="startDailySpin()">КРУТИТЬ</button>
       </div>
-      <div class="wheel-container">
-        <div id="wheel" class="wheel-visual">
-          <div class="wheel-labels" id="wheel-labels">
-            <!-- Segments 1-12 -->
+    </div>
+
+    <!-- Stats Modal (New Profile Tab could be better, but we use existing structure) -->
+    <div id="stats-modal" class="modal-overlay hidden">
+      <div class="modal-box stats-modal-box">
+        <div class="modal-header">
+          <h3>МОЯ СТАТИСТИКА</h3>
+          <button class="close-modal-btn" onclick="closeModal('stats-modal')">&times;</button>
+        </div>
+        <div class="stats-grid-detailed">
+          <div class="stat-item">
+            <label>ВСЕГО СТАВОК</label>
+            <span id="stat-wagered">0.00</span>
+          </div>
+          <div class="stat-item">
+            <label>ВЫИГРАНО</label>
+            <span id="stat-won" style="color:var(--green)">0.00</span>
+          </div>
+          <div class="stat-item">
+            <label>ПРОИГРАНО</label>
+            <span id="stat-lost" style="color:var(--red)">0.00</span>
+          </div>
+          <div class="stat-item">
+            <label>РЕКОРДНЫЙ ИКС</label>
+            <span id="stat-max-mult" style="color:var(--gold)">0.00x</span>
           </div>
         </div>
-        <div class="wheel-pointer">▼</div>
-      </div>
-      <p class="spin-hint">Шанс на супер-приз (10 TON) — 0.1%!</p>
-      <button id="spin-start-btn" class="roll-button" onclick="startDailySpin()">КРУТИТЬ</button>
-    </div>
-  </div>
-
-  <!-- Stats Modal (New Profile Tab could be better, but we use existing structure) -->
-  <div id="stats-modal" class="modal-overlay hidden">
-    <div class="modal-box stats-modal-box">
-      <div class="modal-header">
-        <h3>МОЯ СТАТИСТИКА</h3>
-        <button class="close-modal-btn" onclick="closeModal('stats-modal')">&times;</button>
-      </div>
-      <div class="stats-grid-detailed">
-        <div class="stat-item">
-          <label>ВСЕГО СТАВОК</label>
-          <span id="stat-wagered">0.00</span>
-        </div>
-        <div class="stat-item">
-          <label>ВЫИГРАНО</label>
-          <span id="stat-won" style="color:var(--green)">0.00</span>
-        </div>
-        <div class="stat-item">
-          <label>ПРОИГРАНО</label>
-          <span id="stat-lost" style="color:var(--red)">0.00</span>
-        </div>
-        <div class="stat-item">
-          <label>РЕКОРДНЫЙ ИКС</label>
-          <span id="stat-max-mult" style="color:var(--gold)">0.00x</span>
-        </div>
-      </div>
-      <button class="result-close" onclick="closeModal('stats-modal')">ЗАКРЫТЬ</button>
-    </div>
-  </div>
-
-  <!-- Inventory Modal -->
-  <div id="inventory-modal" class="modal-overlay hidden">
-    <div class="modal-box inventory-box">
-      <div class="modal-header">
-        <h3>МОЙ ИНВЕНТАРЬ</h3>
-        <button class="close-modal-btn" onclick="closeModal('inventory-modal')">&times;</button>
-      </div>
-      <div class="inventory-grid" id="inventory-list">
-        <!-- User items here -->
-      </div>
-      <p class="inventory-hint">Здесь ваши уникальные подарки. Вы можете выставить их на продажу в Маркетплейс.</p>
-    </div>
-  </div>
-
-  <!-- List for Sale Modal -->
-  <div id="list-sale-modal" class="modal-overlay hidden">
-    <div class="modal-box small-modal">
-      <div class="modal-header">
-        <h3>ПРОДАЖА</h3>
-        <button class="close-modal-btn" onclick="closeModal('list-sale-modal')">&times;</button>
-      </div>
-      <div class="sale-form">
-        <input type="hidden" id="sale-instance-id">
-        <label>ЦЕНА (TON)</label>
-        <div class="premium-input-group">
-          <input type="number" id="sale-price" value="1.0" step="0.1">
-          <span class="unit">TON</span>
-        </div>
-        <button class="claim-btn-premium" style="margin-top:15px; width:100%;"
-          onclick="confirmListSale()">ВЫСТАВИТЬ</button>
+        <button class="result-close" onclick="closeModal('stats-modal')">ЗАКРЫТЬ</button>
       </div>
     </div>
-  </div>
 
-  <!-- Gift Selection for Bet Modal -->
-  <div id="gift-bet-modal" class="modal-overlay hidden">
-    <div class="modal-box inventory-box">
-      <div class="modal-header">
-        <h3>ВЫБЕРИТЕ ПОДАРОК</h3>
-        <button class="close-modal-btn" onclick="closeModal('gift-bet-modal')">&times;</button>
+    <!-- Inventory Modal -->
+    <div id="inventory-modal" class="modal-overlay hidden">
+      <div class="modal-box inventory-box">
+        <div class="modal-header">
+          <h3>МОЙ ИНВЕНТАРЬ</h3>
+          <button class="close-modal-btn" onclick="closeModal('inventory-modal')">&times;</button>
+        </div>
+        <div class="inventory-grid" id="inventory-list">
+          <!-- User items here -->
+        </div>
+        <p class="inventory-hint">Здесь ваши уникальные подарки. Вы можете выставить их на продажу в Маркетплейс.</p>
       </div>
-      <div class="inventory-grid" id="gift-bet-list">
-        <!-- Inventory items for betting -->
-      </div>
-      <p class="inventory-hint">Ставка будет равна рыночной стоимости подарка.</p>
     </div>
-  </div>
 
-  <nav class="nav-tabs">
-    <button class="nav-tab active" data-tab="game" onclick="switchTab('game')">
-      <span class="icon"><svg viewBox="0 0 24 24">
-          <rect x="3" y="3" width="18" height="18" rx="3" />
-          <circle cx="8.5" cy="8.5" r="1.5" />
-          <circle cx="15.5" cy="15.5" r="1.5" />
-        </svg></span>
-      <span class="nav-label">Игра</span>
-    </button>
-    <button class="nav-tab" data-tab="bonuses" onclick="switchTab('bonuses')">
-      <span class="icon"><svg viewBox="0 0 24 24">
-          <path d="M20 12l-8 8-8-8M12 4v16" stroke="currentColor" fill="none" stroke-width="2" />
-          <circle cx="12" cy="12" r="9" stroke="currentColor" fill="none" stroke-width="2" />
-        </svg></span>
-      <span class="nav-label">Бонусы</span>
-    </button>
-    <button class="nav-tab" data-tab="shop" onclick="switchTab('shop')">
-      <span class="icon"><svg viewBox="0 0 24 24">
-          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-          <line x1="3" y1="6" x2="21" y2="6" />
-          <path d="M16 10a4 4 0 0 1-8 0" />
-        </svg></span>
-      <span class="nav-label">Магазин</span>
-    </button>
-    <button class="nav-tab" data-tab="wallet" onclick="switchTab('wallet')">
-      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="2" y="5" width="20" height="14" rx="2" />
-          <line x1="2" y1="10" x2="22" y2="10" />
-          <path d="M16 10c1.1 0 2 .9 2 2s-.9 2-2 2h-4v-4h4z" />
-        </svg></span>
-      <span class="nav-label">Пополнение</span>
-    </button>
-    <button class="nav-tab" data-tab="settings" onclick="switchTab('settings')">
-      <span class="icon">
-        <svg viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="3" />
-          <path
-            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-        </svg>
-      </span>
-      <span class="nav-label">Опции</span>
-    </button>
-  </nav>
+    <!-- List for Sale Modal -->
+    <div id="list-sale-modal" class="modal-overlay hidden">
+      <div class="modal-box small-modal">
+        <div class="modal-header">
+          <h3>ПРОДАЖА</h3>
+          <button class="close-modal-btn" onclick="closeModal('list-sale-modal')">&times;</button>
+        </div>
+        <div class="sale-form">
+          <input type="hidden" id="sale-instance-id">
+          <label>ЦЕНА (TON)</label>
+          <div class="premium-input-group">
+            <input type="number" id="sale-price" value="1.0" step="0.1">
+            <span class="unit">TON</span>
+          </div>
+          <button class="claim-btn-premium" style="margin-top:15px; width:100%;"
+            onclick="confirmListSale()">ВЫСТАВИТЬ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gift Selection for Bet Modal -->
+    <div id="gift-bet-modal" class="modal-overlay hidden">
+      <div class="modal-box inventory-box">
+        <div class="modal-header">
+          <h3>ВЫБЕРИТЕ ПОДАРОК</h3>
+          <button class="close-modal-btn" onclick="closeModal('gift-bet-modal')">&times;</button>
+        </div>
+        <div class="inventory-grid" id="gift-bet-list">
+          <!-- Inventory items for betting -->
+        </div>
+        <p class="inventory-hint">Ставка будет равна рыночной стоимости подарка.</p>
+      </div>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="game" onclick="switchTab('game')">
+        <span class="icon"><svg viewBox="0 0 24 24">
+            <rect x="3" y="3" width="18" height="18" rx="3" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <circle cx="15.5" cy="15.5" r="1.5" />
+          </svg></span>
+        <span class="nav-label">Игра</span>
+      </button>
+      <button class="nav-tab" data-tab="bonuses" onclick="switchTab('bonuses')">
+        <span class="icon"><svg viewBox="0 0 24 24">
+            <path d="M20 12l-8 8-8-8M12 4v16" stroke="currentColor" fill="none" stroke-width="2" />
+            <circle cx="12" cy="12" r="9" stroke="currentColor" fill="none" stroke-width="2" />
+          </svg></span>
+        <span class="nav-label">Бонусы</span>
+      </button>
+      <button class="nav-tab" data-tab="shop" onclick="switchTab('shop')">
+        <span class="icon"><svg viewBox="0 0 24 24">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
+          </svg></span>
+        <span class="nav-label">Магазин</span>
+      </button>
+      <button class="nav-tab" data-tab="wallet" onclick="switchTab('wallet')">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="5" width="20" height="14" rx="2" />
+            <line x1="2" y1="10" x2="22" y2="10" />
+            <path d="M16 10c1.1 0 2 .9 2 2s-.9 2-2 2h-4v-4h4z" />
+          </svg></span>
+        <span class="nav-label">Пополнение</span>
+      </button>
+      <button class="nav-tab" data-tab="settings" onclick="switchTab('settings')">
+        <span class="icon">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </span>
+        <span class="nav-label">Опции</span>
+      </button>
+    </nav>
   </div>
 </body>
 
