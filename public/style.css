@@ -2750,16 +2750,82 @@ button:active,
   gap: 12px;
 }
 
-.method-icon {
-  width: 40px;
-  height: 40px;
+.method-icon,
+.method-icon-shimmer {
+  width: 44px;
+  height: 44px;
   background: var(--bg);
-  border-radius: 12px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 22px;
   border: 1px solid var(--border2);
+  flex-shrink: 0;
+}
+
+.method-icon-shimmer {
+  background: linear-gradient(135deg, rgba(255, 204, 0, 0.2) 0%, transparent 100%);
+  border-color: var(--gold-dim);
+  animation: iconGlow 2s infinite alternate;
+}
+
+@keyframes iconGlow {
+  from {
+    box-shadow: 0 0 5px rgba(255, 204, 0, 0.1);
+  }
+
+  to {
+    box-shadow: 0 0 15px rgba(255, 204, 0, 0.3);
+  }
+}
+
+.method-title-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.method-badge {
+  font-size: 9px;
+  font-weight: 900;
+  color: var(--gold);
+  background: rgba(255, 204, 0, 0.1);
+  padding: 2px 6px;
+  border-radius: 6px;
+  width: fit-content;
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
+
+.premium-card {
+  border: 1px solid var(--gold-dim) !important;
+  background: linear-gradient(160deg, rgba(255, 204, 0, 0.03) 0%, var(--card2) 100%) !important;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.dealer-btn-gold {
+  width: 100%;
+  padding: 14px;
+  background: var(--gold-g);
+  color: #000;
+  border-radius: 14px;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  transition: all 0.3s;
+  box-shadow: 0 8px 20px rgba(255, 204, 0, 0.2);
+}
+
+.dealer-btn-gold:active {
+  transform: scale(0.97);
+  filter: brightness(0.9);
 }
 
 .method-title-wrap h4 {

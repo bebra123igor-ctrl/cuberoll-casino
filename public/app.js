@@ -1323,14 +1323,10 @@ async function plinkoDrop() {
             multiplier: res.result.multiplier,
             color: '#ffffff',
             dieValue: Math.floor(Math.random() * 6) + 1,
-            bounceCount: 0
+            bounceCount: 0,
+            newBalance: res.result.newBalance // Store balance here to sync on impact
         };
         plinkoBalls.push(ball);
-
-        // Update balance after ball reaches bottom (approx 8s now)
-        setTimeout(() => {
-            setBalance(res.result.newBalance, true);
-        }, 8500);
 
     } catch (e) {
         toast(e.message, 'error');
@@ -1448,9 +1444,11 @@ function renderPlinko() {
 
             plinkoCtx.restore();
 
-            if (ball.y > h - 10) {
+            if (ball.y > h - 18) {
+                // Precise landing inside the slot
                 highlightSlot(ball.targetSlot);
                 if (ball.payout > 0) toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success');
+                if (ball.newBalance !== undefined) setBalance(ball.newBalance, true);
                 return false;
             }
             return true;
