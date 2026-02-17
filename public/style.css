@@ -804,11 +804,13 @@ button:active,
 }
 
 /* Scrollable wrapper inside tab */
+/* Consolidated Scrollable wrapper */
 .tab-scrollable {
   flex: 1;
   overflow-y: auto !important;
   overflow-x: hidden;
-  padding: 16px 16px 30px;
+  padding: 16px 16px 120px !important;
+  /* Large padding to clear nav bar */
   -webkit-overflow-scrolling: touch;
   min-height: 0;
 }
@@ -1171,20 +1173,11 @@ button:active,
 
 .tab-content.active {
   display: flex !important;
-  height: 100%;
-  /* Ensure it fills space */
+  /* flex: 1 already handles filling space correctly without pushing content off screen */
   animation: fadeUp .25s ease;
 }
 
-.tab-scrollable {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 14px 16px 120px !important;
-  /* Huge padding to ensure content is scrollable ABOVE nav */
-  -webkit-overflow-scrolling: touch;
-  width: 100%;
-}
+/* Using consolidated definition above */
 
 @keyframes fadeUp {
   from {
