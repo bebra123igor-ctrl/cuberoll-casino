@@ -206,6 +206,12 @@ async function init() {
                         if (wallet) {
                             userWalletAddress = wallet.account.address;
                             document.getElementById('ton-connect').classList.add('connected');
+
+                            // Initialize global TonWeb if needed by legacy modules
+                            if (window.TonWeb && !window.tonweb) {
+                                window.tonweb = new window.TonWeb();
+                            }
+
                             try {
                                 await api('/api/user/wallet', 'POST', { address: userWalletAddress });
                             } catch (e) { }
@@ -665,7 +671,14 @@ window.setBetGift = function (instanceId, title, price, el) {
 function getGiftImg(model) {
     if (!model) return 'https://i.imgur.com/8YvYyZp.png';
     if (model.startsWith('http')) return model;
-    return `models/${model}/photo.png`; // Assuming local storage pattern
+    return `models/${model}/photo.png`;
+}
+
+function getGiftLink(id) {
+    // If ID is missing or looks like a placeholder, link to general collection
+    if (!id || id === 'undefined') return 'https://t.me/nft/gift';
+    // If ID is numeric, it might need a slug prefix, but for now we fallback/direct
+    return `https://t.me/nft/gift/${id}`;
 }
 
 // --- SHOP TAB LOGIC ---
@@ -1689,9 +1702,11 @@ function renderPlinko() {
 
                 if (ball.step >= PLINKO_ROWS) {
                     const targetX = (ball.targetSlot + 0.5) * slotWidth;
-                    ball.vx += (targetX - ball.x) * 0.15;
-                    ball.vx *= 0.85;
-                    ball.vy = Math.max(ball.vy, 2.5);
+                    // Softer pull towards target to avoid "jumping"
+                    const diff = (targetX - ball.x);
+                    ball.vx += diff * 0.04;
+                    ball.vx *= 0.95;
+                    ball.vy = Math.max(ball.vy, 1.8);
                 }
 
                 if (ball.y >= h - 18) {
@@ -2132,12 +2147,16 @@ function renderHide() {
         }
 
         if (hideStatus.phase === 'SEARCHING') {
-            // SMOOTH KILLER PATHING through ALL houses
+            // ORGANIC KILLER MOVEMENT
             const totalDuration = 9;
             const elapsed = totalDuration - hideStatus.timeLeft;
             const progress = (elapsed / totalDuration) * roomCount;
             const currentRoomIdx = Math.floor(progress) % roomCount;
-            const roomT = progress % 1;
+
+            // Cubic ease-in-out for the walk, with a pause at each house
+            const t = progress % 1;
+            const smoothT = t < 0.2 ? 0 : (t > 0.8 ? 1 : (t - 0.2) / 0.6);
+            const easeT = smoothT * smoothT * (3 - 2 * smoothT);
 
             const r1 = currentRoomIdx;
             const r2 = (currentRoomIdx + 1) % roomCount;
@@ -2150,15 +2169,49 @@ function renderHide() {
             const x2 = canvasPad + ix2 * cellW + cellW / 2;
             const y2 = canvasPad + iy2 * cellH + cellH / 2;
 
-            const kX = x1 + (x2 - x1) * roomT;
-            const kY = y1 + (y2 - y1) * roomT - 10;
+            const kX = x1 + (x2 - x1) * easeT;
+            const kY = y1 + (y2 - y1) * easeT - 10;
+            const isWalking = (t > 0.2 && t < 0.8);
 
-            hideCtx.fillStyle = '#e74c3c';
-            hideCtx.shadowBlur = 40; hideCtx.shadowColor = '#e74c3c';
+            // Draw "THE KILLER" (Shadowy figure)
+            hideCtx.save();
+            hideCtx.translate(kX, kY);
+
+            // Glow
+            hideCtx.shadowBlur = 30; hideCtx.shadowColor = '#e74c3c';
+
+            // Bobbing & Leg animation
+            const bob = isWalking ? Math.abs(Math.sin(Date.now() / 150)) * 5 : 0;
+            const legW = isWalking ? Math.sin(Date.now() / 100) * 10 : 0;
+
+            // Body
+            hideCtx.fillStyle = '#1a1a1a';
             hideCtx.beginPath();
-            hideCtx.arc(kX, kY + Math.sin(Date.now() / 100) * 5, 18, 0, Math.PI * 2);
+            hideCtx.moveTo(-10, 20); hideCtx.lineTo(0, -15 - bob); hideCtx.lineTo(10, 20);
             hideCtx.fill();
-            hideCtx.shadowBlur = 0;
+
+            // Head (Red Eye Glow)
+            hideCtx.fillStyle = '#e74c3c';
+            hideCtx.beginPath();
+            hideCtx.arc(0, -22 - bob, 8, 0, Math.PI * 2);
+            hideCtx.fill();
+
+            // Eye
+            hideCtx.fillStyle = '#fff';
+            hideCtx.beginPath();
+            hideCtx.arc(2, -24 - bob, 1.5, 0, Math.PI * 2);
+            hideCtx.fill();
+
+            // Legs
+            hideCtx.strokeStyle = '#1a1a1a';
+            hideCtx.lineWidth = 4;
+            hideCtx.lineCap = 'round';
+            hideCtx.beginPath();
+            hideCtx.moveTo(-4, 15); hideCtx.lineTo(-4 - legW, 25);
+            hideCtx.moveTo(4, 15); hideCtx.lineTo(4 + legW, 25);
+            hideCtx.stroke();
+
+            hideCtx.restore();
         }
     }
 }
@@ -2167,52 +2220,82 @@ function drawHouse(hx, hy, id, active, hit) {
     hideCtx.save();
     hideCtx.translate(hx, hy);
 
-    // House structure (True isometric cube)
-    const size = 30;
-    const h = 40;
+    // Geometry
+    const size = 32;
+    const h = 42;
 
-    // Roof Top
+    // 1. CHIMNEY
+    hideCtx.fillStyle = hit ? '#441111' : '#34495e';
+    hideCtx.fillRect(size * 1.5, -10, 8, 20);
+
+    // 2. ROOF (With Shingles Effect)
     hideCtx.fillStyle = hit ? '#441111' : '#2c3e50';
     hideCtx.beginPath();
     hideCtx.moveTo(size, 0); hideCtx.lineTo(size * 2, size * 0.5); hideCtx.lineTo(size, size); hideCtx.lineTo(0, size * 0.5);
     hideCtx.closePath(); hideCtx.fill();
 
-    // Side Left
-    hideCtx.fillStyle = hit ? '#330000' : '#34495e';
+    // Shingles lines
+    hideCtx.strokeStyle = 'rgba(255,255,255,0.05)';
+    hideCtx.lineWidth = 1;
+    for (let sy = 0; sy < size; sy += 4) {
+        hideCtx.beginPath();
+        hideCtx.moveTo(size - sy, sy * 0.5); hideCtx.lineTo(size * 2 - sy, (sy + size) * 0.5 - 15);
+        hideCtx.stroke();
+    }
+
+    // 3. WALLS
+    // Left Face (Main Face)
+    hideCtx.fillStyle = hit ? '#330000' : '#3d546d';
     hideCtx.beginPath();
     hideCtx.moveTo(0, size * 0.5); hideCtx.lineTo(size, size); hideCtx.lineTo(size, size + h); hideCtx.lineTo(0, size * 0.5 + h);
     hideCtx.closePath(); hideCtx.fill();
 
-    // Side Right
-    hideCtx.fillStyle = hit ? '#220000' : '#2c3e50';
+    // Right Face (Shadow Face)
+    hideCtx.fillStyle = hit ? '#220000' : '#243447';
     hideCtx.beginPath();
     hideCtx.moveTo(size * 2, size * 0.5); hideCtx.lineTo(size, size); hideCtx.lineTo(size, size + h); hideCtx.lineTo(size * 2, size * 0.5 + h);
     hideCtx.closePath(); hideCtx.fill();
 
-    // Glow Effect
+    // 4. DOOR (On Left Face)
+    hideCtx.fillStyle = '#1a1a1a';
+    hideCtx.beginPath();
+    hideCtx.moveTo(12, 45); hideCtx.lineTo(24, 51); hideCtx.lineTo(24, 75); hideCtx.lineTo(12, 69);
+    hideCtx.closePath(); hideCtx.fill();
+    // Doorknob
+    hideCtx.fillStyle = '#ffcc00';
+    hideCtx.beginPath(); hideCtx.arc(22, 63, 1.5, 0, Math.PI * 2); hideCtx.fill();
+
+    // Glow Effect for Active/Hit
     if (active) {
-        hideCtx.shadowBlur = 20; hideCtx.shadowColor = 'rgba(231, 76, 60, 0.6)';
+        hideCtx.shadowBlur = 25; hideCtx.shadowColor = 'rgba(231, 76, 60, 0.4)';
         hideCtx.strokeStyle = '#e74c3c';
-        hideCtx.lineWidth = 3;
+        hideCtx.lineWidth = 2;
         hideCtx.stroke();
     }
 
-    // Windows (Glowing)
+    // Window Lights
     hideCtx.fillStyle = active ? '#e74c3c' : (hit ? '#ff3d00' : '#f1c40f');
-    hideCtx.globalAlpha = active ? (0.6 + Math.sin(Date.now() / 150) * 0.4) : 0.3;
-    hideCtx.fillRect(10, 35, 8, 10);
-    hideCtx.fillRect(42, 35, 8, 10);
+    hideCtx.globalAlpha = active ? (0.7 + Math.sin(Date.now() / 150) * 0.3) : 0.4;
+    // Window on Right
+    hideCtx.fillRect(45, 38, 8, 12);
     hideCtx.globalAlpha = 1.0;
 
-    // Label
+    // UI Labels
     hideCtx.fillStyle = hit ? '#e74c3c' : '#ffffff';
     hideCtx.font = '900 13px "Outfit", sans-serif';
     hideCtx.textAlign = 'center';
-    hideCtx.fillText(hit ? '💥' : 'HOUSE ' + id, size, size + h + 20);
 
-    if (active) {
-        hideCtx.fillStyle = hit ? '#e74c3c' : '#2ecc71';
-        hideCtx.fillText('YOU ARE HERE', size, -10);
+    if (hit) {
+        hideCtx.font = '24px "Outfit"';
+        hideCtx.fillText('💥', size, size + 20);
+    } else {
+        hideCtx.fillText('DOM ' + id, size, size + h + 22);
+    }
+
+    if (active && !hit) {
+        hideCtx.fillStyle = '#2ecc71';
+        hideCtx.font = '900 10px "Outfit"';
+        hideCtx.fillText('ВЫ ЗДЕСЬ', size, -15);
     }
 
     hideCtx.restore();

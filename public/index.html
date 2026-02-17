@@ -348,6 +348,11 @@
 
         <!-- PLINKO -->
         <div id="game-view-plinko" class="hidden">
+          <div class="roll-section">
+            <button class="roll-button" id="plinko-drop-btn" onclick="openBetModal('plinko')">
+              <span class="roll-text">БРОСИТЬ КУБИК</span>
+            </button>
+          </div>
           <div class="plinko-arena-safe">
             <div class="plinko-canvas-wrapper" style="position: relative;">
               <div id="plinko-drop-zone" class="plinko-drop-zone"></div>
@@ -356,11 +361,6 @@
             <div class="plinko-multipliers" id="plinko-mults">
               <!-- JS will fill this -->
             </div>
-          </div>
-          <div class="roll-section">
-            <button class="roll-button" id="plinko-drop-btn" onclick="openBetModal('plinko')">
-              <span class="roll-text">БРОСИТЬ КУБИК</span>
-            </button>
           </div>
         </div>
 
