@@ -36,6 +36,12 @@ window.closeModal = (id) => {
     if (m) m.classList.add('hidden');
 };
 
+window.confirmBetAction = null;
+window.goToPayment = function () {
+    if (typeof window._goToPaymentImpl === 'function') window._goToPaymentImpl();
+    else if (window.toast) window.toast('Подготовка...', 'info');
+};
+
 window.switchTab = function (tab) {
     console.log('[Tab] Switching to', tab);
     activeTab = tab;
@@ -250,22 +256,23 @@ async function init() {
                         if (h) h.textContent = `Минимум: ${window.appSettings.minDeposit} TON`;
                     }
 
-                    window.directPay = function () {
+                    function doDirectPay() {
                         const val = document.getElementById('dep-amount').value;
                         const amount = parseFloat(val);
                         if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
-
-                        // Fallback address if settings missing
                         const address = window.appSettings.walletAddress || 'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7';
-
                         const rnd = Math.floor(100000000 + Math.random() * 900000000);
                         const comment = `deposit_${rnd}`;
-
                         const nano = Math.floor(amount * 1000000000);
                         const link = `ton://transfer/${address}?amount=${nano}&text=${comment}`;
-
                         window.location.href = link;
+                    }
+                    window.directPay = doDirectPay;
+                    window._goToPaymentImpl = function () {
+                        if (tonConnectUI && tonConnectUI.connected) tonDeposit();
+                        else doDirectPay();
                     };
+                    window.goToPayment = window._goToPaymentImpl;
 
                     document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
                     document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
@@ -2080,27 +2087,11 @@ window.openBetModal = function (game) {
     const title = { dice: 'Dice', crash: 'Rocket', plinko: 'Plinko', hide: 'Прятки' }[game] || 'Ставка';
     document.getElementById('bet-modal-title').textContent = title;
 
-    // RESTORED CONFIRM LOGIC
-    const confirmBtn = document.getElementById('bet-confirm-btn');
-    // Clear old listeners
-    const newBtn = confirmBtn.cloneNode(true);
-    confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
-
-    newBtn.onclick = () => {
-        if (activeBetGame === 'dice') {
-            console.log('Confirm clicked for DICE');
-            closeModal('bet-modal');
-            roll();
-        } else if (activeBetGame === 'crash') {
-            closeModal('bet-modal');
-            crashPlaceBet();
-        } else if (activeBetGame === 'plinko') {
-            closeModal('bet-modal');
-            plinkoDrop();
-        } else if (activeBetGame === 'hide') {
-            closeModal('bet-modal');
-            placeHideBet();
-        }
+    window.confirmBetAction = function () {
+        if (activeBetGame === 'dice') roll();
+        else if (activeBetGame === 'crash') crashPlaceBet();
+        else if (activeBetGame === 'plinko') { closeModal('bet-modal'); plinkoDrop(); }
+        else if (activeBetGame === 'hide') { closeModal('bet-modal'); placeHideBet(); }
     };
 };
 

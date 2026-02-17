@@ -579,8 +579,8 @@
                     транзакции.</p>
                 </div>
 
-                <button class="claim-btn-premium" style="width: 100%; margin-top: 20px; border-radius: 18px;"
-                  id="start-deposit-btn" onclick="directPay()">ПЕРЕЙТИ К ОПЛАТЕ</button>
+                <button type="button" class="claim-btn-premium" style="width: 100%; margin-top: 20px; border-radius: 18px;"
+                  id="start-deposit-btn" onclick="typeof window.goToPayment==='function'&&window.goToPayment()">ПЕРЕЙТИ К ОПЛАТЕ</button>
               </div>
             </div>
           </div>
@@ -846,7 +846,7 @@
           </div>
         </div>
 
-        <button type="button" class="roll-button main-action" style="margin-top: 30px;" id="bet-confirm-btn">
+        <button type="button" class="roll-button main-action" style="margin-top: 30px;" id="bet-confirm-btn" onclick="typeof window.confirmBetAction==='function'&&window.confirmBetAction()">
           <span class="roll-text">ПОДТВЕРДИТЬ</span>
         </button>
       </div>
