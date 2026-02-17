@@ -1700,7 +1700,8 @@ function renderPlinko() {
                 const currentRow = Math.floor((ball.y - 40) / rowGap);
                 if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
                     const move = ball.path[ball.step];
-                    ball.vx = (move === 1 ? 1 : -1) * (colGap / 10) + (Math.random() - 0.5) * 0.2;
+                    // Reduce random noise significantly to prevent drift
+                    ball.vx = (move === 1 ? 1 : -1) * (colGap / 10) + (Math.random() - 0.5) * 0.05;
                     ball.vy = 1.8;
                     ball.step++;
                 }
@@ -2132,19 +2133,20 @@ function renderHide() {
 
     if (hideStatus.phase === 'SEARCHING' || hideStatus.phase === 'RESULT' || hideStatus.phase === 'SELECTION') {
         const roomCount = hideStatus.finalRoomCount || 4;
-        // Helper to get house position
+        // Helper to get house position with MAX SEPARATION
         const getHousePos = (idx, total) => {
-            // FORCE CORNERS for 4 players
+            // FORCE EXTREME CORNERS for 4 players (using percentages for responsiveness)
             if (total <= 4) {
-                const marginX = 50;
-                const marginY = 60;
+                const xPad = w * 0.15; // 15% padding from sides
+                const yPad = h * 0.15; // 15% padding from top/bottom
+
                 // 1: Top-Left, 2: Top-Right, 3: Bottom-Left, 4: Bottom-Right
-                if (idx === 1) return { x: marginX, y: marginY };
-                if (idx === 2) return { x: w - marginX - 40, y: marginY };
-                if (idx === 3) return { x: marginX, y: h - marginY - 40 };
-                if (idx === 4) return { x: w - marginX - 40, y: h - marginY - 40 };
+                if (idx === 1) return { x: xPad, y: yPad };
+                if (idx === 2) return { x: w - xPad - 40, y: yPad };
+                if (idx === 3) return { x: xPad, y: h - yPad - 40 };
+                if (idx === 4) return { x: w - xPad - 40, y: h - yPad - 40 };
             }
-            // Fallback grid for >4
+            // Fallback grid
             const cols = 4;
             const rows = Math.ceil(total / cols);
             const canvasPad = 80;
