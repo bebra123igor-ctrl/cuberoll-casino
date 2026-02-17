@@ -439,6 +439,8 @@ const hideState = {
     rooms: {}, // { roomId: [ { telegramId, amount, isGift, giftInstanceId } ] }
     bets: [], // { telegramId, amount, isGift, giftInstanceId }
     killerTargetRoom: null,
+    killerPos: 0, // 0 to 1 for visual progress
+    currentRoom: 1, // which room killer is currently visiting
     history: [],
     gameId: Math.random().toString(36).substring(2, 9)
 };
@@ -448,24 +450,22 @@ function tickHide() {
         hideState.timeLeft -= 0.1;
     } else {
         if (hideState.phase === 'VOTING') {
-            // Determine winner of voting
-            const votes = hideState.roomCountVotes;
-            hideState.finalRoomCount = Number(Object.keys(votes).reduce((a, b) => votes[a] >= votes[b] ? a : b));
+            hideState.finalRoomCount = 4; // Forced to 4 as per user request
             hideState.phase = 'SELECTION';
             hideState.timeLeft = 15;
-            // Reset rooms
             hideState.rooms = {};
-            for (let i = 1; i <= hideState.finalRoomCount; i++) hideState.rooms[i] = [];
+            for (let i = 1; i <= 4; i++) hideState.rooms[i] = [];
         } else if (hideState.phase === 'SELECTION') {
             hideState.phase = 'SEARCHING';
-            hideState.timeLeft = 5; // Animation time
+            hideState.timeLeft = 8; // Longer search time for better visuals
 
-            // Randomly pick winning room (only one stays alive)
-            const winningRoom = Math.floor(Math.random() * hideState.finalRoomCount) + 1;
-            hideState.killerTargetRoom = winningRoom; // In this game, it's the survivor
+            const winningRoom = Math.floor(Math.random() * 4) + 1;
+            hideState.killerTargetRoom = winningRoom;
+            hideState.currentRoom = 1;
+            hideState.killerPos = 0;
 
-            // Process results
-            const mult = hideState.finalRoomCount === 4 ? 1.3 : (hideState.finalRoomCount === 8 ? 2 : 2.5);
+            // Process results (Survivor gets more!)
+            const mult = 2.5;
 
             const activeBets = [...hideState.bets];
             activeBets.forEach(b => {
@@ -497,12 +497,20 @@ function tickHide() {
                 }
             });
         } else if (hideState.phase === 'SEARCHING') {
-            hideState.phase = 'RESULT';
-            hideState.timeLeft = 5;
+            // Update killer movement logic (visit 1 -> 2 -> 3 -> 4)
+            // Or just randomly jump? Let's make it walk.
+            hideState.killerPos += 0.05;
+            if (hideState.killerPos >= 1) {
+                hideState.killerPos = 0;
+                hideState.currentRoom++;
+            }
+            if (hideState.timeLeft <= 0) {
+                hideState.phase = 'RESULT';
+                hideState.timeLeft = 5;
+            }
         } else if (hideState.phase === 'RESULT') {
-            // Reset game
             hideState.phase = 'VOTING';
-            hideState.timeLeft = 15;
+            hideState.timeLeft = 10;
             hideState.roomCountVotes = { 4: 0, 8: 0, 12: 0 };
             hideState.bets = [];
             hideState.rooms = {};

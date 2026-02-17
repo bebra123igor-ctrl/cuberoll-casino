@@ -4745,8 +4745,8 @@ input:checked+.toggle-slider:before {
 }
 
 .premium-bet-input input {
-  font-size: 32px !important;
-  font-weight: 900 !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
   color: #fff !important;
   text-align: center !important;
   flex: 1 !important;
@@ -4754,7 +4754,13 @@ input:checked+.toggle-slider:before {
   border: none !important;
   outline: none !important;
   font-family: "Outfit", sans-serif !important;
-  letter-spacing: -1px !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase !important;
+}
+
+.premium-bet-input input::placeholder {
+  color: rgba(255, 255, 255, 0.2) !important;
+  font-size: 20px !important;
 }
 
 .premium-bet-input .bet-max {

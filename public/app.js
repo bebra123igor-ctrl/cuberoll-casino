@@ -79,9 +79,8 @@ const _0x_dec = (s) => {
         try { return JSON.parse(s); } catch (e2) { throw e; }
     }
 };
-
-window.api = api; // Explicitly expose api
-window.user = user; // Explicitly expose user
+window.api = api;
+window.user = user;
 
 // тг
 function initTg() {
@@ -1552,6 +1551,7 @@ function initPlinko() {
         updatePlinkoPreviews();
     }
 
+    initPlinkoDropZone();
     if (!window._pRunning) {
         window._pRunning = true;
         console.log('[Plinko] Loop started successfully');
@@ -1603,13 +1603,13 @@ async function plinkoDrop() {
     }
 
     try {
-        const res = await api('/api/plinko/bet', 'POST', payload);
+        const dropX = window.plinkoDropX || 0.5;
+        const res = await api('/api/plinko/bet', 'POST', { x: dropX, ...payload });
 
-        // Clear previous landed dice on new bet
         plinkoBalls = plinkoBalls.filter(b => !b.landed);
 
         const ball = {
-            x: plinkoCanvas.width / 2 + (Math.random() - 0.5) * 10,
+            x: (plinkoCanvas.width * dropX),
             y: 20,
             vx: (Math.random() - 0.5) * 0.5,
             vy: 1.0,
@@ -1623,7 +1623,7 @@ async function plinkoDrop() {
             dieValue: Math.floor(Math.random() * 6) + 1,
             bounceCount: 0,
             landed: false,
-            newBalance: res.result.newBalance // Store balance here to sync on impact
+            newBalance: res.result.newBalance
         };
         plinkoBalls.push(ball);
 
@@ -1634,18 +1634,30 @@ async function plinkoDrop() {
     }
 }
 
+function initPlinkoDropZone() {
+    const zone = document.getElementById('plinko-drop-zone');
+    if (!zone) return;
+
+    const handleMove = (e) => {
+        const rect = zone.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        let x = (clientX - rect.left) / rect.width;
+        x = Math.max(0.1, Math.min(0.9, x));
+        window.plinkoDropX = x;
+    };
+
+    zone.addEventListener('mousemove', handleMove);
+    zone.addEventListener('touchstart', handleMove);
+    zone.addEventListener('touchmove', handleMove);
+}
+
 function renderPlinko() {
-    // If context is lost or wasn't ready, try to re-init
     if (!plinkoCanvas || !plinkoCtx) {
         plinkoCanvas = document.getElementById('plinko-canvas');
-        if (plinkoCanvas) {
-            plinkoCtx = plinkoCanvas.getContext('2d');
-            console.log('[Plinko Renderer] Re-acquired canvas context');
-        }
+        if (plinkoCanvas) plinkoCtx = plinkoCanvas.getContext('2d');
         return requestAnimationFrame(renderPlinko);
     }
 
-    // Low-power mode when hidden
     if (activeTab !== 'game' || currentGame !== 'plinko') {
         return requestAnimationFrame(renderPlinko);
     }
@@ -1653,7 +1665,6 @@ function renderPlinko() {
     const curW = plinkoCanvas.offsetWidth;
     const curH = plinkoCanvas.offsetHeight;
 
-    // Only draw and resize if visible
     if (curW > 10 && curH > 10) {
         if (plinkoCanvas.width !== curW) plinkoCanvas.width = curW;
         if (plinkoCanvas.height !== curH) plinkoCanvas.height = curH;
@@ -1662,10 +1673,18 @@ function renderPlinko() {
         const h = plinkoCanvas.height;
         plinkoCtx.clearRect(0, 0, w, h);
 
-        // Draw Pegs
         const rowGap = (h - 60) / (PLINKO_ROWS + 1);
         const colGap = w / (PLINKO_ROWS + 2);
 
+        // Draw drop indicator
+        if (window.plinkoDropX) {
+            plinkoCtx.fillStyle = 'rgba(255,255,255,0.1)';
+            plinkoCtx.fillRect(w * window.plinkoDropX - 10, 5, 20, 10);
+            plinkoCtx.strokeStyle = 'rgba(255,255,255,0.2)';
+            plinkoCtx.strokeRect(w * window.plinkoDropX - 10, 5, 20, 10);
+        }
+
+        // Draw Pegs
         plinkoCtx.fillStyle = 'rgba(255,255,255,0.2)';
         for (let r = 1; r <= PLINKO_ROWS; r++) {
             const rowY = 40 + r * rowGap;
@@ -1690,8 +1709,7 @@ function renderPlinko() {
         }
 
         // Update and Draw Balls
-        const gravity = 0.05; // Even slower
-
+        const gravity = 0.05;
         plinkoBalls = plinkoBalls.filter(ball => {
             if (!ball.landed) {
                 ball.vy += gravity;
@@ -1699,46 +1717,31 @@ function renderPlinko() {
                 ball.y += ball.vy;
 
                 // Wall bouncing
-                if (ball.x < 15) {
-                    ball.x = 15;
-                    ball.vx *= -0.6;
-                } else if (ball.x > w - 15) {
-                    ball.x = w - 15;
-                    ball.vx *= -0.6;
-                }
+                if (ball.x < 15) { ball.x = 15; ball.vx *= -0.6; }
+                else if (ball.x > w - 15) { ball.x = w - 15; ball.vx *= -0.6; }
 
                 const currentRow = Math.floor((ball.y - 40) / rowGap);
                 if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
                     const move = ball.path[ball.step];
-                    // Smoother side push
                     ball.vx = (move === 1 ? 1 : -1) * (colGap / 10) + (Math.random() - 0.5) * 0.2;
-                    ball.vy = 1.8; // Stronger drop through pegs
+                    ball.vy = 1.8;
                     ball.step++;
                 }
 
-                // Final stretch: Guide to precisely the center of the target slot
                 if (ball.step >= PLINKO_ROWS) {
-                    const slotWidth = w / PLINKO_MULTIS.length;
                     const targetX = (ball.targetSlot + 0.5) * slotWidth;
-                    // Faster guidance near the end
                     ball.vx += (targetX - ball.x) * 0.15;
-                    ball.vx *= 0.85; // Dampen horizontal movement
+                    ball.vx *= 0.85;
                     ball.vy = Math.max(ball.vy, 2.5);
                 }
 
-                if (ball.y >= h - 18) { // Result slightly before hitting bottom for better feel
+                if (ball.y >= h - 18) {
                     ball.landed = true;
                     ball.y = h - 10;
-                    ball.vx = 0;
-                    ball.vy = 0;
-
+                    ball.vx = 0; ball.vy = 0;
                     highlightSlot(ball.targetSlot);
-                    if (ball.payout > 0) {
-                        toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success');
-                        triggerConfetti();
-                    }
+                    if (ball.payout > 0) { toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success'); triggerConfetti(); }
                     if (ball.newBalance !== undefined) setBalance(ball.newBalance, true);
-
                     if (window.haptic && hapticEnabled) haptic.notificationOccurred('success');
                 }
             }
@@ -1746,30 +1749,18 @@ function renderPlinko() {
             // Draw dice
             plinkoCtx.save();
             plinkoCtx.translate(ball.x, ball.y);
-            // Rotate only if not landed, or fixed rotation if landed
-            plinkoCtx.rotate(ball.landed ? (ball.y / 15) : (ball.y / 15));
-
-            // Dice body
-            const size = 16;
-            const r = 4;
+            plinkoCtx.rotate(ball.y / 15);
+            const size = 16, r = 4;
             plinkoCtx.fillStyle = '#fff';
             plinkoCtx.shadowBlur = ball.landed ? 20 : 15;
             plinkoCtx.shadowColor = ball.landed ? 'rgba(255, 215, 0, 0.6)' : 'rgba(255,255,255,0.5)';
-
             plinkoCtx.beginPath();
             plinkoCtx.roundRect(-size / 2, -size / 2, size, size, r);
             plinkoCtx.fill();
 
-            // Dots
             plinkoCtx.fillStyle = '#000';
-            const dotSize = 2;
-            const p = size / 4;
-            const drawDot = (dx, dy) => {
-                plinkoCtx.beginPath();
-                plinkoCtx.arc(dx, dy, dotSize, 0, Math.PI * 2);
-                plinkoCtx.fill();
-            };
-
+            const p = size / 4, dotSize = 2;
+            const drawDot = (dx, dy) => { plinkoCtx.beginPath(); plinkoCtx.arc(dx, dy, dotSize, 0, Math.PI * 2); plinkoCtx.fill(); };
             const dots = {
                 1: [[0, 0]],
                 2: [[-p, -p], [p, p]],
@@ -1778,14 +1769,11 @@ function renderPlinko() {
                 5: [[-p, -p], [p, -p], [0, 0], [-p, p], [p, p]],
                 6: [[-p, -p], [p, -p], [-p, 0], [p, 0], [-p, p], [p, p]]
             };
-
             (dots[ball.dieValue] || []).forEach(d => drawDot(d[0], d[1]));
             plinkoCtx.restore();
-
-            return true; // Keep ball in array until next bet clears it
+            return true;
         });
     }
-
     requestAnimationFrame(renderPlinko);
 }
 
@@ -2008,22 +1996,6 @@ window.selectGiftForBet = function (item, gameId) {
     if (gameId === 'plinko') updatePlinkoPreviews();
 };
 
-function updatePlinkoPreviews() {
-    let amt = 0;
-    if (betMode === 'gift' && selectedGift) {
-        amt = selectedGift.price;
-    } else {
-        const inp = document.getElementById('plinko-bet-amount');
-        amt = parseFloat(inp?.value) || 0;
-    }
-
-    document.querySelectorAll('.plinko-multiplier-slot').forEach(slot => {
-        const m = parseFloat(slot.dataset.mult);
-        const preview = slot.querySelector('.mult-payout-preview');
-        if (preview) preview.textContent = (amt * m).toFixed(2);
-    });
-}
-
 // --- HIDE AND SEEK (ПРЯТКИ) ---
 let hideStatus = null;
 let hidePolling = null;
@@ -2057,9 +2029,17 @@ function updateHideUI() {
     const voteControls = document.getElementById('hide-voting-controls');
     const selectControls = document.getElementById('hide-selection-controls');
 
+    // Disable bet button if in game or already bet
+    const btn = document.getElementById('hide-place-bet-btn');
+    if (btn) {
+        const canBet = hideStatus.phase === 'VOTING' && !hideStatus.myBet;
+        btn.disabled = !canBet;
+        btn.style.opacity = canBet ? '1' : '0.5';
+    }
+
     if (timer) timer.textContent = Math.ceil(hideStatus.timeLeft || 0);
     if (phaseText) {
-        const texts = { 'VOTING': 'ГОЛОСОВАНИЕ', 'SELECTION': 'ВЫБОР КОМНАТЫ', 'SEARCHING': 'УБИЙЦА ВЫШЕЛ...', 'RESULT': 'ФИНАЛ' };
+        const texts = { 'VOTING': 'ОЖИДАНИЕ', 'SELECTION': 'СТАВКИ', 'SEARCHING': 'УБИЙЦА В ПУТИ...', 'RESULT': 'ФИНАЛ' };
         phaseText.textContent = texts[hideStatus.phase] || hideStatus.phase;
     }
 
@@ -2080,10 +2060,12 @@ function renderRoomsList() {
     const cont = document.getElementById('hide-rooms-container');
     if (!cont) return;
     let h = '';
-    for (let i = 1; i <= hideStatus.finalRoomCount; i++) {
+    const roomCount = hideStatus.finalRoomCount || 4;
+    for (let i = 1; i <= roomCount; i++) {
         const r = hideStatus.rooms[i] || [];
         const isMy = hideStatus.myRoom == i;
-        h += `<div class="room-node ${isMy ? 'active' : ''} ${r.length >= 3 ? 'full' : ''}" onclick="selectHideRoom(${i})">
+        const killerInside = hideStatus.phase === 'SEARCHING' && hideStatus.currentRoom == i;
+        h += `<div class="room-node ${isMy ? 'active' : ''} ${r.length >= 3 ? 'full' : ''} ${killerInside ? 'killer-inside' : ''}" onclick="selectHideRoom(${i})">
                 <span class="room-num">${i}</span>
                 <span class="room-p-count">${r.length}/3</span>
               </div>`;
@@ -2142,29 +2124,56 @@ function renderHide() {
     for (let y = 0; y < h; y += 30) { hideCtx.beginPath(); hideCtx.moveTo(0, y); hideCtx.lineTo(w, y); hideCtx.stroke(); }
 
     if (hideStatus && (hideStatus.phase === 'SEARCHING' || hideStatus.phase === 'RESULT')) {
-        const killX = w / 2 + Math.sin(Date.now() / 500) * 40;
-        const killY = h / 2 + Math.cos(Date.now() / 500) * 20;
+        let killX, killY;
+        const padding = 60;
+        const gridW = (w - padding * 2) / 2;
+        const gridH = (h - padding * 2) / 2;
+
+        if (hideStatus.phase === 'SEARCHING') {
+            const roomIdx = hideStatus.currentRoom - 1;
+            const row = Math.floor(roomIdx / 2);
+            const col = roomIdx % 2;
+            const targetX = padding + col * gridW + gridW / 2;
+            const targetY = padding + row * gridH + gridH / 2;
+
+            // Movement animation
+            killX = targetX + Math.sin(Date.now() / 300) * 20;
+            killY = targetY + Math.cos(Date.now() / 300) * 10;
+        } else {
+            // Result: stay at target room
+            const roomIdx = hideStatus.killerTargetRoom - 1;
+            const row = Math.floor(roomIdx / 2);
+            const col = roomIdx % 2;
+            killX = padding + col * gridW + gridW / 2;
+            killY = padding + row * gridH + gridH / 2;
+        }
 
         hideCtx.save();
         hideCtx.translate(killX, killY);
-        hideCtx.rotate(Date.now() / 1000);
+        hideCtx.rotate(Date.now() / 800);
         hideCtx.fillStyle = '#e74c3c';
-        hideCtx.shadowBlur = 15; hideCtx.shadowColor = '#e74c3c';
-        hideCtx.fillRect(-20, -20, 40, 40);
+        hideCtx.shadowBlur = 20; hideCtx.shadowColor = '#e74c3c';
+        hideCtx.fillRect(-22, -22, 44, 44);
+
+        // Eyes
         hideCtx.fillStyle = '#fff';
-        [[0, 0], [-10, -10], [10, 10], [-10, 10], [10, -10]].forEach(p => {
-            hideCtx.beginPath(); hideCtx.arc(p[0], p[1], 3, 0, Math.PI * 2); hideCtx.fill();
-        });
+        hideCtx.beginPath();
+        hideCtx.arc(-8, -5, 4, 0, Math.PI * 2);
+        hideCtx.arc(8, -5, 4, 0, Math.PI * 2);
+        hideCtx.fill();
         hideCtx.restore();
 
+        // Survivors (Small Cubes)
         if (hideStatus.phase === 'RESULT' && hideStatus.myRoom == hideStatus.killerTargetRoom) {
+            const winX = w / 2;
+            const winY = h - 40;
             hideCtx.fillStyle = '#2ecc71';
-            hideCtx.beginPath();
-            hideCtx.arc(w / 2, h / 2 + 60, 10, 0, Math.PI * 2);
-            hideCtx.fill();
+            hideCtx.shadowBlur = 15; hideCtx.shadowColor = '#2ecc71';
+            hideCtx.fillRect(winX - 10, winY - 10, 20, 20);
+
             hideCtx.fillStyle = '#fff';
-            hideCtx.font = '10px Arial';
-            hideCtx.fillText('YOU SURVIVED', w / 2 - 35, h / 2 + 85);
+            hideCtx.font = 'bold 12px Arial';
+            hideCtx.fillText('SURVIVED!', winX - 35, winY + 25);
         }
     }
 }
