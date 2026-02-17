@@ -263,8 +263,7 @@
 
           <div class="roll-section">
             <div class="streak-multiplier" id="streak-mult">×1.1</div>
-            <button class="roll-button" id="open-bet-modal-btn"
-              onclick="const m=document.getElementById('bet-modal'); if(m){m.classList.remove('hidden'); updatePayoutUI();}">
+            <button class="roll-button" id="open-bet-modal-btn" onclick="openBetModal('dice')">
               <span class="icon"><svg viewBox="0 0 24 24">
                   <rect x="3" y="3" width="18" height="18" rx="3" />
                   <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none" />
@@ -305,36 +304,14 @@
               </div>
             </div>
 
-            <div class="bet-modes-tabs">
-              <button class="bet-mode-tab active" id="crash-mode-ton" onclick="setBetMode('ton')">TON</button>
-              <button class="bet-mode-tab" id="crash-mode-gift" onclick="setBetMode('gift')">ПОДАРКИ</button>
-            </div>
-
             <div class="crash-controls">
-              <div class="bet-input-container" id="crash-ton-input-area">
-                <label>СУММА СТАВКИ</label>
-                <div class="crash-input-wrapper premium-bet-input">
-                  <input type="number" id="crash-bet-amount" value="1.0" step="0.1" min="0.1">
-                  <span class="bet-input-unit">TON</span>
-                </div>
-              </div>
-
-              <div id="crash-gift-input-area" class="gift-selection-area hidden">
-                <label>ВЫБЕРИТЕ ПОДАРОК</label>
-                <div class="gift-selection-scroll" id="crash-gift-list">
-                  <!-- JS filled -->
-                </div>
-              </div>
-
-              <div class="bet-input-container" id="crash-auto-cashout-area">
-                <label>АВТО-ВЫВОД</label>
-                <div class="crash-input-wrapper premium-bet-input">
-                  <input type="number" id="crash-auto-cashout" placeholder="Нет" step="0.1" min="1.1">
-                  <span class="bet-input-unit">X</span>
-                </div>
-              </div>
-              <button id="crash-bet-btn" class="crash-btn bet" onclick="crashPlaceBet()">ПОСТАВИТЬ</button>
-              <button id="crash-cashout-btn" class="crash-btn cashout hidden" onclick="crashCashout()">ЗАБРАТЬ</button>
+              <button id="crash-bet-btn" class="roll-button main-action" onclick="openBetModal('crash')">
+                <span class="roll-text">СДЕЛАТЬ СТАВКУ</span>
+              </button>
+              <button id="crash-cashout-btn" class="roll-button main-action hidden" onclick="crashCashout()"
+                style="background:var(--green-g);">
+                <span class="roll-text">ЗАБРАТЬ</span>
+              </button>
             </div>
           </div>
         </div>
@@ -351,26 +328,7 @@
             </div>
           </div>
           <div class="roll-section">
-            <div class="bet-modes-tabs">
-              <button class="bet-mode-tab active" id="plinko-mode-ton" onclick="setBetMode('ton')">TON</button>
-              <button class="bet-mode-tab" id="plinko-mode-gift" onclick="setBetMode('gift')">ПОДАРКИ</button>
-            </div>
-
-            <div id="plinko-ton-input-area" class="bet-input-wrap premium-bet-input" style="margin-bottom: 6px;">
-              <input type="number" id="plinko-bet-amount" placeholder="Ставка" value="1.0" step="0.1"
-                oninput="updatePlinkoPreviews()">
-              <button class="bet-max"
-                onclick="document.getElementById('plinko-bet-amount').value = user.balance.toFixed(2); updatePlinkoPreviews();">MAX</button>
-            </div>
-
-            <div id="plinko-gift-input-area" class="gift-selection-area hidden" style="margin-bottom: 12px;">
-              <label>ВЫБЕРИТЕ ПОДАРОК</label>
-              <div class="gift-selection-scroll" id="plinko-gift-list">
-                <!-- JS filled -->
-              </div>
-            </div>
-
-            <button class="roll-button" id="plinko-drop-btn" onclick="plinkoDrop()">
+            <button class="roll-button" id="plinko-drop-btn" onclick="openBetModal('plinko')">
               <span class="roll-text">БРОСИТЬ КУБИК</span>
             </button>
           </div>
@@ -382,44 +340,20 @@
             <canvas id="hide-canvas"></canvas>
             <div id="hide-overlay" class="hide-overlay">
               <div id="hide-timer-display" class="hide-timer">15</div>
-              <div id="hide-phase-text" class="hide-phase-title">ГОЛОСОВАНИЕ</div>
+              <div id="hide-phase-text" class="hide-phase-title">ВЫБОР КОМНАТЫ</div>
             </div>
           </div>
 
           <div class="hide-controls-wrap">
-            <div id="hide-voting-controls" class="hide-phase-controls">
-              <p class="hide-info-label">СКОЛЬКО БУДЕТ КОМНАТ?</p>
-              <div class="hide-vote-grid">
-                <button class="vote-btn" onclick="voteHide(4)">4 (1.3x)</button>
-                <button class="vote-btn" onclick="voteHide(8)">8 (2.0x)</button>
-                <button class="vote-btn" onclick="voteHide(12)">12 (2.5x)</button>
-              </div>
-            </div>
-
-            <div id="hide-selection-controls" class="hide-phase-controls hidden">
-              <p class="hide-info-label">ВЫБЕРИТЕ КОМНАТУ</p>
+            <div id="hide-selection-controls" class="hide-phase-controls">
+              <p class="hide-info-label">ВЫБЕРИТЕ ДОМ (2.5x Win)</p>
               <div id="hide-rooms-container" class="hide-rooms-grid">
                 <!-- Filled by JS -->
               </div>
             </div>
 
             <div id="hide-bet-controls" class="hide-bet-section">
-              <div class="bet-modes-tabs">
-                <button class="bet-mode-tab active" id="hide-mode-ton" onclick="setBetMode('ton')">TON</button>
-                <button class="bet-mode-tab" id="hide-mode-gift" onclick="setBetMode('gift')">ПОДАРКИ</button>
-              </div>
-
-              <div id="hide-ton-input-area" class="bet-input-wrap premium-bet-input" style="margin-bottom: 8px;">
-                <input type="number" id="hide-bet-amount" placeholder="Ставка" value="1.0" step="0.1">
-                <span class="bet-input-unit">TON</span>
-              </div>
-
-              <div id="hide-gift-input-area" class="gift-selection-area hidden" style="margin-bottom: 12px;">
-                <label>ВЫБЕРИТЕ ПОДАРОК</label>
-                <div class="gift-selection-scroll" id="hide-gift-list"></div>
-              </div>
-
-              <button id="hide-place-bet-btn" class="roll-button" onclick="placeHideBet()">
+              <button id="hide-place-bet-btn" class="roll-button" onclick="openBetModal('hide')">
                 <span class="roll-text">УЧАСТВОВАТЬ</span>
               </button>
             </div>
@@ -505,39 +439,36 @@
         <div class="wallet-content">
           <div class="deposit-hero">
             <div class="hero-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2">
-                <path d="M3 21h18" />
-                <path d="M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7" />
-                <path d="M4 7V4a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v3" />
-                <path d="M7 21v-4" />
-                <path d="M11 21v-4" />
-                <path d="M15 21v-4" />
-                <path d="M19 21v-4" />
+              <!-- Sleek Wallet Icon -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <path d="M16 12a2 2 0 100-4 2 2 0 000 4z" />
+                <path d="M21 8v8" />
               </svg>
             </div>
             <h2>Пополнение счета</h2>
-            <p>Выберите удобный способ оплаты и средства будут зачислены моментально.</p>
+            <p>Выберите удобный способ оплаты и баланс будет пополнен моментально.</p>
           </div>
 
           <!-- Dealer Method -->
-          <div class="wallet-method-card premium-card">
+          <div class="wallet-method-card">
             <div class="method-header">
               <div class="method-icon-shimmer">
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2">
-                  <polyline points="20 12 20 22 4 22 4 12" />
+                <!-- Gift/Trade Icon -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 12V22H4V12" />
                   <rect x="2" y="7" width="20" height="5" />
                   <line x1="12" y1="22" x2="12" y2="7" />
-                  <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
-                  <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+                  <path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z" />
+                  <path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" />
                 </svg>
               </div>
               <div class="method-title-wrap">
-                <h4>Через дилера</h4>
-                <span class="method-badge">БЫСТРО</span>
+                <h4>Через дилера <span class="method-badge">БЫСТРО</span></h4>
               </div>
             </div>
             <p class="method-desc">
-              Обменяйте ваши <b>Telegram Gifts</b> на игровой баланс. Самый популярный способ среди игроков.
+              Обменяйте ваши <b>Telegram Gifts</b> на игровой баланс через нашего официального дилера.
             </p>
             <a href="https://t.me/dealer_cuberoll" target="_blank" class="dealer-btn-gold">
               СВЯЗАТЬСЯ С ДИЛЕРОМ
@@ -545,12 +476,13 @@
           </div>
 
           <!-- Direct Method -->
-          <div class="wallet-method-card glass-card">
+          <div class="wallet-method-card">
             <div class="method-header">
               <div class="method-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2">
+                <!-- TON Crystal Icon -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M6 3h12l4 6-10 12L2 9z" />
-                  <path d="M11 3 8 9l3 12" />
+                  <path d="M11 3L8 9l3 12" />
                   <path d="M13 3l3 6-3 12" />
                   <path d="M2 9h20" />
                 </svg>
@@ -559,25 +491,24 @@
                 <h4>TON Кошелек</h4>
               </div>
             </div>
-            <p class="method-desc">Прямое пополнение через TonConnect. Средства зачисляются после 1 подтверждения.</p>
+            <p class="method-desc">Прямое пополнение через TonConnect. Автоматическое зачисление после 1 подтверждения.
+            </p>
 
             <div id="ton-deposit-ui">
               <div class="dep-input-zone">
-                <label class="dep-input-label">Сумма пополнения (TON)</label>
+                <label class="dep-input-label">СУММА ПОПОЛНЕНИЯ (TON)</label>
                 <div class="premium-input-group">
                   <input type="number" inputmode="decimal" id="dep-amount" placeholder="0.00" value="1.0">
                 </div>
 
-
                 <div class="dep-info-box">
-                  <p id="dep-min-hint" style="margin-bottom: 5px; font-weight: 800; color: var(--gold);">Минимум: 0.1
-                    TON</p>
-                  <p>Баланс зачисляется <span class="highlight">автоматически</span> сразу после подтверждения
-                    транзакции в сети TON.</p>
+                  <p id="dep-min-hint">Минимум: <span class="highlight">0.1 TON</span></p>
+                  <p style="margin-top: 5px;">Баланс зачисляется <span class="highlight">автоматически</span> после
+                    транзакции.</p>
                 </div>
 
-                <button class="claim-btn-premium" style="width: 100%; margin-top: 15px;" id="start-deposit-btn"
-                  onclick="tonDeposit()">ПОПОЛНИТЬ ЧЕРЕЗ КОШЕЛЕК</button>
+                <button class="claim-btn-premium" style="width: 100%; margin-top: 20px; border-radius: 18px;"
+                  id="start-deposit-btn" onclick="tonDeposit()">ПОПОЛНИТЬ ЧЕРЕЗ КОШЕЛЕК</button>
               </div>
             </div>
           </div>
@@ -779,76 +710,69 @@
     </div>
 
     <!-- Модальное окно ставки -->
+    <!-- Dynamic Bet Modal -->
     <div class="modal-overlay hidden" id="bet-modal">
       <div class="modal-box bet-modal-box">
         <div class="modal-header">
-          <h3>Сделать ставку</h3>
+          <h3 id="bet-modal-title">Сделать ставку</h3>
           <button class="close-modal-btn" onclick="closeModal('bet-modal')">×</button>
         </div>
 
         <div class="bet-modes-tabs">
-          <button class="bet-mode-tab active" id="bet-mode-ton" onclick="setBetMode('ton')">TON</button>
-          <button class="bet-mode-tab" id="bet-mode-gifts" onclick="setBetMode('gifts')">ПОДАРКИ</button>
+          <button class="bet-mode-tab active" id="bet-tab-ton" onclick="setBetMode('ton')">TON</button>
+          <button class="bet-mode-tab" id="bet-tab-gift" onclick="setBetMode('gift')">ПОДАРКИ</button>
         </div>
 
-        <div class="bet-amount-section-modal" id="bet-ton-input-area">
-          <label>Сумма ставки</label>
-          <div class="bet-input-container premium-bet-input">
-            <button class="bet-adjust" id="btn-half">/2</button>
-            <input type="number" id="bet-amount" class="bet-input" value="1.0" min="0.1" max="100" step="0.1">
-            <span class="bet-input-unit">TON</span>
-            <button class="bet-adjust" id="btn-double">×2</button>
+        <div id="bet-ton-area">
+          <div class="bet-amount-section-modal">
+            <label style="display:block; text-align:center; margin-bottom:10px; font-weight:800; color:var(--t4);">СУММА
+              СТАВКИ</label>
+            <div class="premium-bet-input">
+              <input type="number" id="bet-amount" value="1.0" min="0.1" step="0.1">
+              <button class="bet-max"
+                onclick="document.getElementById('bet-amount').value = user.balance.toFixed(2)">MAX</button>
+            </div>
           </div>
-          <div class="quick-bets">
-            <button class="quick-bet" data-amount="1">1</button>
-            <button class="quick-bet" data-amount="5">5</button>
-            <button class="quick-bet active" data-amount="10">10</button>
-            <button class="quick-bet" data-amount="20">20</button>
-            <button class="quick-bet" data-amount="max">MAX</button>
-          </div>
-        </div>
 
-        <div class="gift-selection-area hidden" id="bet-gift-input-area">
-          <label>Выберите подарок из инвентаря</label>
-          <div class="gift-selection-scroll" id="gift-selection-list">
-            <!-- JS dynamic content -->
+          <div id="crash-auto-cashout-area" class="hidden" style="margin-top: 20px;">
+            <label
+              style="display:block; text-align:center; margin-bottom:10px; font-weight:800; color:var(--t4);">АВТО-ВЫВОД</label>
+            <div class="premium-bet-input">
+              <input type="number" id="bet-auto-cashout" placeholder="Нет" step="0.1" min="1.1">
+              <span style="font-size:12px; font-weight:900; color:var(--t4);">X</span>
+            </div>
           </div>
         </div>
 
-        <div class="bet-type-section-modal">
-          <label>Исход</label>
+        <div id="bet-gift-area" class="hidden">
+          <label
+            style="display:block; text-align:center; margin-bottom:10px; font-weight:800; color:var(--t4);">ВЫБЕРИТЕ
+            ПОДАРОК</label>
+          <div class="gift-selection-scroll" id="gift-selection-list"></div>
+        </div>
+
+        <div id="dice-options-area" class="hidden" style="margin-top: 25px;">
+          <label
+            style="display:block; text-align:center; margin-bottom:12px; font-weight:800; color:var(--t4);">ВЫБЕРИТЕ
+            ИСХОД</label>
           <div class="bet-grid">
             <button class="bet-type-btn active" data-bet="high">
-              <span class="bet-name">Больше (8-12)</span><span class="bet-mult">x1.95</span>
+              <span class="bet-name">Больше</span><span class="bet-mult">1.95x</span>
             </button>
             <button class="bet-type-btn" data-bet="low">
-              <span class="bet-name">Меньше (2-6)</span><span class="bet-mult">x1.95</span>
+              <span class="bet-name">Меньше</span><span class="bet-mult">1.95x</span>
             </button>
             <button class="bet-type-btn" data-bet="even">
-              <span class="bet-name">Чётное</span><span class="bet-mult">x1.95</span>
+              <span class="bet-name">Чётное</span><span class="bet-mult">1.95x</span>
             </button>
             <button class="bet-type-btn" data-bet="odd">
-              <span class="bet-name">Нечёт</span><span class="bet-mult">x1.95</span>
-            </button>
-            <button class="bet-type-btn" data-bet="seven">
-              <span class="bet-name">Семёрка (7)</span><span class="bet-mult">x5.8</span>
-            </button>
-            <button class="bet-type-btn" data-bet="doubles">
-              <span class="bet-name">Дубль</span><span class="bet-mult">x5.0</span>
-            </button>
-            <button class="bet-type-btn" data-bet="exact">
-              <span class="bet-name">Точное</span><span class="bet-mult">x11</span>
+              <span class="bet-name">Нечёт</span><span class="bet-mult">1.95x</span>
             </button>
           </div>
         </div>
 
-        <div class="exact-picker-container" id="exact-picker" style="display:none;">
-          <label class="picker-label">Выберите точное число</label>
-          <div class="exact-nums" id="exact-nums"></div>
-        </div>
-
-        <button class="roll-button main-action" id="roll-btn-confirm">
-          БРОСИТЬ КОСТИ
+        <button class="roll-button main-action" style="margin-top: 30px;" id="bet-confirm-btn">
+          <span class="roll-text">ПОДТВЕРДИТЬ</span>
         </button>
       </div>
     </div>

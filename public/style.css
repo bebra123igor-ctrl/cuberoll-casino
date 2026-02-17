@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
+
 /* ═══ scrollbar ═══ */
 ::-webkit-scrollbar {
   width: 4px;
@@ -83,6 +84,40 @@ body {
   height: 100%;
   width: 100%;
   position: fixed;
+}
+
+#app {
+  width: 100%;
+  max-width: 500px;
+  height: 100%;
+  margin: 0 auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.tab-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+  padding-bottom: 120px;
+  /* space for nav */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbars but keep functionality */
+.tab-scrollable::-webkit-scrollbar {
+  display: none;
+}
+
+/* Specific game view constraints to prevent double scrolling */
+[id^="game-view-"] {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .shop-list {
@@ -4936,4 +4971,196 @@ input:checked+.toggle-slider:before {
 .room-p-count {
   font-size: 9px;
   color: var(--t4);
+}
+
+/* ——— WALLET & DEPOSIT PREMIUM ——— */
+.deposit-hero {
+  text-align: center;
+  padding: 40px 20px;
+  background: radial-gradient(circle at center, rgba(255, 204, 0, 0.08) 0%, transparent 70%);
+  border-radius: 30px;
+  margin: 10px 0 25px;
+  border: 1px solid rgba(255, 204, 0, 0.05);
+}
+
+.hero-icon {
+  width: 80px;
+  height: 80px;
+  background: var(--bg2);
+  border: 2px solid var(--gold-dim);
+  border-radius: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+
+.hero-icon svg {
+  width: 40px;
+  height: 40px;
+  stroke: var(--gold);
+}
+
+.deposit-hero h2 {
+  font-size: 24px;
+  font-weight: 900;
+  margin-bottom: 8px;
+  background: var(--gold-g);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.deposit-hero p {
+  font-size: 13px;
+  color: var(--t3);
+  line-height: 1.5;
+  max-width: 240px;
+  margin: 0 auto;
+}
+
+.wallet-method-card {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.method-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 15px;
+}
+
+.method-icon,
+.method-icon-shimmer {
+  width: 48px;
+  height: 48px;
+  background: var(--bg);
+  border-radius: 14px;
+  border: 1.5px solid var(--border2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.method-icon svg,
+.method-icon-shimmer svg {
+  width: 24px;
+  height: 24px;
+  stroke: var(--gold);
+}
+
+.method-icon-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.method-icon-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: -100%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  animation: shimmerW 3s infinite;
+}
+
+@keyframes shimmerW {
+  0% {
+    transform: translateX(-50%);
+  }
+
+  100% {
+    transform: translateX(50%);
+  }
+}
+
+.method-title-wrap h4 {
+  font-size: 17px;
+  font-weight: 850;
+  color: #fff;
+}
+
+.method-badge {
+  font-size: 9px;
+  font-weight: 950;
+  background: var(--gold);
+  color: #000;
+  padding: 2px 6px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  margin-left: 8px;
+}
+
+.method-desc {
+  font-size: 12px;
+  color: var(--t3);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.dealer-btn-gold {
+  display: block;
+  width: 100%;
+  padding: 18px;
+  text-align: center;
+  background: var(--gold-g);
+  color: #000;
+  text-decoration: none;
+  font-weight: 900;
+  font-size: 14px;
+  border-radius: 18px;
+  box-shadow: 0 8px 20px rgba(255, 204, 0, 0.2);
+  transition: all 0.2s;
+}
+
+.dealer-btn-gold:active {
+  transform: scale(0.97);
+  filter: brightness(0.9);
+}
+
+.dep-input-zone {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 24px;
+  padding: 20px;
+  border: 1px solid var(--border);
+}
+
+.premium-input-group {
+  background: var(--bg);
+  border: 2px solid var(--border3);
+  border-radius: 18px;
+  padding: 12px;
+  margin: 15px 0;
+}
+
+.premium-input-group input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 24px;
+  font-weight: 900;
+  color: #fff;
+  text-align: center;
+}
+
+.dep-info-box {
+  margin-top: 15px;
+  padding: 15px;
+  background: rgba(255, 204, 0, 0.05);
+  border-radius: 15px;
+  border: 1px dashed var(--gold-dim);
+  font-size: 11px;
+  color: var(--t3);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.dep-info-box .highlight {
+  color: var(--gold);
+  font-weight: 800;
 }

@@ -523,41 +523,32 @@ window.verifyGame = async function () {
 
 window.roll = async function () {
     if (rolling) return;
-    if (!tonConnectUI.connected) {
-        toast('Сначала подключите кошелёк', 'info');
-        await tonConnectUI.openModal();
-        return;
-    }
 
+    // Check amounts
     const amt = parseFloat(document.getElementById('bet-amount').value);
-
-    // Check if gift is selected
-    if (!selectedGiftForBet) {
+    if (betMode === 'ton') {
         if (isNaN(amt) || amt < 0.1) return toast('Мин. ставка 0.1 TON', 'error');
         if (amt > user.balance) return toast('Недостаточно баланса', 'error');
+    } else {
+        if (!selectedGift) return toast('Выберите подарок', 'error');
     }
 
-    document.getElementById('bet-modal').classList.add('hidden');
-
+    closeModal('bet-modal');
     rolling = true;
-    const rollBtn = document.getElementById('roll-btn-confirm');
-    const originalBtnText = rollBtn.textContent;
-    rollBtn.disabled = true;
-    rollBtn.innerHTML = '<span class="loader-inline"></span> БРОСАЕМ...';
-    if (window.haptic && hapticEnabled) haptic.impactOccurred('medium');
+    const rollBtn = document.getElementById('open-bet-modal-btn');
+    if (rollBtn) rollBtn.disabled = true;
 
     try {
-        const payload = { betAmount: amt, betType: betType };
-        if (betType === 'exact') payload.exactNumber = exactNum;
+        const payload = {
+            betAmount: amt,
+            betType: document.querySelector('.bet-type-btn.active')?.dataset.bet || 'high'
+        };
         if (betMode === 'gift' && selectedGift) {
             payload.giftInstanceId = selectedGift.instance_id;
-            // Reset state
             selectedGift = null;
         }
 
         const res = await api('/api/bet', 'POST', payload);
-        selectedGiftForBet = null;
-
         if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
         animateDice(res.result.dice);
 
@@ -566,19 +557,11 @@ window.roll = async function () {
             setBalance(user.balance, true);
             showResult(res.result);
             rolling = false;
-            rollBtn.disabled = false;
-            rollBtn.textContent = originalBtnText;
-            document.getElementById('open-bet-modal-btn').disabled = false;
+            if (rollBtn) rollBtn.disabled = false;
         }, 1200);
     } catch (e) {
         rolling = false;
-        selectedGiftForBet = null; // Reset on error
-        const rb = document.getElementById('roll-btn-confirm');
-        if (rb) {
-            rb.disabled = false;
-            rb.textContent = 'ОШИБКА. ЕЩЕ РАЗ?';
-        }
-        document.getElementById('open-bet-modal-btn').disabled = false;
+        if (rollBtn) rollBtn.disabled = false;
         toast(e.message, 'error');
     }
 };
@@ -1474,12 +1457,16 @@ window.crashPlaceBet = async function () {
         if (!selectedGift) return toast('Выберите подарок', 'error');
         payload.giftInstanceId = selectedGift.instance_id;
     } else {
-        const amtStr = document.getElementById('crash-bet-amount').value;
-        const amt = parseFloat(amtStr);
+        const amt = parseFloat(document.getElementById('bet-amount').value);
         if (isNaN(amt) || amt < 0.1) return toast('Минимум 0.1 TON', 'error');
         if (amt > user.balance) return toast('Недостаточно баланса', 'error');
         payload.betAmount = amt;
     }
+
+    const auto = parseFloat(document.getElementById('bet-auto-cashout').value);
+    if (!isNaN(auto) && auto > 1.1) payload.autoCashout = auto;
+
+    closeModal('bet-modal');
 
     try {
         const res = await api('/api/crash/bet', 'POST', payload);
@@ -1487,10 +1474,7 @@ window.crashPlaceBet = async function () {
         toast('Ставка принята!', 'success');
         if (window.haptic && hapticEnabled) haptic.impactOccurred('medium');
         pollCrash();
-        if (betMode === 'gift') {
-            selectedGift = null;
-            loadGiftsForBet('crash');
-        }
+        if (betMode === 'gift') selectedGift = null;
     } catch (e) { toast(e.message, 'error'); }
 };
 
@@ -1586,20 +1570,15 @@ function updatePlinkoPreviews() {
 }
 
 async function plinkoDrop() {
-    const btn = document.getElementById('plinko-drop-btn');
-    if (btn.disabled) return;
-    btn.disabled = true;
-
     const payload = {};
     if (betMode === 'gift') {
-        if (!selectedGift) {
-            btn.disabled = false;
-            return toast('Выберите подарок', 'error');
-        }
+        if (!selectedGift) return toast('Выберите подарок', 'error');
         payload.giftInstanceId = selectedGift.instance_id;
     } else {
-        const amountVal = document.getElementById('plinko-bet-amount').value;
-        payload.betAmount = parseFloat(amountVal);
+        const amt = parseFloat(document.getElementById('bet-amount').value);
+        if (isNaN(amt) || amt < 0.1) return toast('Минимум 0.1 TON', 'error');
+        if (amt > user.balance) return toast('Недостаточно баланса', 'error');
+        payload.betAmount = amt;
     }
 
     try {
@@ -1626,11 +1605,9 @@ async function plinkoDrop() {
             newBalance: res.result.newBalance
         };
         plinkoBalls.push(ball);
-
+        if (betMode === 'gift') selectedGift = null;
     } catch (e) {
         toast(e.message, 'error');
-    } finally {
-        setTimeout(() => { btn.disabled = false; }, 500);
     }
 }
 
@@ -1915,85 +1892,76 @@ document.querySelector('.header-left').onclick = openStats;
 // Consolidated Gift Betting Logic
 let betMode = 'ton';
 let selectedGift = null;
+let activeBetGame = null;
 
 window.setBetMode = function (mode) {
     betMode = mode;
-    console.log('[BetMode] Switching to', mode);
+    const btnTon = document.getElementById('bet-tab-ton');
+    const btnGift = document.getElementById('bet-tab-gift');
+    const areaTon = document.getElementById('bet-ton-area');
+    const areaGift = document.getElementById('bet-gift-area');
 
-    // UI elements to toggle
-    const selectors = [
-        { ton: 'crash-ton-input-area', gift: 'crash-gift-input-area', bt: 'crash-mode-ton', bg: 'crash-mode-gift' },
-        { ton: 'plinko-ton-input-area', gift: 'plinko-gift-input-area', bt: 'plinko-mode-ton', bg: 'plinko-mode-gift' },
-        { ton: 'hide-ton-input-area', gift: 'hide-gift-input-area', bt: 'hide-mode-ton', bg: 'hide-mode-gift' },
-        { ton: 'bet-ton-input-area', gift: 'bet-gift-input-area', bt: 'bet-mode-ton', bg: 'bet-mode-gifts' }
-    ];
-
-    selectors.forEach(s => {
-        const areaTon = document.getElementById(s.ton);
-        const areaGift = document.getElementById(s.gift);
-        const btnTon = document.getElementById(s.bt);
-        const btnGift = document.getElementById(s.bg);
-
-        if (mode === 'ton') {
-            areaTon?.classList.remove('hidden');
-            areaGift?.classList.add('hidden');
-            btnTon?.classList.add('active');
-            btnGift?.classList.remove('active');
-            // Show Crash auto-cashout if it was hidden
-            const autoArea = document.getElementById('crash-auto-cashout-area');
-            if (autoArea) autoArea.classList.remove('hidden');
-        } else {
-            areaTon?.classList.add('hidden');
-            areaGift?.classList.remove('hidden');
-            btnTon?.classList.remove('active');
-            btnGift?.classList.add('active');
-            // Hide Crash auto-cashout for gifts (as requested to clean up UI)
-            const autoArea = document.getElementById('crash-auto-cashout-area');
-            if (autoArea) autoArea.classList.add('hidden');
-
-            let gameId = s.gift.split('-')[0];
-            if (s.gift === 'bet-gift-input-area') gameId = 'dice';
-            loadGiftsForBet(gameId);
-        }
-    });
-
-    if (typeof updatePlinkoPreviews === 'function') updatePlinkoPreviews();
+    if (mode === 'ton') {
+        btnTon?.classList.add('active');
+        btnGift?.classList.remove('active');
+        areaTon?.classList.remove('hidden');
+        areaGift?.classList.add('hidden');
+    } else {
+        btnTon?.classList.remove('active');
+        btnGift?.classList.add('active');
+        areaTon?.classList.add('hidden');
+        areaGift?.classList.remove('hidden');
+        loadGiftsForBet();
+    }
 };
 
-async function loadGiftsForBet(gameId) {
-    const listId = (gameId === 'dice') ? 'gift-selection-list' : (gameId + '-gift-list');
-    const list = document.getElementById(listId);
+async function loadGiftsForBet() {
+    const list = document.getElementById('gift-selection-list');
     if (!list) return;
-
-    list.innerHTML = '<div class="premium-empty"><p style="font-size:10px;">Загрузка...</p></div>';
-
+    list.innerHTML = '<div class="premium-empty"><p>Загрузка...</p></div>';
     try {
         const { inventory } = await api('/api/inventory/combined');
         if (inventory.length === 0) {
-            list.innerHTML = '<div class="premium-empty"><p style="font-size:10px;">Нет подарков</p></div>';
+            list.innerHTML = '<div class="premium-empty"><p>Нет подарков</p></div>';
             return;
         }
-
-        const gameForCallback = (gameId === 'dice') ? 'dice' : gameId;
-
         list.innerHTML = inventory.map(item => `
-            <div id="gift-card-${item.instance_id}" class="gift-select-card ${selectedGift?.instance_id === item.instance_id ? 'active' : ''}" onclick="selectGiftForBet(${JSON.stringify(item).replace(/"/g, '&quot;')}, '${gameForCallback}')">
+            <div class="gift-select-card ${selectedGift?.instance_id === item.instance_id ? 'active' : ''}" onclick="selectGiftForBet(${JSON.stringify(item).replace(/"/g, '&quot;')})">
                 <div class="gift-avatar"><img src="${getGiftImg(item.model)}" alt=""></div>
-                <div class="gift-select-info">
-                   <div class="gift-title">${item.title}</div>
-                   <div class="gift-cost">${item.price} TON</div>
-                </div>
+                <div class="gift-title">${item.title}</div>
+                <div class="gift-cost">${item.price} TON</div>
             </div>`).join('');
-    } catch (e) {
-        list.innerHTML = '<p>Ошибка</p>';
-    }
+    } catch (e) { list.innerHTML = '<p>Ошибка</p>'; }
 }
 
-window.selectGiftForBet = function (item, gameId) {
+window.selectGiftForBet = function (item) {
     selectedGift = item;
     if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
-    loadGiftsForBet(gameId);
-    if (gameId === 'plinko') updatePlinkoPreviews();
+    loadGiftsForBet();
+};
+
+window.openBetModal = function (game) {
+    activeBetGame = game;
+    const modal = document.getElementById('bet-modal');
+    if (!modal) return;
+
+    modal.classList.remove('hidden');
+
+    // Config modal for game
+    document.getElementById('dice-options-area').classList.toggle('hidden', game !== 'dice');
+    document.getElementById('crash-auto-cashout-area').classList.toggle('hidden', game !== 'crash');
+
+    const title = { dice: 'Dice', crash: 'Rocket', plinko: 'Plinko', hide: 'Прятки' }[game] || 'Ставка';
+    document.getElementById('bet-modal-title').textContent = title;
+
+    // Reset confirm btn
+    const confirmBtn = document.getElementById('bet-confirm-btn');
+    confirmBtn.onclick = () => {
+        if (game === 'dice') roll();
+        else if (game === 'crash') crashPlaceBet();
+        else if (game === 'plinko') { closeModal('bet-modal'); plinkoDrop(); }
+        else if (game === 'hide') { closeModal('bet-modal'); placeHideBet(); }
+    };
 };
 
 // --- HIDE AND SEEK (ПРЯТКИ) ---
@@ -2026,10 +1994,8 @@ function updateHideUI() {
     if (!hideStatus) return;
     const timer = document.getElementById('hide-timer-display');
     const phaseText = document.getElementById('hide-phase-text');
-    const voteControls = document.getElementById('hide-voting-controls');
     const selectControls = document.getElementById('hide-selection-controls');
 
-    // Disable bet button if in game or already bet
     const btn = document.getElementById('hide-place-bet-btn');
     if (btn) {
         const canBet = hideStatus.phase === 'VOTING' && !hideStatus.myBet;
@@ -2039,19 +2005,14 @@ function updateHideUI() {
 
     if (timer) timer.textContent = Math.ceil(hideStatus.timeLeft || 0);
     if (phaseText) {
-        const texts = { 'VOTING': 'ОЖИДАНИЕ', 'SELECTION': 'СТАВКИ', 'SEARCHING': 'УБИЙЦА В ПУТИ...', 'RESULT': 'ФИНАЛ' };
+        const texts = { 'VOTING': 'ОЖИДАНИЕ', 'SELECTION': 'ВЫБОР ДОМА', 'SEARCHING': 'УБИЙЦА В ПУТИ...', 'RESULT': 'ФИНАЛ' };
         phaseText.textContent = texts[hideStatus.phase] || hideStatus.phase;
     }
 
-    if (hideStatus.phase === 'VOTING') {
-        voteControls?.classList.remove('hidden');
-        selectControls?.classList.add('hidden');
-    } else if (hideStatus.phase === 'SELECTION') {
-        voteControls?.classList.add('hidden');
+    if (hideStatus.phase === 'SELECTION') {
         selectControls?.classList.remove('hidden');
         renderRoomsList();
     } else {
-        voteControls?.classList.add('hidden');
         selectControls?.classList.add('hidden');
     }
 }
@@ -2084,14 +2045,17 @@ window.selectHideRoom = async (roomId) => {
 };
 
 window.placeHideBet = async () => {
-    const amt = parseFloat(document.getElementById('hide-bet-amount').value);
+    const amt = parseFloat(document.getElementById('bet-amount').value);
     const body = { betAmount: amt };
-    if (betMode === 'gift' && selectedGift) body.giftInstanceId = selectedGift.instance_id;
+    if (betMode === 'gift') {
+        if (!selectedGift) return toast('Выберите подарок', 'error');
+        body.giftInstanceId = selectedGift.instance_id;
+    }
     try {
         await api('/api/hide/bet', 'POST', body);
         toast('Вы в игре!', 'success');
         selectedGift = null;
-        pollHide(); // Immediate refresh
+        pollHide();
     } catch (e) { toast(e.message, 'error'); }
 };
 
@@ -2114,66 +2078,81 @@ function renderHide() {
     }
     hideAnimId = requestAnimationFrame(renderHide);
 
-    const w = hideCanvas.width / (window.devicePixelRatio || 1);
-    const h = hideCanvas.height / (window.devicePixelRatio || 1);
+    const dpr = window.devicePixelRatio || 1;
+    const w = hideCanvas.width / dpr;
+    const h = hideCanvas.height / dpr;
     hideCtx.clearRect(0, 0, w, h);
 
-    // Grid
-    hideCtx.strokeStyle = 'rgba(255,255,255,0.03)';
-    for (let x = 0; x < w; x += 30) { hideCtx.beginPath(); hideCtx.moveTo(x, 0); hideCtx.lineTo(x, h); hideCtx.stroke(); }
-    for (let y = 0; y < h; y += 30) { hideCtx.beginPath(); hideCtx.moveTo(0, y); hideCtx.lineTo(w, y); hideCtx.stroke(); }
+    // Draw grid environment
+    hideCtx.strokeStyle = 'rgba(255,255,255,0.02)';
+    for (let x = 0; x < w; x += 40) { hideCtx.beginPath(); hideCtx.moveTo(x, 0); hideCtx.lineTo(x, h); hideCtx.stroke(); }
+    for (let y = 0; y < h; y += 40) { hideCtx.beginPath(); hideCtx.moveTo(0, y); hideCtx.lineTo(w, y); hideCtx.stroke(); }
 
     if (hideStatus && (hideStatus.phase === 'SEARCHING' || hideStatus.phase === 'RESULT')) {
-        let killX, killY;
-        const padding = 60;
-        const gridW = (w - padding * 2) / 2;
-        const gridH = (h - padding * 2) / 2;
+        const rooms = [
+            { id: 1, x: 50, y: 50 },
+            { id: 2, x: w - 110, y: 50 },
+            { id: 3, x: 50, y: h - 110 },
+            { id: 4, x: w - 110, y: h - 110 }
+        ];
+
+        const drawHouse = (hx, hy, id, active) => {
+            hideCtx.save();
+            hideCtx.translate(hx, hy);
+
+            // House structure (Simple Isometric)
+            hideCtx.fillStyle = '#1a1a1a';
+            hideCtx.beginPath();
+            hideCtx.moveTo(30, 0); hideCtx.lineTo(60, 20); hideCtx.lineTo(30, 40); hideCtx.lineTo(0, 20);
+            hideCtx.closePath(); hideCtx.fill(); // Top roof
+
+            hideCtx.fillStyle = '#222';
+            hideCtx.beginPath();
+            hideCtx.moveTo(0, 20); hideCtx.lineTo(30, 40); hideCtx.lineTo(30, 70); hideCtx.lineTo(0, 50);
+            hideCtx.closePath(); hideCtx.fill(); // Left wall
+
+            hideCtx.fillStyle = '#111';
+            hideCtx.beginPath();
+            hideCtx.moveTo(60, 20); hideCtx.lineTo(30, 40); hideCtx.lineTo(30, 70); hideCtx.lineTo(60, 50);
+            hideCtx.closePath(); hideCtx.fill(); // Right wall
+
+            // Windows/Glow
+            if (active) {
+                hideCtx.shadowBlur = 15; hideCtx.shadowColor = '#e74c3c';
+            }
+            hideCtx.fillStyle = active ? '#e74c3c' : '#f1c40f';
+            hideCtx.globalAlpha = active ? (0.5 + Math.sin(Date.now() / 100) * 0.5) : 0.3;
+            hideCtx.fillRect(10, 40, 8, 8);
+            hideCtx.fillRect(42, 40, 8, 8);
+            hideCtx.globalAlpha = 1.0;
+
+            // Label
+            hideCtx.fillStyle = '#fff';
+            hideCtx.font = '900 12px Inter';
+            hideCtx.textAlign = 'center';
+            hideCtx.fillText('ДОМ ' + id, 30, 90);
+
+            if (hideStatus.myRoom == id) {
+                hideCtx.fillStyle = '#2ecc71';
+                hideCtx.fillText('ВЫ ТУТ', 30, -10);
+            }
+            hideCtx.restore();
+        };
+
+        rooms.forEach(r => drawHouse(r.x, r.y, r.id, hideStatus.phase === 'SEARCHING' && hideStatus.currentRoom == r.id));
 
         if (hideStatus.phase === 'SEARCHING') {
-            const roomIdx = hideStatus.currentRoom - 1;
-            const row = Math.floor(roomIdx / 2);
-            const col = roomIdx % 2;
-            const targetX = padding + col * gridW + gridW / 2;
-            const targetY = padding + row * gridH + gridH / 2;
+            const target = rooms.find(r => r.id === hideStatus.currentRoom);
+            if (target) {
+                const kX = target.x + 30 + Math.sin(Date.now() / 200) * 5;
+                const kY = target.y + 10 + Math.cos(Date.now() / 200) * 5;
 
-            // Movement animation
-            killX = targetX + Math.sin(Date.now() / 300) * 20;
-            killY = targetY + Math.cos(Date.now() / 300) * 10;
-        } else {
-            // Result: stay at target room
-            const roomIdx = hideStatus.killerTargetRoom - 1;
-            const row = Math.floor(roomIdx / 2);
-            const col = roomIdx % 2;
-            killX = padding + col * gridW + gridW / 2;
-            killY = padding + row * gridH + gridH / 2;
-        }
-
-        hideCtx.save();
-        hideCtx.translate(killX, killY);
-        hideCtx.rotate(Date.now() / 800);
-        hideCtx.fillStyle = '#e74c3c';
-        hideCtx.shadowBlur = 20; hideCtx.shadowColor = '#e74c3c';
-        hideCtx.fillRect(-22, -22, 44, 44);
-
-        // Eyes
-        hideCtx.fillStyle = '#fff';
-        hideCtx.beginPath();
-        hideCtx.arc(-8, -5, 4, 0, Math.PI * 2);
-        hideCtx.arc(8, -5, 4, 0, Math.PI * 2);
-        hideCtx.fill();
-        hideCtx.restore();
-
-        // Survivors (Small Cubes)
-        if (hideStatus.phase === 'RESULT' && hideStatus.myRoom == hideStatus.killerTargetRoom) {
-            const winX = w / 2;
-            const winY = h - 40;
-            hideCtx.fillStyle = '#2ecc71';
-            hideCtx.shadowBlur = 15; hideCtx.shadowColor = '#2ecc71';
-            hideCtx.fillRect(winX - 10, winY - 10, 20, 20);
-
-            hideCtx.fillStyle = '#fff';
-            hideCtx.font = 'bold 12px Arial';
-            hideCtx.fillText('SURVIVED!', winX - 35, winY + 25);
+                hideCtx.fillStyle = '#e74c3c';
+                hideCtx.shadowBlur = 30; hideCtx.shadowColor = '#e74c3c';
+                hideCtx.beginPath();
+                hideCtx.arc(kX, kY, 15, 0, Math.PI * 2);
+                hideCtx.fill();
+            }
         }
     }
 }
