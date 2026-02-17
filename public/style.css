@@ -4277,14 +4277,13 @@ input:checked+.toggle-slider:before {
   border: 1.5px solid var(--border3);
 }
 
-@media (max-height: 750px) {
+@media (max-height: 800px) {
   .plinko-canvas-wrapper {
-    aspect-ratio: 1 / 0.7;
+    aspect-ratio: 1 / 0.75;
   }
 
-  .plinko-multiplier-slot {
-    min-height: 40px !important;
-    padding: 4px 0 !important;
+  .plinko-arena-safe {
+    margin-bottom: 10px;
   }
 }
 
@@ -4907,11 +4906,30 @@ input:checked+.toggle-slider:before {
   letter-spacing: 1px;
 }
 
-.hide-vote-grid {
+.vote-buttons-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-bottom: 20px;
+}
+
+.vote-buttons-grid button {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 10px;
+  color: #fff;
+  font-weight: 900;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.vote-buttons-grid button:active {
+  transform: scale(0.95);
+  border-color: var(--gold);
+  background: rgba(255, 204, 0, 0.05);
 }
 
 .vote-btn {
@@ -4956,6 +4974,12 @@ input:checked+.toggle-slider:before {
   background: rgba(255, 204, 0, 0.1);
   border-color: var(--gold);
   box-shadow: 0 0 15px rgba(255, 204, 0, 0.1);
+}
+
+.room-node.hit {
+  background: rgba(231, 76, 60, 0.1);
+  border-color: #e74c3c;
+  box-shadow: 0 0 15px rgba(231, 76, 60, 0.1);
 }
 
 .room-node.full {

@@ -438,9 +438,8 @@ const hideState = {
     finalRoomCount: 4,
     rooms: {}, // { roomId: [ { telegramId, amount, isGift, giftInstanceId } ] }
     bets: [], // { telegramId, amount, isGift, giftInstanceId }
-    killerTargetRoom: null,
-    killerPos: 0, // 0 to 1 for visual progress
-    currentRoom: 1, // which room killer is currently visiting
+    killerTargets: [], // Array of 3 room IDs
+    currentSearchingIdx: 0, // index in killerTargets (0, 1, 2)
     history: [],
     gameId: Math.random().toString(36).substring(2, 9)
 };
@@ -450,26 +449,36 @@ function tickHide() {
         hideState.timeLeft -= 0.1;
     } else {
         if (hideState.phase === 'VOTING') {
-            hideState.finalRoomCount = 4; // Forced to 4 as per user request
+            // Determine final count by votes
+            const votes = hideState.roomCountVotes;
+            if (votes[12] >= votes[8] && votes[12] >= votes[4] && votes[12] > 0) hideState.finalRoomCount = 12;
+            else if (votes[8] >= votes[4] && votes[8] > 0) hideState.finalRoomCount = 8;
+            else hideState.finalRoomCount = 4;
+
             hideState.phase = 'SELECTION';
             hideState.timeLeft = 15;
             hideState.rooms = {};
-            for (let i = 1; i <= 4; i++) hideState.rooms[i] = [];
+            for (let i = 1; i <= hideState.finalRoomCount; i++) hideState.rooms[i] = [];
         } else if (hideState.phase === 'SELECTION') {
             hideState.phase = 'SEARCHING';
-            hideState.timeLeft = 8; // Longer search time for better visuals
+            hideState.timeLeft = 9; // 3 seconds per room (3 rooms total)
+            hideState.currentSearchingIdx = 0;
 
-            const winningRoom = Math.floor(Math.random() * 4) + 1;
-            hideState.killerTargetRoom = winningRoom;
-            hideState.currentRoom = 1;
-            hideState.killerPos = 0;
+            // Pick 3 unique random rooms
+            const available = Array.from({ length: hideState.finalRoomCount }, (_, i) => i + 1);
+            const targets = [];
+            for (let i = 0; i < 3; i++) {
+                if (available.length === 0) break;
+                const idx = Math.floor(Math.random() * available.length);
+                targets.push(available.splice(idx, 1)[0]);
+            }
+            hideState.killerTargets = targets;
 
-            // Process results (Survivor gets more!)
-            const mult = 2.5;
+            // Process results
+            const multMap = { 4: 2.5, 8: 2.0, 12: 1.2 };
+            const mult = multMap[hideState.finalRoomCount];
 
-            const activeBets = [...hideState.bets];
-            activeBets.forEach(b => {
-                // Find if user is in any room
+            hideState.bets.forEach(b => {
                 let userRoom = null;
                 for (const rId in hideState.rooms) {
                     if (hideState.rooms[rId].some(u => u.telegramId === b.telegramId)) {
@@ -478,32 +487,29 @@ function tickHide() {
                     }
                 }
 
-                if (userRoom === winningRoom) {
-                    // Win
+                if (userRoom && !hideState.killerTargets.includes(userRoom)) {
+                    // Win (Killer DID NOT visit)
                     const payout = Math.round(b.amount * mult * 100) / 100;
-                    userOps.updateBalance(b.telegramId, payout, 'hide_win', `Won hide and seek ${mult}x`);
+                    userOps.updateBalance(b.telegramId, payout, 'hide_win', `Won hide ${mult}x`);
                     gameOps.create({
                         telegramId: b.telegramId, betAmount: b.amount, gameType: 'hide',
-                        playerChoice: `room_${userRoom}`, diceResult: String(winningRoom),
+                        playerChoice: `room_${userRoom}`, diceResult: hideState.killerTargets.join(','),
                         multiplier: mult, payout: payout, profit: payout - b.amount, won: 1
                     });
                 } else {
-                    // Loss (or didn't choose)
+                    // Loss (Killer visited OR didn't choose room)
                     gameOps.create({
                         telegramId: b.telegramId, betAmount: b.amount, gameType: 'hide',
-                        playerChoice: userRoom ? `room_${userRoom}` : 'none', diceResult: String(winningRoom),
+                        playerChoice: userRoom ? `room_${userRoom}` : 'none', diceResult: hideState.killerTargets.join(','),
                         multiplier: 0, payout: 0, profit: -b.amount, won: 0
                     });
                 }
             });
         } else if (hideState.phase === 'SEARCHING') {
-            // Update killer movement logic (visit 1 -> 2 -> 3 -> 4)
-            // Or just randomly jump? Let's make it walk.
-            hideState.killerPos += 0.05;
-            if (hideState.killerPos >= 1) {
-                hideState.killerPos = 0;
-                hideState.currentRoom++;
-            }
+            // Sequential visiting: 0..3s -> room1, 3..6s -> room2, 6..9s -> room3
+            const elapsed = 9 - hideState.timeLeft;
+            hideState.currentSearchingIdx = Math.min(2, Math.floor(elapsed / 3));
+
             if (hideState.timeLeft <= 0) {
                 hideState.phase = 'RESULT';
                 hideState.timeLeft = 5;

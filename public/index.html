@@ -62,9 +62,33 @@
       }
 
       50% {
-        transform: translateY(-10px) scale(1.05);
-        box-shadow: 0 35px 60px rgba(0, 0, 0, 0.6);
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 30px 50px rgba(0, 0, 0, 0.5);
       }
+    }
+
+    /* Fixed alignment for inputs */
+    .premium-bet-input {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 18px;
+      padding: 5px 15px;
+      border: 1px solid var(--border);
+    }
+
+    .premium-bet-input input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 20px;
+      font-weight: 800;
+      text-align: center;
+      padding: 12px 0;
+      outline: none;
+      width: 100%;
     }
   </style>
 </head>
@@ -345,8 +369,17 @@
           </div>
 
           <div class="hide-controls-wrap">
-            <div id="hide-selection-controls" class="hide-phase-controls">
-              <p class="hide-info-label">ВЫБЕРИТЕ ДОМ (2.5x Win)</p>
+            <div id="hide-voting-controls" class="hide-phase-controls">
+              <p class="hide-info-label">ГОЛОСОВАНИЕ: КОЛ-ВО ДОМОВ</p>
+              <div class="vote-buttons-grid">
+                <button onclick="voteHide(4)">4 (2.5x)</button>
+                <button onclick="voteHide(8)">8 (2.0x)</button>
+                <button onclick="voteHide(12)">12 (1.2x)</button>
+              </div>
+            </div>
+
+            <div id="hide-selection-controls" class="hide-phase-controls hidden">
+              <p class="hide-info-label" id="hide-mult-label">ВЫБЕРИТЕ ДОМ (2.5x Win)</p>
               <div id="hide-rooms-container" class="hide-rooms-grid">
                 <!-- Filled by JS -->
               </div>
@@ -395,15 +428,31 @@
       </div>
     </div>
 
-    <div class="tab-content" id="content-leaderboard">
-      <div style="height: 30px;"></div>
+    <!-- Dynamic Modals for Stats/History -->
+    <div id="leaderboard-modal" class="modal-overlay hidden">
+      <div class="modal-box premium-modal stats-modal-box">
+        <div class="modal-header">
+          <h3>ТОП ИГРОКОВ</h3>
+          <button class="close-modal-btn" onclick="closeModal('leaderboard-modal')">×</button>
+        </div>
+        <div class="leaderboard-list" id="leaderboard-list">
+          <div class="premium-empty">
+            <p>Загрузка...</p>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="tab-content" id="content-history">
-      <div class="tab-scrollable">
-        <h3 class="section-title" style="margin-top: 10px;">История игр</h3>
-        <div class="history-list" id="history-list">
-          <!-- JS fills this -->
+    <div id="history-modal" class="modal-overlay hidden">
+      <div class="modal-box premium-modal stats-modal-box">
+        <div class="modal-header">
+          <h3>ИСТОРИЯ ИГР</h3>
+          <button class="close-modal-btn" onclick="closeModal('history-modal')">×</button>
+        </div>
+        <div class="history-list" id="history-modal-list">
+          <div class="premium-empty">
+            <p>Загрузка...</p>
+          </div>
         </div>
       </div>
     </div>
@@ -568,7 +617,7 @@
           </div>
 
           <div class="settings-group">
-            <div class="settings-item clickable" onclick="switchTab('leaderboard')">
+            <div class="settings-item clickable" onclick="openLeaderboard()">
               <div class="settings-info">
                 <span class="settings-name">Топ игроков</span>
                 <span class="settings-desc">Глобальный рейтинг лидеров</span>
@@ -581,7 +630,7 @@
               </span>
             </div>
 
-            <div class="settings-item clickable" onclick="switchTab('history')">
+            <div class="settings-item clickable" onclick="openHistory()">
               <div class="settings-info">
                 <span class="settings-name">История игр</span>
                 <span class="settings-desc">Мои последние игры</span>

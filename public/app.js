@@ -30,18 +30,13 @@ window.switchTab = function (tab) {
     console.log('[Tab] Switching to', tab);
     activeTab = tab;
 
-    // Auto-hide manual deposit info when leaving wallet tab
-    if (tab !== 'wallet') {
-        const details = document.getElementById('manual-deposit-details');
-        if (details) details.classList.add('hidden');
-    }
+    if (tab === 'leaderboard') { openLeaderboard(); return; }
+    if (tab === 'history') { openHistory(); return; }
+
     const content = document.getElementById('content-' + tab);
     const navBtn = document.querySelector(`[data-tab="${tab}"]`);
 
-    if (!content) {
-        console.error('[Tab] Content not found for', tab);
-        return;
-    }
+    if (!content) return;
 
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
@@ -49,16 +44,21 @@ window.switchTab = function (tab) {
     content.classList.add('active');
     if (navBtn) navBtn.classList.add('active');
 
-    if (tab === 'history') loadHistory();
     if (tab === 'shop') loadGifts();
-    if (tab === 'leaderboard') loadLeaderboard();
     if (tab === 'settings') {
         const toggle = document.getElementById('settings-haptic');
         if (toggle) toggle.checked = hapticEnabled;
     }
+};
 
-    const scrollable = content.querySelector('.tab-scrollable') || content;
-    if (scrollable) scrollable.scrollTop = 0;
+window.openLeaderboard = function () {
+    document.getElementById('leaderboard-modal').classList.remove('hidden');
+    loadLeaderboard();
+};
+
+window.openHistory = function () {
+    document.getElementById('history-modal').classList.remove('hidden');
+    loadHistory();
 };
 
 // Game selection logic is consolidated below in the logic sections
@@ -524,8 +524,10 @@ window.verifyGame = async function () {
 window.roll = async function () {
     if (rolling) return;
 
-    // Check amounts
-    const amt = parseFloat(document.getElementById('bet-amount').value);
+    const betEl = document.getElementById('bet-amount');
+    if (!betEl) return toast('Interface error', 'error');
+
+    const amt = parseFloat(betEl.value);
     if (betMode === 'ton') {
         if (isNaN(amt) || amt < 0.1) return toast('Мин. ставка 0.1 TON', 'error');
         if (amt > user.balance) return toast('Недостаточно баланса', 'error');
@@ -942,26 +944,27 @@ window.connectWallet = async function () {
 async function loadHistory() {
     try {
         const res = await api('/api/history');
-        const list = document.getElementById('history-list');
+        const list = document.getElementById('history-modal-list');
+        if (!list) return;
         list.innerHTML = res.games.length ? res.games.map(g => {
             const date = new Date(g.created_at);
             const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const amountStr = g.won ? `+${g.payout.toFixed(2)}` : `-${g.bet_amount.toFixed(2)}`;
-            const statusLabel = g.won ? 'WIN' : 'LOSS';
+            const amountStr = (g.payout > 0) ? `+${g.payout.toFixed(2)}` : `-${g.bet_amount.toFixed(2)}`;
+            const statusLabel = (g.payout > 0) ? 'WIN' : 'LOSS';
 
             return `
                 <div class="history-item animated-history">
                     <div class="hist-left">
-                        <div class="hist-badge ${g.won ? 'badge-win' : 'badge-loss'}">${statusLabel}</div>
+                        <div class="hist-badge ${(g.payout > 0) ? 'badge-win' : 'badge-loss'}">${statusLabel}</div>
                         <div class="hist-meta">
-                            <span class="hist-type">${g.player_choice.replace('exact_', 'TARGET: ').toUpperCase()}</span>
+                            <span class="hist-type">${g.game_type.toUpperCase()}</span>
                             <span class="hist-time">${timeStr}</span>
                         </div>
                     </div>
-                    <div class="hist-res ${g.won ? 'win' : 'loss'}">${amountStr} TON</div>
+                    <div class="hist-res ${(g.payout > 0) ? 'win' : 'loss'}">${amountStr} TON</div>
                 </div>
             `;
-        }).join('') : '<div class="empty-state">История пуста</div>';
+        }).join('') : '<div class="premium-empty"><p>История пуста</p></div>';
     } catch (e) { }
 }
 
@@ -1970,6 +1973,7 @@ let hidePolling = null;
 let hideCanvas = null;
 let hideCtx = null;
 let hideAnimId = null;
+let lastHidePhase = null;
 
 function startHidePolling() {
     if (hidePolling) return;
@@ -1994,6 +1998,7 @@ function updateHideUI() {
     if (!hideStatus) return;
     const timer = document.getElementById('hide-timer-display');
     const phaseText = document.getElementById('hide-phase-text');
+    const voteControls = document.getElementById('hide-voting-controls');
     const selectControls = document.getElementById('hide-selection-controls');
 
     const btn = document.getElementById('hide-place-bet-btn');
@@ -2005,16 +2010,38 @@ function updateHideUI() {
 
     if (timer) timer.textContent = Math.ceil(hideStatus.timeLeft || 0);
     if (phaseText) {
-        const texts = { 'VOTING': 'ОЖИДАНИЕ', 'SELECTION': 'ВЫБОР ДОМА', 'SEARCHING': 'УБИЙЦА В ПУТИ...', 'RESULT': 'ФИНАЛ' };
+        const texts = { 'VOTING': 'ГОЛОСОВАНИЕ', 'SELECTION': 'ВЫБОР ДОМА', 'SEARCHING': 'УБИЙЦА В ПУТИ...', 'RESULT': 'ФИНАЛ' };
         phaseText.textContent = texts[hideStatus.phase] || hideStatus.phase;
     }
 
-    if (hideStatus.phase === 'SELECTION') {
-        selectControls?.classList.remove('hidden');
-        renderRoomsList();
-    } else {
+    if (hideStatus.phase === 'VOTING') {
+        voteControls?.classList.remove('hidden');
         selectControls?.classList.add('hidden');
+    } else if (hideStatus.phase === 'SELECTION' || hideStatus.phase === 'SEARCHING' || hideStatus.phase === 'RESULT') {
+        voteControls?.classList.add('hidden');
+        selectControls?.classList.remove('hidden');
+
+        const multLabel = document.getElementById('hide-mult-label');
+        const multMap = { 4: 2.5, 8: 2.0, 12: 1.2 };
+        if (multLabel) multLabel.textContent = `ВЫБЕРИТЕ ДОМ (${multMap[hideStatus.finalRoomCount] || 2.5}x Win)`;
+
+        renderRoomsList();
     }
+
+    // Feedback on result
+    if (hideStatus.phase === 'RESULT' && lastHidePhase === 'SEARCHING') {
+        const isHit = hideStatus.myRoom && hideStatus.killerTargets.includes(hideStatus.myRoom);
+        if (hideStatus.myRoom) {
+            if (isHit) {
+                toast('ТЫ УМЕР!', 'error');
+                if (window.haptic) haptic.notificationOccurred('error');
+            } else {
+                toast('ТЫ ВЫЖИЛ! ПОБЕДА!', 'success');
+                if (window.haptic) haptic.notificationOccurred('success');
+            }
+        }
+    }
+    lastHidePhase = hideStatus.phase;
 }
 
 function renderRoomsList() {
@@ -2022,26 +2049,37 @@ function renderRoomsList() {
     if (!cont) return;
     let h = '';
     const roomCount = hideStatus.finalRoomCount || 4;
+    const targets = hideStatus.killerTargets || [];
+    const activeTarget = targets[hideStatus.currentSearchingIdx];
+
     for (let i = 1; i <= roomCount; i++) {
         const r = hideStatus.rooms[i] || [];
         const isMy = hideStatus.myRoom == i;
-        const killerInside = hideStatus.phase === 'SEARCHING' && hideStatus.currentRoom == i;
-        h += `<div class="room-node ${isMy ? 'active' : ''} ${r.length >= 3 ? 'full' : ''} ${killerInside ? 'killer-inside' : ''}" onclick="selectHideRoom(${i})">
+        const killerInside = hideStatus.phase === 'SEARCHING' && activeTarget == i;
+        const wereHit = (hideStatus.phase === 'RESULT' || hideStatus.phase === 'SEARCHING') && targets.slice(0, hideStatus.phase === 'RESULT' ? 3 : hideStatus.currentSearchingIdx + 1).includes(i);
+
+        h += `<div class="room-node ${isMy ? 'active' : ''} ${r.length >= 3 ? 'full' : ''} ${killerInside ? 'killer-inside' : ''} ${wereHit ? 'hit' : ''}" onclick="selectHideRoom(${i})">
                 <span class="room-num">${i}</span>
-                <span class="room-p-count">${r.length}/3</span>
+                <span class="room-p-count">${wereHit ? '💀' : r.length + '/3'}</span>
               </div>`;
     }
     cont.innerHTML = h;
 }
 
 window.voteHide = async (count) => {
-    try { await api('/api/hide/vote', 'POST', { count }); toast('Голос принят!'); }
-    catch (e) { toast(e.message, 'error'); }
+    try {
+        await api('/api/hide/vote', 'POST', { count });
+        toast('Голос за ' + count + ' комнат!');
+        if (window.haptic) haptic.impactOccurred('medium');
+    } catch (e) { toast(e.message, 'error'); }
 };
 
 window.selectHideRoom = async (roomId) => {
-    try { await api('/api/hide/select', 'POST', { roomId }); if (window.haptic) haptic.impactOccurred('light'); }
-    catch (e) { toast(e.message, 'error'); }
+    if (hideStatus?.phase !== 'SELECTION') return;
+    try {
+        await api('/api/hide/select', 'POST', { roomId });
+        if (window.haptic) haptic.impactOccurred('light');
+    } catch (e) { toast(e.message, 'error'); }
 };
 
 window.placeHideBet = async () => {
@@ -2083,78 +2121,108 @@ function renderHide() {
     const h = hideCanvas.height / dpr;
     hideCtx.clearRect(0, 0, w, h);
 
+    if (!hideStatus) return;
+
     // Draw grid environment
     hideCtx.strokeStyle = 'rgba(255,255,255,0.02)';
     for (let x = 0; x < w; x += 40) { hideCtx.beginPath(); hideCtx.moveTo(x, 0); hideCtx.lineTo(x, h); hideCtx.stroke(); }
     for (let y = 0; y < h; y += 40) { hideCtx.beginPath(); hideCtx.moveTo(0, y); hideCtx.lineTo(w, y); hideCtx.stroke(); }
 
-    if (hideStatus && (hideStatus.phase === 'SEARCHING' || hideStatus.phase === 'RESULT')) {
-        const rooms = [
-            { id: 1, x: 50, y: 50 },
-            { id: 2, x: w - 110, y: 50 },
-            { id: 3, x: 50, y: h - 110 },
-            { id: 4, x: w - 110, y: h - 110 }
-        ];
+    if (hideStatus.phase === 'SEARCHING' || hideStatus.phase === 'RESULT' || hideStatus.phase === 'SELECTION') {
+        const roomCount = hideStatus.finalRoomCount || 4;
+        const cols = (roomCount === 4) ? 2 : 4;
+        const rows = Math.ceil(roomCount / cols);
 
-        const drawHouse = (hx, hy, id, active) => {
-            hideCtx.save();
-            hideCtx.translate(hx, hy);
+        const canvasPad = 50;
+        const gridW = w - canvasPad * 2;
+        const gridH = h - canvasPad * 2;
+        const cellW = gridW / cols;
+        const cellH = gridH / rows;
 
-            // House structure (Simple Isometric)
-            hideCtx.fillStyle = '#1a1a1a';
-            hideCtx.beginPath();
-            hideCtx.moveTo(30, 0); hideCtx.lineTo(60, 20); hideCtx.lineTo(30, 40); hideCtx.lineTo(0, 20);
-            hideCtx.closePath(); hideCtx.fill(); // Top roof
+        const targets = hideStatus.killerTargets || [];
+        const activeTargetId = hideStatus.phase === 'SEARCHING' ? targets[hideStatus.currentSearchingIdx] : null;
 
-            hideCtx.fillStyle = '#222';
-            hideCtx.beginPath();
-            hideCtx.moveTo(0, 20); hideCtx.lineTo(30, 40); hideCtx.lineTo(30, 70); hideCtx.lineTo(0, 50);
-            hideCtx.closePath(); hideCtx.fill(); // Left wall
+        for (let i = 1; i <= roomCount; i++) {
+            const ix = (i - 1) % cols;
+            const iy = Math.floor((i - 1) / cols);
 
-            hideCtx.fillStyle = '#111';
-            hideCtx.beginPath();
-            hideCtx.moveTo(60, 20); hideCtx.lineTo(30, 40); hideCtx.lineTo(30, 70); hideCtx.lineTo(60, 50);
-            hideCtx.closePath(); hideCtx.fill(); // Right wall
+            const rx = canvasPad + ix * cellW + cellW / 2 - 30;
+            const ry = canvasPad + iy * cellH + cellH / 2 - 40;
 
-            // Windows/Glow
-            if (active) {
-                hideCtx.shadowBlur = 15; hideCtx.shadowColor = '#e74c3c';
-            }
-            hideCtx.fillStyle = active ? '#e74c3c' : '#f1c40f';
-            hideCtx.globalAlpha = active ? (0.5 + Math.sin(Date.now() / 100) * 0.5) : 0.3;
-            hideCtx.fillRect(10, 40, 8, 8);
-            hideCtx.fillRect(42, 40, 8, 8);
-            hideCtx.globalAlpha = 1.0;
+            const isActive = activeTargetId === i;
+            const wasHit = (hideStatus.phase === 'RESULT' || hideStatus.phase === 'SEARCHING') && targets.slice(0, hideStatus.phase === 'RESULT' ? 3 : hideStatus.currentSearchingIdx + 1).includes(i);
 
-            // Label
-            hideCtx.fillStyle = '#fff';
-            hideCtx.font = '900 12px Inter';
-            hideCtx.textAlign = 'center';
-            hideCtx.fillText('ДОМ ' + id, 30, 90);
-
-            if (hideStatus.myRoom == id) {
-                hideCtx.fillStyle = '#2ecc71';
-                hideCtx.fillText('ВЫ ТУТ', 30, -10);
-            }
-            hideCtx.restore();
-        };
-
-        rooms.forEach(r => drawHouse(r.x, r.y, r.id, hideStatus.phase === 'SEARCHING' && hideStatus.currentRoom == r.id));
+            drawHouse(rx, ry, i, isActive, wasHit);
+        }
 
         if (hideStatus.phase === 'SEARCHING') {
-            const target = rooms.find(r => r.id === hideStatus.currentRoom);
-            if (target) {
-                const kX = target.x + 30 + Math.sin(Date.now() / 200) * 5;
-                const kY = target.y + 10 + Math.cos(Date.now() / 200) * 5;
+            const targetId = targets[hideStatus.currentSearchingIdx];
+            if (targetId) {
+                const ix = (targetId - 1) % cols;
+                const iy = Math.floor((targetId - 1) / cols);
+                const tx = canvasPad + ix * cellW + cellW / 2;
+                const ty = canvasPad + iy * cellH + cellH / 2 - 10;
+
+                const kX = tx + Math.sin(Date.now() / 200) * 5;
+                const kY = ty + Math.cos(Date.now() / 200) * 5;
 
                 hideCtx.fillStyle = '#e74c3c';
                 hideCtx.shadowBlur = 30; hideCtx.shadowColor = '#e74c3c';
                 hideCtx.beginPath();
                 hideCtx.arc(kX, kY, 15, 0, Math.PI * 2);
                 hideCtx.fill();
+                hideCtx.shadowBlur = 0;
             }
         }
     }
+}
+
+function drawHouse(hx, hy, id, active, hit) {
+    hideCtx.save();
+    hideCtx.translate(hx, hy);
+
+    // House structure
+    hideCtx.fillStyle = hit ? '#441111' : '#1a1a1a';
+    hideCtx.beginPath();
+    hideCtx.moveTo(30, 0); hideCtx.lineTo(60, 20); hideCtx.lineTo(30, 40); hideCtx.lineTo(0, 20);
+    hideCtx.closePath(); hideCtx.fill(); // Top roof
+
+    hideCtx.fillStyle = hit ? '#330000' : '#222';
+    hideCtx.beginPath();
+    hideCtx.moveTo(0, 20); hideCtx.lineTo(30, 40); hideCtx.lineTo(30, 70); hideCtx.lineTo(0, 50);
+    hideCtx.closePath(); hideCtx.fill(); // Left wall
+
+    hideCtx.fillStyle = hit ? '#220000' : '#111';
+    hideCtx.beginPath();
+    hideCtx.moveTo(60, 20); hideCtx.lineTo(30, 40); hideCtx.lineTo(30, 70); hideCtx.lineTo(60, 50);
+    hideCtx.closePath(); hideCtx.fill(); // Right wall
+
+    // Glow
+    if (active) {
+        hideCtx.shadowBlur = 15; hideCtx.shadowColor = '#e74c3c';
+        hideCtx.strokeStyle = '#e74c3c';
+        hideCtx.lineWidth = 2;
+        hideCtx.strokeRect(0, 20, 60, 50);
+    }
+
+    hideCtx.fillStyle = active ? '#e74c3c' : (hit ? '#ff0000' : '#f1c40f');
+    hideCtx.globalAlpha = active ? (0.5 + Math.sin(Date.now() / 100) * 0.5) : (hit ? 0.8 : 0.3);
+    hideCtx.fillRect(10, 40, 8, 8);
+    hideCtx.fillRect(42, 40, 8, 8);
+    hideCtx.globalAlpha = 1.0;
+    hideCtx.shadowBlur = 0;
+
+    // Label
+    hideCtx.fillStyle = hit ? '#e74c3c' : '#fff';
+    hideCtx.font = '900 12px Inter';
+    hideCtx.textAlign = 'center';
+    hideCtx.fillText(hit ? '💀' : 'ДОМ ' + id, 30, 90);
+
+    if (hideStatus.myRoom == id) {
+        hideCtx.fillStyle = hit ? '#e74c3c' : '#2ecc71';
+        hideCtx.fillText('ВЫ ТУТ', 30, -10);
+    }
+    hideCtx.restore();
 }
 
 
