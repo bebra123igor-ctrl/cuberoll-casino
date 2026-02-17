@@ -69,6 +69,16 @@ body {
   cursor: pointer;
 }
 
+/* ANTI-ZOOM & OVERFLOW */
+html,
+body {
+  touch-action: manipulation;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  position: fixed;
+}
+
 .shop-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
