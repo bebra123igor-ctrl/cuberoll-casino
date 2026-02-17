@@ -506,8 +506,9 @@ body {
   background: var(--bg);
   color: var(--t1);
   font-weight: 600;
-  min-height: 100vh;
-  overflow-x: hidden;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
 }
@@ -684,16 +685,14 @@ body {
 
 /* ═══ app ═══ */
 .app {
+  position: fixed;
+  inset: 0;
   max-width: 480px;
   margin: 0 auto;
-  height: 100vh;
-  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: var(--bg);
-  position: relative;
-  /* Fix for scrollable areas in some mobile browsers */
   touch-action: pan-y;
 }
 
@@ -703,7 +702,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: 6px 16px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
   z-index: 50;
@@ -714,11 +713,9 @@ body {
   display: flex;
   background: var(--card2);
   padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border2);
   gap: 4px;
-  position: relative;
   z-index: 200;
-  pointer-events: auto !important;
 }
 
 .nav-tab {
@@ -757,6 +754,7 @@ body {
   flex: 1;
   display: none;
   flex-direction: column;
+  min-height: 0;
   overflow: hidden;
   animation: tabFade .4s cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -808,12 +806,9 @@ button:active,
   flex: 1;
   overflow-y: auto !important;
   overflow-x: hidden;
-  padding: 16px;
-  padding-bottom: 150px;
-  /* Увеличенный отступ для скролла */
+  padding: 16px 16px 30px;
   -webkit-overflow-scrolling: touch;
-  position: relative;
-  height: 100%;
+  min-height: 0;
 }
 
 #content-game {
@@ -1103,11 +1098,17 @@ button:active,
 }
 
 /* ═══ nav ═══ */
-/* Bottom Nav Consistency */
+/* Consolidate Nav Tabs and Fix Visibility */
 .nav-tabs {
+  flex-shrink: 0;
+  display: flex;
   background: var(--card2);
-  border-bottom: none;
+  padding: 8px 10px calc(12px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--border2);
+  gap: 2px;
+  z-index: 1000;
+  position: sticky;
+  bottom: 0;
 }
 
 .nav-tab {
@@ -1121,7 +1122,7 @@ button:active,
   background: transparent;
   color: var(--t4);
   font-family: var(--font);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 500;
   cursor: pointer;
   border-radius: 8px;
@@ -3704,19 +3705,19 @@ input:checked+.toggle-slider:before {
   background: var(--card2);
   border: 1px solid var(--border2);
   border-radius: 12px;
-  padding: 4px;
-  margin-bottom: 20px;
-  gap: 4px;
+  padding: 3px;
+  margin-bottom: 8px;
+  gap: 3px;
 }
 
 .game-sel-btn {
   flex: 1;
-  padding: 10px;
+  padding: 6px;
   border: none;
   background: transparent;
   color: var(--t3);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
@@ -3830,19 +3831,18 @@ input:checked+.toggle-slider:before {
 
 @media (max-width: 600px) {
   .crash-main {
-    aspect-ratio: 1 / 1.1;
-    /* Slightly vertical for better visibility */
-    height: 400px;
-    max-height: 55vh;
+    aspect-ratio: 1 / 1;
+    height: auto;
+    max-height: 45vh;
     width: calc(100% + 16px);
     border-radius: 0;
-    margin: -8px -8px 15px -8px;
+    margin: -8px -8px 10px -8px;
     border: none;
   }
 
   .crash-mult {
-    font-size: 64px !important;
-    transform: translateY(-20px);
+    font-size: 56px !important;
+    transform: translateY(-10px);
   }
 }
 
@@ -4210,11 +4210,21 @@ input:checked+.toggle-slider:before {
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1.1;
-  /* slightly taller to fit pegs */
   background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0f0f1a 100%);
   border-radius: 20px;
   overflow: hidden;
   border: 1.5px solid var(--border3);
+}
+
+@media (max-height: 750px) {
+  .plinko-canvas-wrapper {
+    aspect-ratio: 1 / 0.7;
+  }
+
+  .plinko-multiplier-slot {
+    min-height: 40px !important;
+    padding: 4px 0 !important;
+  }
 }
 
 #plinko-canvas {
@@ -4226,8 +4236,8 @@ input:checked+.toggle-slider:before {
 .plinko-multipliers {
   display: flex;
   justify-content: space-between;
-  gap: 4px;
-  margin-top: 10px;
+  gap: 3px;
+  margin-top: 5px;
 }
 
 .plinko-multiplier-slot {
