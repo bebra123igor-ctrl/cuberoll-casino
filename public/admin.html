@@ -869,7 +869,7 @@
                     t.innerHTML = '<p style="text-align:center;color:var(--t4);padding:20px">Нет рефереров</p>';
                     return;
                 }
-                t.innerHTML = d.referrers.map(r => `<div class="row" style="cursor:pointer" onclick="openRefDetail(${r.telegram_id})">
+                t.innerHTML = d.referrers.map(r => `<div class="row" style="cursor:pointer" onclick="openRefDetail('${r.telegram_id}')">
                     <div class="cid">${r.telegram_id}</div>
                     <div class="cname">${r.username ? '@' + r.username : (r.first_name || '—')}</div>
                     <div style="width:60px;text-align:center;font-weight:700;color:var(--gold)">${r.actual_refs} реф.</div>
