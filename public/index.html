@@ -582,7 +582,8 @@
 
                 <button type="button" class="claim-btn-premium"
                   style="width: 100%; margin-top: 20px; border-radius: 18px;" id="start-deposit-btn"
-                  onclick="typeof window.goToPayment==='function'&&window.goToPayment()">ПЕРЕЙТИ К ОПЛАТЕ</button>
+                  onclick="const amt=document.getElementById('dep-amount').value; const addr=(window.appSettings&&window.appSettings.walletAddress)||'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7'; const link='ton://transfer/'+addr+'?amount='+(amt*1e9).toFixed(0)+'&text=deposit_'+Math.floor(Date.now()); if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.openLink){window.Telegram.WebApp.openLink(link)}else{window.location.href=link}">ПЕРЕЙТИ
+                  К ОПЛАТЕ</button>
               </div>
             </div>
           </div>

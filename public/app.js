@@ -614,7 +614,7 @@ window.roll = async function () {
             betAmount: amt,
             betType: bType
         };
-        if (bType === 'exact') payload.exactNum = exactNum;
+        if (bType === 'exact') payload.exactNumber = exactNum;
         if (betMode === 'gift' && selectedGift) {
             payload.giftInstanceId = selectedGift.instance_id;
             selectedGift = null;
@@ -1989,10 +1989,13 @@ window.openBetModal = function (game) {
         const exactPicker = document.getElementById('exact-picker');
         if (exactPicker) {
             exactPicker.style.display = (bType === 'exact' ? 'block' : 'none');
-            exactPicker.classList.remove('hidden'); // Double safety
+            exactPicker.classList.remove('hidden');
         }
         if (typeof buildExactPicker === 'function') buildExactPicker();
         if (typeof updatePayoutUI === 'function') updatePayoutUI();
+    } else {
+        const exactPicker = document.getElementById('exact-picker');
+        if (exactPicker) exactPicker.style.display = 'none';
     }
 
     window.confirmBetAction = function () {

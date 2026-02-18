@@ -250,7 +250,7 @@ app.post('/api/bet', auth, async (req, res) => {
     let rangeBounds = null;
     if (betType === 'exact') {
         const n = parseInt(exactNumber);
-        if (isNaN(n) || n < 2 || n > 12) return res.status(400).json({ error: 'Exact number must be 2-12' });
+        if (isNaN(n) || n < 2 || n > 12) return res.status(400).secure({ error: 'Exact number must be 2-12' });
         resolvedType = `exact_${n}`;
     }
     if (betType === 'range') {
