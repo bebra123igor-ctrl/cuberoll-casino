@@ -831,19 +831,28 @@
           <label
             style="display:block; text-align:center; margin-bottom:12px; font-weight:800; color:var(--t4);">ВЫБЕРИТЕ
             ИСХОД</label>
-          <div class="bet-grid">
+          <div class="bet-grid" style="grid-template-columns: repeat(3, 1fr); gap: 8px;">
             <button class="bet-type-btn active" data-bet="high" id="bet-type-default">
-              <span class="bet-name">Больше</span><span class="bet-mult">1.95x</span>
+              <span class="bet-name">Больше <br>(8-12)</span><span class="bet-mult">1.95x</span>
             </button>
             <button class="bet-type-btn" data-bet="low">
-              <span class="bet-name">Меньше</span><span class="bet-mult">1.95x</span>
+              <span class="bet-name">Меньше <br>(2-6)</span><span class="bet-mult">1.95x</span>
             </button>
             <button class="bet-type-btn" data-bet="even">
-              <span class="bet-name">Чётное</span><span class="bet-mult">1.95x</span>
+              <span class="bet-name">Чётное <br>(2,4..12)</span><span class="bet-mult">1.95x</span>
             </button>
             <button class="bet-type-btn" data-bet="odd">
-              <span class="bet-name">Нечёт</span><span class="bet-mult">1.95x</span>
+              <span class="bet-name">Нечёт <br>(3,5..11)</span><span class="bet-mult">1.95x</span>
             </button>
+            <button class="bet-type-btn" data-bet="exact">
+              <span class="bet-name">Точное</span><span class="bet-mult" id="exact-mult-label">6x</span>
+            </button>
+          </div>
+
+          <div id="exact-picker" class="hidden" style="margin-top: 15px; text-align: center;">
+            <div id="dice-exact-numbers" style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
+              <!-- Filled by JS -->
+            </div>
           </div>
         </div>
 

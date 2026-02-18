@@ -395,10 +395,9 @@ window.getBetType = (t) => {
 
 function updatePayoutUI() {
     let mult = 0;
-    if (betType === 'high' || betType === 'low') mult = 1.75;
-    if (betType === 'even' || betType === 'odd') mult = 1.7;
-    if (betType === 'seven') mult = 3.2;
-    if (betType === 'doubles') mult = 4.5;
+    if (betType === 'high' || betType === 'low') mult = 1.95;
+    if (betType === 'even' || betType === 'odd') mult = 1.95;
+    if (betType === 'seven') mult = 5.0;
     if (betType === 'exact') {
         const mults = { 2: 32, 3: 15, 4: 10, 5: 7.7, 6: 6.3, 7: 5.2, 8: 6.3, 9: 7.7, 10: 10, 11: 15, 12: 32 };
         mult = mults[exactNum] || 0;
@@ -424,7 +423,7 @@ window.quickBet = (val) => {
 };
 
 function buildExactPicker() {
-    const container = document.getElementById('exact-nums');
+    const container = document.getElementById('dice-exact-numbers');
     if (!container) return;
     container.innerHTML = '';
     for (let i = 2; i <= 12; i++) {
@@ -572,6 +571,7 @@ window.roll = async function () {
             betAmount: amt,
             betType: bType
         };
+        if (bType === 'exact') payload.exactNum = exactNum;
         if (betMode === 'gift' && selectedGift) {
             payload.giftInstanceId = selectedGift.instance_id;
             selectedGift = null;
@@ -1826,41 +1826,6 @@ function buildCommentBoc(comment) {
     return bytesToBase64(boc);
 }
 
-async function tonDeposit() {
-    if (!tonConnectUI || !tonConnectUI.connected) {
-        toast('Сначала подключите кошелек!', 'error');
-        if (tonConnectUI) tonConnectUI.openModal();
-        return;
-    }
-
-    const amt = parseFloat(document.getElementById('dep-amount').value) || 0;
-    const btn = document.getElementById('start-deposit-btn');
-    if (btn.disabled) return;
-    btn.disabled = true;
-
-    try {
-        const req = await api('/api/deposit/request', 'POST', { amount: amt });
-        const payloadB64 = buildCommentBoc(req.comment);
-
-        const amountNano = Math.round(amt * 1e9).toString();
-
-        const tx = {
-            validUntil: Math.floor(Date.now() / 1000) + 600,
-            messages: [{
-                address: req.address,
-                amount: amountNano,
-                payload: payloadB64
-            }]
-        };
-
-        await tonConnectUI.sendTransaction(tx);
-        toast('Запрос отправлен! Ожидайте зачисления.', 'success');
-    } catch (e) {
-        toast(e.message || 'Ошибка оплаты', 'error');
-    } finally {
-        btn.disabled = false;
-    }
-}
 
 // Final helper for gift icons
 function getGiftEmoji(model) {

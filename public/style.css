@@ -1508,6 +1508,37 @@ button:active,
   justify-items: center;
 }
 
+/* Exact Number Picker */
+.exact-num {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--t3);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.exact-num:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+  color: var(--t1);
+}
+
+.exact-num.active {
+  background: var(--gold-g);
+  border-color: var(--gold);
+  color: #000;
+  box-shadow: 0 4px 12px rgba(255, 204, 0, 0.3);
+  transform: translateY(-3px) scale(1.1);
+}
+
 .d5 span:nth-child(5) {
   grid-column: 1/-1;
   justify-self: center;
