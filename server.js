@@ -1357,12 +1357,18 @@ app.get('/api/admin/referrals', auth, adminOnly, (req, res) => {
 
 app.get('/api/admin/referrals/:id', auth, adminOnly, (req, res) => {
     try {
-        const refIdStr = req.params.id; // Could be ID or Code
-        const referrer = db.prepare('SELECT * FROM users WHERE CAST(telegram_id AS TEXT) = CAST(? AS TEXT) OR referral_code = ?').get(refIdStr, refIdStr);
+        const refIdStr = String(req.params.id);
+        const referrer = db.prepare('SELECT * FROM users WHERE CAST(telegram_id AS TEXT) = CAST(? AS TEXT) OR referral_code = ? OR username = ? OR username = ?').get(refIdStr, refIdStr, refIdStr, refIdStr.replace('@', '')) || { telegram_id: refIdStr, first_name: 'Unknown' };
 
-        // Match by any variation: TRIM + CAST for both ID and Code
-        const idToMatch = referrer ? referrer.telegram_id : refIdStr;
-        const codeToMatch = (referrer && referrer.referral_code) ? referrer.referral_code : refIdStr;
+        const matches = [refIdStr];
+        matches.push(String(referrer.telegram_id));
+        if (referrer.referral_code) matches.push(referrer.referral_code);
+        if (referrer.username) {
+            matches.push(referrer.username);
+            matches.push('@' + referrer.username);
+        }
+
+        const placeholders = matches.map(() => 'TRIM(CAST(u.referred_by AS TEXT)) = TRIM(CAST(? AS TEXT))').join(' OR ');
 
         const referrals = db.prepare(`
             SELECT u.telegram_id, u.username, u.first_name, u.balance,
@@ -1371,10 +1377,9 @@ app.get('/api/admin/referrals/:id', auth, adminOnly, (req, res) => {
                    COALESCE((SELECT SUM(amount) FROM transactions WHERE telegram_id = u.telegram_id AND type = 'withdrawal'), 0) as total_withdrawals,
                    u.created_at
             FROM users u
-            WHERE TRIM(CAST(u.referred_by AS TEXT)) = TRIM(CAST(? AS TEXT))
-               OR (TRIM(CAST(u.referred_by AS TEXT)) = TRIM(CAST(? AS TEXT)))
+            WHERE ${placeholders}
             ORDER BY u.created_at DESC
-        `).all(String(idToMatch), String(codeToMatch));
+        `).all(...matches);
 
         // Calculate net profit per referral (for the house)
         const detailedRefs = referrals.map(r => ({
