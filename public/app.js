@@ -1670,192 +1670,127 @@ function renderPlinko() {
         const h = plinkoCanvas.height;
         plinkoCtx.clearRect(0, 0, w, h);
 
-        // --- Layout geometry ---
-        const topPad = 35;
-        const bottomPad = 35;
-        const playH = h - topPad - bottomPad;
-        const rowGap = playH / (PLINKO_ROWS + 1);
+        const rowGap = (h - 60) / (PLINKO_ROWS + 1);
+        const colGap = w / (PLINKO_ROWS + 2);
+        const slotWidth = w / PLINKO_MULTIS.length;
 
-        // Helper: get peg position
+        // Helper: peg position for waypoint calc
         function pegPos(row, col) {
             const rowCols = row + 1;
-            const rowWidth = rowCols * (w / (PLINKO_ROWS + 2));
-            const startX = (w - rowWidth) / 2 + (w / (PLINKO_ROWS + 2)) / 2;
-            const pegX = startX + col * (w / (PLINKO_ROWS + 2));
-            const pegY = topPad + row * rowGap;
-            return { x: pegX, y: pegY };
-        }
-
-        // Helper: get slot center X
-        const slotWidth = w / PLINKO_MULTIS.length;
-        function slotCenterX(slotIdx) {
-            return (slotIdx + 0.5) * slotWidth;
+            const startX = (w - (rowCols - 1) * colGap) / 2;
+            return { x: startX + col * colGap, y: 40 + row * rowGap };
         }
 
         // Draw drop indicator
         if (window.plinkoDropX) {
-            const dx = w * window.plinkoDropX;
-            plinkoCtx.save();
-            plinkoCtx.fillStyle = 'rgba(255,255,255,0.15)';
-            plinkoCtx.beginPath();
-            plinkoCtx.moveTo(dx - 8, 5);
-            plinkoCtx.lineTo(dx + 8, 5);
-            plinkoCtx.lineTo(dx, 18);
-            plinkoCtx.closePath();
-            plinkoCtx.fill();
-            plinkoCtx.restore();
+            plinkoCtx.fillStyle = 'rgba(255,255,255,0.1)';
+            plinkoCtx.fillRect(w * window.plinkoDropX - 10, 5, 20, 10);
+            plinkoCtx.strokeStyle = 'rgba(255,255,255,0.2)';
+            plinkoCtx.strokeRect(w * window.plinkoDropX - 10, 5, 20, 10);
         }
 
-        // Draw Pegs with glow
+        // Draw Pegs
+        plinkoCtx.fillStyle = 'rgba(255,255,255,0.2)';
         for (let r = 1; r <= PLINKO_ROWS; r++) {
+            const rowY = 40 + r * rowGap;
             const rowCols = r + 1;
+            const startX = (w - (rowCols - 1) * colGap) / 2;
             for (let c = 0; c < rowCols; c++) {
-                const pos = pegPos(r, c);
-                // Subtle glow
-                plinkoCtx.fillStyle = 'rgba(255,255,255,0.06)';
                 plinkoCtx.beginPath();
-                plinkoCtx.arc(pos.x, pos.y, 7, 0, Math.PI * 2);
-                plinkoCtx.fill();
-                // Peg core
-                plinkoCtx.fillStyle = 'rgba(255,255,255,0.35)';
-                plinkoCtx.beginPath();
-                plinkoCtx.arc(pos.x, pos.y, 3.5, 0, Math.PI * 2);
+                plinkoCtx.arc(startX + c * colGap, rowY, 3, 0, Math.PI * 2);
                 plinkoCtx.fill();
             }
         }
 
-        // Draw Slot Dividers
-        plinkoCtx.strokeStyle = 'rgba(255,255,255,0.08)';
-        plinkoCtx.lineWidth = 1.5;
+        // Draw Slots Dividers
+        plinkoCtx.strokeStyle = 'rgba(255,255,255,0.1)';
+        plinkoCtx.lineWidth = 2;
         for (let i = 1; i < PLINKO_MULTIS.length; i++) {
             plinkoCtx.beginPath();
-            plinkoCtx.moveTo(i * slotWidth, h - bottomPad);
+            plinkoCtx.moveTo(i * slotWidth, h - 30);
             plinkoCtx.lineTo(i * slotWidth, h);
             plinkoCtx.stroke();
         }
 
-        // --- Animate Balls (deterministic path interpolation) ---
+        // --- Ball animation (deterministic path interpolation) ---
         const now = performance.now();
-        const STEP_DURATION = 200; // ms per row bounce
-        const LAND_DURATION = 150; // ms for final landing
+        const STEP_MS = 180;
+        const LAND_MS = 120;
 
         plinkoBalls = plinkoBalls.filter(ball => {
-            // Initialize timing on first frame
+            // Build waypoints once on first frame
             if (!ball._startTime) {
                 ball._startTime = now;
-                // Pre-compute all waypoints for this ball
-                ball._waypoints = [];
-                // Start position (top)
-                ball._waypoints.push({ x: ball.x, y: topPad - 15 });
+                ball._waypoints = [{ x: ball.x, y: 20 }];
 
-                // Compute column index through rows
-                let col = 0; // Starting column in row 1
-                // The ball starts roughly at the drop position
-                // We need to figure out which column in row 1 it first hits
-                // For simplicity, start at the nearest peg column
-                const firstRowCols = 2; // row 1 has 2 pegs
-                const firstRowStartX = (w - firstRowCols * (w / (PLINKO_ROWS + 2))) / 2 + (w / (PLINKO_ROWS + 2)) / 2;
-
-                // Find nearest column in row 1
-                let bestCol = 0;
-                let bestDist = Infinity;
-                for (let c = 0; c < firstRowCols; c++) {
-                    const px = firstRowStartX + c * (w / (PLINKO_ROWS + 2));
-                    const d = Math.abs(ball.x - px);
-                    if (d < bestDist) { bestDist = d; bestCol = c; }
+                // Find nearest col in row 1
+                let col = 0;
+                const r1Cols = 2;
+                const r1StartX = (w - (r1Cols - 1) * colGap) / 2;
+                let best = Infinity;
+                for (let c = 0; c < r1Cols; c++) {
+                    const d = Math.abs(ball.x - (r1StartX + c * colGap));
+                    if (d < best) { best = d; col = c; }
                 }
-                col = bestCol;
 
-                // For each row, compute peg position based on path
                 for (let i = 0; i < PLINKO_ROWS; i++) {
-                    const row = i + 1;
-                    const pos = pegPos(row, col);
-                    // Add slight random offset for natural feel
-                    const jitterX = (Math.random() - 0.5) * 4;
-                    const jitterY = (Math.random() - 0.5) * 2;
-                    ball._waypoints.push({ x: pos.x + jitterX, y: pos.y + jitterY });
-                    // Move column based on path direction
-                    if (ball.path[i] === 1) {
-                        col = col + 1; // go right, next row has +1 col
-                    }
-                    // if 0, col stays same (going left relative)
+                    const pos = pegPos(i + 1, col);
+                    ball._waypoints.push({ x: pos.x + (Math.random() - 0.5) * 3, y: pos.y });
+                    if (ball.path[i] === 1) col++;
                 }
 
-                // Final landing position (slot center)
-                const landX = slotCenterX(ball.targetSlot);
-                ball._waypoints.push({ x: landX, y: h - 12 });
-
+                ball._waypoints.push({ x: (ball.targetSlot + 0.5) * slotWidth, y: h - 8 });
                 ball._totalSteps = ball._waypoints.length - 1;
             }
 
             const elapsed = now - ball._startTime;
-            const totalDuration = ball._totalSteps * STEP_DURATION + LAND_DURATION;
+            const totalMs = ball._totalSteps * STEP_MS + LAND_MS;
 
-            if (elapsed >= totalDuration && !ball.landed) {
-                // Ball has landed
+            // Landing
+            if (elapsed >= totalMs && !ball.landed) {
                 ball.landed = true;
-                const lastWP = ball._waypoints[ball._waypoints.length - 1];
-                ball.x = lastWP.x;
-                ball.y = lastWP.y;
+                const lp = ball._waypoints[ball._waypoints.length - 1];
+                ball.x = lp.x; ball.y = lp.y;
 
                 highlightSlot(ball.targetSlot);
-                if (ball.multiplier > 1) {
+                if (ball.payout > 0) {
                     triggerConfetti();
-                    showResult({ won: true, payout: ball.payout, betAmount: ball.betAmount, multiplier: ball.multiplier });
+                    showResult({ won: true, payout: ball.payout, betAmount: ball.betAmount, dice: [ball.dieValue] });
                 } else {
-                    showResult({ won: false, payout: ball.payout, betAmount: ball.betAmount, multiplier: ball.multiplier });
+                    showResult({ won: false, payout: 0, betAmount: ball.betAmount, dice: [ball.dieValue] });
                 }
                 if (ball.newBalance !== undefined) setBalance(ball.newBalance, true);
                 if (window.haptic && hapticEnabled) haptic.notificationOccurred('success');
             }
 
+            // Interpolate
             if (!ball.landed) {
-                // Interpolate position between waypoints
-                const stepFloat = elapsed / STEP_DURATION;
-                const stepIdx = Math.min(Math.floor(stepFloat), ball._totalSteps - 1);
-                const t = stepFloat - stepIdx; // 0..1 within current segment
-
-                const from = ball._waypoints[stepIdx];
-                const to = ball._waypoints[stepIdx + 1];
-
+                const sf = elapsed / STEP_MS;
+                const si = Math.min(Math.floor(sf), ball._totalSteps - 1);
+                const t = Math.min(sf - si, 1);
+                const from = ball._waypoints[si], to = ball._waypoints[si + 1];
                 if (from && to) {
-                    // Ease-out bounce feel
-                    const easeT = 1 - Math.pow(1 - Math.min(t, 1), 2.5);
-                    ball.x = from.x + (to.x - from.x) * easeT;
-                    ball.y = from.y + (to.y - from.y) * easeT;
-
-                    // Small vertical bounce effect at peg hit
-                    if (t < 0.3 && stepIdx > 0) {
-                        ball.y -= Math.sin(t / 0.3 * Math.PI) * 5;
-                    }
+                    const e = 1 - Math.pow(1 - t, 2.5);
+                    ball.x = from.x + (to.x - from.x) * e;
+                    ball.y = from.y + (to.y - from.y) * e;
+                    if (t < 0.25 && si > 0) ball.y -= Math.sin(t / 0.25 * Math.PI) * 4;
                 }
             }
 
-            // --- Draw the dice ball ---
+            // Draw dice
             plinkoCtx.save();
             plinkoCtx.translate(ball.x, ball.y);
-
-            // Rotation based on horizontal travel
-            const angle = (ball.x / 30) + (ball.y / 20);
-            plinkoCtx.rotate(angle);
-
-            const size = 16, rr = 4;
-
-            // Shadow / glow
-            plinkoCtx.shadowBlur = ball.landed ? 25 : 12;
-            plinkoCtx.shadowColor = ball.landed
-                ? (ball.multiplier > 1 ? 'rgba(255, 215, 0, 0.8)' : 'rgba(229, 57, 53, 0.6)')
-                : 'rgba(255,255,255,0.5)';
-
-            // Dice body
+            plinkoCtx.rotate(ball.y / 15);
+            const size = 16, r = 4;
             plinkoCtx.fillStyle = '#fff';
+            plinkoCtx.shadowBlur = ball.landed ? 20 : 15;
+            plinkoCtx.shadowColor = ball.landed ? 'rgba(255, 215, 0, 0.6)' : 'rgba(255,255,255,0.5)';
             plinkoCtx.beginPath();
-            plinkoCtx.roundRect(-size / 2, -size / 2, size, size, rr);
+            plinkoCtx.roundRect(-size / 2, -size / 2, size, size, r);
             plinkoCtx.fill();
 
-            // Dice dots
             plinkoCtx.shadowBlur = 0;
-            plinkoCtx.fillStyle = '#1a1a2e';
+            plinkoCtx.fillStyle = '#000';
             const p = size / 4, dotSize = 2;
             const drawDot = (dx, dy) => { plinkoCtx.beginPath(); plinkoCtx.arc(dx, dy, dotSize, 0, Math.PI * 2); plinkoCtx.fill(); };
             const dots = {
@@ -1869,7 +1804,6 @@ function renderPlinko() {
             (dots[ball.dieValue] || []).forEach(d => drawDot(d[0], d[1]));
             plinkoCtx.restore();
 
-            // Keep ball in array for 2 seconds after landing for visibility
             if (ball.landed) {
                 if (!ball._landTime) ball._landTime = now;
                 return (now - ball._landTime) < 2000;
