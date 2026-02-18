@@ -569,7 +569,7 @@ const marketplaceOps = {
   },
   getActive() {
     return db.prepare(`
-      SELECT m.*, g.title, g.model, g.background, g.symbol, u.username as seller_name
+      SELECT m.*, g.title, g.model, g.background, g.symbol, g.gift_id, g.slug, g.link, u.username as seller_name
       FROM marketplace_listings m
       JOIN user_inventory i ON m.gift_instance_id = i.id
       JOIN gifts g ON i.gift_id = g.id
@@ -602,7 +602,7 @@ const marketplaceOps = {
   },
   getByUser(sellerId) {
     return db.prepare(`
-      SELECT m.*, g.title, g.model, g.background, g.symbol
+      SELECT m.*, g.title, g.model, g.background, g.symbol, g.gift_id, g.slug, g.link
       FROM marketplace_listings m
       JOIN user_inventory i ON m.gift_instance_id = i.id
       JOIN gifts g ON i.gift_id = g.id

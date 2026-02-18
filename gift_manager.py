@@ -194,20 +194,21 @@ async def sync_inventory(client):
             m_url = meta.get("model", "https://i.imgur.com/8YvYyZp.png")
             b_style = meta.get("backdrop", "radial-gradient(circle, #333, #000)")
             sym = meta.get("symbol", "🎁")
+            full_link = f"https://t.me/nft/{slug}-{tg_gift_id}"
 
             if matched_id:
                 logger.info(f"Linking '{api_title}' to existing item #{matched_id}")
                 cursor.execute("""
-                    UPDATE gifts SET gift_id = ?, model = ?, background = ?, symbol = ?, slug = ? 
+                    UPDATE gifts SET gift_id = ?, model = ?, background = ?, symbol = ?, slug = ?, link = ?
                     WHERE id = ?
-                """, (tg_gift_id, m_url, b_style, sym, slug, matched_id))
+                """, (tg_gift_id, m_url, b_style, sym, slug, full_link, matched_id))
             else:
                 logger.info(f"Adding new gift: {api_title}")
                 price = await fetch_floor_price(api_title)
                 cursor.execute("""
-                    INSERT INTO gifts (title, price, gift_id, is_active, model, background, symbol, slug)
-                    VALUES (?, ?, ?, 1, ?, ?, ?, ?)
-                """, (api_title, price, tg_gift_id, m_url, b_style, sym, slug))
+                    INSERT INTO gifts (title, price, gift_id, is_active, model, background, symbol, slug, link)
+                    VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
+                """, (api_title, price, tg_gift_id, m_url, b_style, sym, slug, full_link))
             
         conn.commit()
         conn.close()

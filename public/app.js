@@ -380,17 +380,15 @@ window.goToPayment = async function () {
         const res = await api('/api/deposit/request', 'POST', { amount });
 
         if (res.link) {
-            if (tg && tg.openLink) {
-                tg.openLink(res.link);
-                // Increased delay to ensure the link triggers before closing
-                setTimeout(() => { tg.close(); }, 800);
-            } else {
-                window.location.href = res.link;
-                if (tg) setTimeout(() => { tg.close(); }, 1200);
-            }
+            // Using window.location.href to avoid WEBAPP_TG_URL_INVALID with ton:// protocol
+            window.location.href = res.link;
+
+            // Show toast and close app after delay to allow protocol handler to fire
+            toast('Открываем кошелек...', 'info');
+            if (tg) setTimeout(() => { tg.close(); }, 1500);
         } else {
             toast('Заявка создана. Проверьте сообщения в боте.', 'success');
-            if (tg) setTimeout(() => { tg.close(); }, 1000);
+            if (tg) setTimeout(() => { tg.close(); }, 1200);
         }
     } catch (e) {
         toast(e.message, 'error');
@@ -685,7 +683,9 @@ function getGiftImg(model) {
     return `models/${model}/photo.png`;
 }
 
-function getGiftLink(id) {
+function getGiftLink(id, slug, fullLink) {
+    if (fullLink && fullLink.startsWith('http')) return fullLink;
+    if (slug && id && id !== 'undefined') return `https://t.me/nft/${slug}-${id}`;
     if (!id || id === 'undefined') return 'https://t.me/nft/gift';
     return `https://t.me/nft/gift/${id}`;
 }
@@ -720,7 +720,7 @@ async function loadMarketplace() {
 
         list.innerHTML = listings.map(item => `
             <div class="shop-item glass-card">
-                <a href="${getGiftLink(item.gift_id)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
+                <a href="${getGiftLink(item.gift_id, item.slug, item.link)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
                 <div class="marketplace-badge">PLAYER</div>
                 <div class="shop-item-icon"><img src="${getGiftImg(item.model)}" alt=""></div>
                 <div class="shop-item-info">
@@ -773,7 +773,7 @@ async function openInventory() {
         // Items in inventory
         html += inventory.map(item => `
             <div class="shop-item glass-card">
-                <a href="${getGiftLink(item.gift_id)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
+                <a href="${getGiftLink(item.gift_id, item.slug, item.link)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
                 <div class="shop-item-icon"><img src="${getGiftImg(item.model)}" alt=""></div>
                 <div class="shop-item-info" style="margin-bottom: 5px;">
                     <div class="shop-item-title">${item.title}</div>
@@ -787,7 +787,7 @@ async function openInventory() {
         // Items already listed
         html += listings.map(item => `
             <div class="shop-item glass-card listing-active">
-                <a href="${getGiftLink(item.gift_id)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
+                <a href="${getGiftLink(item.gift_id, item.slug, item.link)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
                 <div class="marketplace-badge" style="background:var(--red)">LISTED</div>
                 <div class="shop-item-icon" style="opacity: 0.5;"><img src="${getGiftImg(item.model)}" alt=""></div>
                 <div class="shop-item-info">
@@ -880,7 +880,9 @@ function showResult(res) {
     amt.className = 'result-amount ' + (res.won ? 'win' : 'loss');
 
     if (res.dice && res.dice.length) {
-        diceDisp.innerHTML = res.dice.map(v => `<div class="result-die-box">${v}</div>`).join('');
+        const sum = res.total || res.dice.reduce((a, b) => a + b, 0);
+        diceDisp.innerHTML = res.dice.map(v => `<div class="result-die-box">${v}</div>`).join('') +
+            `<div style="width: 100%; margin-top: 10px; font-weight: 900; color: #fff; font-size: 16px;">СУММА: ${sum}</div>`;
     } else if (res.room) {
         diceDisp.innerHTML = `<div class="result-die-box" style="width: 80px; border-radius: 12px; font-size: 14px;">ДОМ ${res.room}</div>`;
     } else {
@@ -910,7 +912,7 @@ async function loadGifts() {
             const card = document.createElement('div');
             card.className = 'gift-card';
             card.innerHTML = `
-                <a href="${getGiftLink(g.id)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
+                <a href="${getGiftLink(g.gift_id, g.slug, g.link)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
                 <div class="gift-img-wrap">
                     <img src="${getGiftImg(g.model)}" class="gift-img">
                 </div>
