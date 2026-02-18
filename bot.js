@@ -45,7 +45,26 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
     }
 
     try {
-        userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '', referrerId);
+        const createdUser = userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '', referrerId);
+
+        // Notify referrer about new referral
+        if (createdUser._isNew && createdUser._referrerId) {
+            const referrer = userOps.get(createdUser._referrerId);
+            if (referrer) {
+                const newName = u.first_name || u.username || 'Аноним';
+                const usernameTag = u.username ? ` (@${u.username})` : '';
+                const count = referrer.referral_count || 0;
+                try {
+                    await bot.sendMessage(createdUser._referrerId,
+                        `👤 *Новый реферал!*\n\n` +
+                        `${newName}${usernameTag} присоединился по твоей ссылке!\n\n` +
+                        `📊 Всего рефералов: *${count}*\n` +
+                        `💰 Ты получаешь *10%* с каждого его проигрыша`,
+                        { parse_mode: 'Markdown' }
+                    );
+                } catch (e) { console.log(`[Bot] Failed to notify referrer ${createdUser._referrerId}:`, e.message); }
+            }
+        }
     } catch (e) { }
 
     const caption = `👑 *CubeRoll Casino*\n\nПривет, ${u.first_name || 'игрок'}!\n\nИграй в кости и выигрывай TON. Самый честный софт на блокчейне.\n\nЖми кнопку ниже, чтобы начать!`;

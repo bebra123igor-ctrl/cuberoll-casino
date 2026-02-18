@@ -250,7 +250,9 @@ const userOps = {
           const code = this.generateReferralCode();
           db.prepare('UPDATE users SET referral_code = ? WHERE telegram_id = ?').run(code, tgId);
         }
-        return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
+        const u = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
+        u._isNew = false;
+        return u;
       }
 
       const refCode = this.generateReferralCode();
@@ -264,7 +266,10 @@ const userOps = {
         this.checkReferralBonus(referrerId);
       }
 
-      return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
+      const u = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
+      u._isNew = true;
+      u._referrerId = referrerId;
+      return u;
     } catch (err) {
       console.error(`[DB Error] getOrCreate failed for user ${tgId}:`, err.message);
       return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);

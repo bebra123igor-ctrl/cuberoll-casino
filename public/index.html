@@ -191,7 +191,10 @@
     <header class="header">
       <div class="header-left">
         <div class="user-avatar" id="user-avatar-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+          <img id="user-avatar-img" src="" alt=""
+            style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:none;">
+          <svg id="user-avatar-fallback" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            width="16" height="16">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
@@ -589,70 +592,82 @@
       </div>
     </div>
 
-    <!-- настройки -->
+    <!-- рефералы -->
     <div class="tab-content" id="content-invite">
       <div class="tab-scrollable">
-        <div class="invite-hero">
-          <div class="hero-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-          </div>
-          <h2>Приглашай друзей</h2>
-          <p>Получай <b>10%</b> с каждого <b>проигрыша</b> твоего реферала ПОЖИЗНЕННО!</p>
-        </div>
+        <div class="ref-page">
 
-        <!-- Promo banner -->
-        <div id="ref-promo-banner" class="referral-promo-banner" style="display:none;">
-          <div class="promo-icon">🎁</div>
-          <div class="promo-text">
-            <b>АКЦИЯ: Пригласи 10 друзей — получи 3 TON!</b>
-            <span id="ref-promo-deadline">Действует до 22.02.2026</span>
+          <!-- Hero -->
+          <div class="ref-hero">
+            <div class="ref-hero-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" width="42" height="42">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </div>
+            <h2>Приглашай друзей</h2>
+            <p>Получай <b>10%</b> с каждого <b>проигрыша</b> реферала — <b>пожизненно</b></p>
           </div>
-        </div>
 
-        <div class="stats-grid" style="margin-bottom: 20px;">
-          <div class="stat-card">
-            <span class="stat-label">Приглашено</span>
-            <span class="stat-value" id="ref-count-value">0 / 10</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-label">Заработано</span>
-            <span class="stat-value" id="ref-earned-value">0.00 TON</span>
-          </div>
-        </div>
-
-        <!-- Progress bar for referral bonus -->
-        <div id="ref-progress-wrap" style="margin-bottom: 20px; display:none;">
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t4);margin-bottom:6px;">
-            <span>Прогресс до бонуса</span>
-            <span id="ref-progress-label">0/10</span>
-          </div>
-          <div style="height:8px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden;">
-            <div id="ref-progress-bar"
-              style="height:100%;border-radius:4px;background:linear-gradient(90deg,var(--gold),#ff9100);width:0%;transition:width 0.5s ease;">
+          <!-- Promo banner -->
+          <div id="ref-promo-banner" class="ref-promo-card" style="display:none;">
+            <div class="ref-promo-emoji">🎁</div>
+            <div class="ref-promo-info">
+              <b>Пригласи 10 друзей — получи 3 TON!</b>
+              <span id="ref-promo-deadline">Акция действует до 22.02.2026</span>
             </div>
           </div>
-        </div>
 
-        <div class="referral-link-card">
-          <label>Твоя ссылка:</label>
-          <div class="copy-box" id="ref-link-box">
-            <span id="referral-link">Загрузка...</span>
-            <button onclick="copyReferralLink()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
+          <!-- Stats -->
+          <div class="ref-stats-row">
+            <div class="ref-stat-card">
+              <span class="ref-stat-num" id="ref-count-value">0</span>
+              <span class="ref-stat-label">Приглашено</span>
+            </div>
+            <div class="ref-stat-card">
+              <span class="ref-stat-num" id="ref-earned-value">0.00</span>
+              <span class="ref-stat-label">Заработано (TON)</span>
+            </div>
+          </div>
+
+          <!-- Progress bar -->
+          <div id="ref-progress-wrap" class="ref-progress-section" style="display:none;">
+            <div class="ref-progress-header">
+              <span>Прогресс до бонуса</span>
+              <span id="ref-progress-label">0/10</span>
+            </div>
+            <div class="ref-progress-track">
+              <div id="ref-progress-bar" class="ref-progress-fill"></div>
+            </div>
+          </div>
+
+          <!-- Link card -->
+          <div class="ref-link-section">
+            <label class="ref-link-label">Твоя реферальная ссылка</label>
+            <div class="ref-link-box">
+              <span id="referral-link">Загрузка...</span>
+              <button onclick="copyReferralLink()" class="ref-copy-btn" title="Копировать">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+              </button>
+            </div>
+            <button onclick="shareReferralLink()" class="ref-share-btn">
+              📤 Поделиться ссылкой
             </button>
           </div>
-          <button onclick="shareReferralLink()"
-            style="width:100%;margin-top:10px;padding:12px;border:none;border-radius:14px;background:linear-gradient(135deg,var(--gold),#ff9100);color:#000;font-weight:700;font-size:14px;cursor:pointer;">
-            📤 Поделиться ссылкой
-          </button>
+
+          <!-- How it works -->
+          <div class="ref-how-section">
+            <h4>Как это работает?</h4>
+            <div class="ref-step"><span>1</span> Отправь свою ссылку другу</div>
+            <div class="ref-step"><span>2</span> Друг регистрируется по ссылке</div>
+            <div class="ref-step"><span>3</span> Ты получаешь 10% с каждого его проигрыша</div>
+          </div>
+
         </div>
       </div>
     </div>

@@ -267,6 +267,20 @@ async function init() {
                     document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
                     document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
 
+                    // Load user avatar from Telegram
+                    const photoUrl = window.Telegram?.WebApp?.initDataUnsafe?.user?.photo_url;
+                    if (photoUrl) {
+                        const avatarImg = document.getElementById('user-avatar-img');
+                        const avatarFallback = document.getElementById('user-avatar-fallback');
+                        if (avatarImg) {
+                            avatarImg.src = photoUrl;
+                            avatarImg.onload = () => {
+                                avatarImg.style.display = 'block';
+                                if (avatarFallback) avatarFallback.style.display = 'none';
+                            };
+                        }
+                    }
+
                     setBalance(user.balance);
 
                     // Update Referral Info
@@ -275,12 +289,12 @@ async function init() {
                     const refLinkEl = document.getElementById('referral-link');
                     if (refLinkEl) refLinkEl.textContent = refLink;
                     const refEarnedEl = document.getElementById('ref-earned-value');
-                    if (refEarnedEl) refEarnedEl.textContent = (user.referralEarned || 0).toFixed(2) + ' TON';
+                    if (refEarnedEl) refEarnedEl.textContent = (user.referralEarned || 0).toFixed(2);
 
                     // Referral count
                     const refCount = user.referralCount || 0;
                     const refCountEl = document.getElementById('ref-count-value');
-                    if (refCountEl) refCountEl.textContent = `${refCount} чел.`;
+                    if (refCountEl) refCountEl.textContent = refCount;
 
                     // Referral promo
                     const promo = data.referralPromo;
