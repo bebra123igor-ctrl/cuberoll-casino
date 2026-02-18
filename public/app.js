@@ -1770,20 +1770,27 @@ function renderPlinko() {
                 if (window.haptic && hapticEnabled) haptic.notificationOccurred('success');
             }
 
-            // Interpolate
+            // Smooth Catmull-Rom spline interpolation (no per-segment stops)
             if (!ball.landed) {
-                const sf = elapsed / STEP_MS;
-                const si = Math.min(Math.floor(sf), ball._totalSteps - 1);
-                const t = Math.min(sf - si, 1);
-                const from = ball._waypoints[si], to = ball._waypoints[si + 1];
-                if (from && to) {
-                    // Smooth cubic ease-in-out
-                    const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-                    ball.x = from.x + (to.x - from.x) * e;
-                    ball.y = from.y + (to.y - from.y) * e;
-                    // Gentle bounce at peg
-                    if (t < 0.2 && si > 0) ball.y -= Math.sin(t / 0.2 * Math.PI) * 2.5;
-                }
+                const totalDur = ball._totalSteps * STEP_MS;
+                // Slight gravity easing: starts slow, accelerates
+                const rawP = Math.min(elapsed / totalDur, 1);
+                const progress = rawP * (2 - rawP); // ease-out quadratic for gravity feel
+
+                const segFloat = progress * ball._totalSteps;
+                const si = Math.min(Math.floor(segFloat), ball._totalSteps - 1);
+                const t = segFloat - si;
+
+                // Catmull-Rom: use 4 surrounding waypoints for smooth curve
+                const wp = ball._waypoints;
+                const p0 = wp[Math.max(0, si - 1)];
+                const p1 = wp[si];
+                const p2 = wp[Math.min(si + 1, wp.length - 1)];
+                const p3 = wp[Math.min(si + 2, wp.length - 1)];
+
+                const t2 = t * t, t3 = t2 * t;
+                ball.x = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
+                ball.y = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
             }
 
             // Draw dice
