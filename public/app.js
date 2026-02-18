@@ -380,15 +380,17 @@ window.goToPayment = async function () {
         const res = await api('/api/deposit/request', 'POST', { amount });
 
         if (res.link) {
-            if (tg) {
+            if (tg && tg.openLink) {
                 tg.openLink(res.link);
-                setTimeout(() => { tg.close(); }, 300);
+                // Increased delay to ensure the link triggers before closing
+                setTimeout(() => { tg.close(); }, 800);
             } else {
                 window.location.href = res.link;
+                if (tg) setTimeout(() => { tg.close(); }, 1200);
             }
         } else {
-            toast('Ссылка отправлена в чат!', 'success');
-            if (tg) setTimeout(() => { tg.close(); }, 500);
+            toast('Заявка создана. Проверьте сообщения в боте.', 'success');
+            if (tg) setTimeout(() => { tg.close(); }, 1000);
         }
     } catch (e) {
         toast(e.message, 'error');
