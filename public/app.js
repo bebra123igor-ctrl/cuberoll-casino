@@ -1979,6 +1979,36 @@ function bytesToBase64(u8) {
     return typeof btoa !== 'undefined' ? btoa(binary) : '';
 }
 
+/** Build TON BOC (Bag of Cells) for one cell: 32-bit 0 (comment opcode) + comment text. Fixes "payload 0 index" error. */
+function buildCommentBoc(comment) {
+    const commentBytes = new TextEncoder().encode(comment);
+    const dataLen = 4 + commentBytes.length;
+    const cellBytes = new Uint8Array(2 + dataLen);
+    cellBytes[0] = 1;
+    cellBytes[1] = (dataLen - 1) & 0xff;
+    cellBytes[2] = 0;
+    cellBytes[3] = 0;
+    cellBytes[4] = 0;
+    cellBytes[5] = 0;
+    cellBytes.set(commentBytes, 6);
+    const cellLen = cellBytes.length;
+    const boc = new Uint8Array(4 + 8 + 1 + cellLen);
+    boc[0] = 0xb5;
+    boc[1] = 0xee;
+    boc[2] = 0x9c;
+    boc[3] = 0x72;
+    boc[4] = 0xa1;
+    boc[5] = 0x01;
+    boc[6] = 0x01;
+    boc[7] = 0x01;
+    boc[8] = 0x00;
+    boc[9] = cellLen;
+    boc[10] = 0x00;
+    boc[11] = 0x00;
+    boc.set(cellBytes, 12);
+    return bytesToBase64(boc);
+}
+
 async function tonDeposit() {
     if (!tonConnectUI || !tonConnectUI.connected) {
         toast('Сначала подключите кошелек!', 'error');
@@ -1993,11 +2023,7 @@ async function tonDeposit() {
 
     try {
         const req = await api('/api/deposit/request', 'POST', { amount: amt });
-        const commentBytes = new TextEncoder().encode(req.comment);
-        const payloadBytes = new Uint8Array(4 + commentBytes.length);
-        payloadBytes[0] = 0; payloadBytes[1] = 0; payloadBytes[2] = 0; payloadBytes[3] = 0;
-        payloadBytes.set(commentBytes, 4);
-        const payloadB64 = bytesToBase64(payloadBytes);
+        const payloadB64 = buildCommentBoc(req.comment);
 
         const tx = {
             validUntil: Math.floor(Date.now() / 1000) + 600,
@@ -2107,7 +2133,14 @@ window.openBetModal = function (game) {
     }
     document.getElementById('crash-auto-cashout-area').classList.toggle('hidden', game !== 'crash');
 
-    // Global handler for the button
+    if (game === 'dice') {
+        document.querySelectorAll('.bet-type-btn').forEach(b => b.classList.remove('active'));
+        const current = document.querySelector(`.bet-type-btn[data-bet="${betType}"]`);
+        if (current) current.classList.add('active');
+        else document.querySelector('.bet-type-btn[data-bet="high"]')?.classList.add('active');
+        if (typeof updatePayoutUI === 'function') updatePayoutUI();
+    }
+
     window.confirmBetAction = function () {
         if (activeBetGame === 'dice') {
             closeModal('bet-modal');
@@ -2132,12 +2165,11 @@ window.openBetModal = function (game) {
     if (confirmBtn) confirmBtn.onclick = window.confirmBetAction;
 };
 
-// Local listener for bet types
-const betBtns = document.querySelectorAll('.bet-type-btn');
-betBtns.forEach(btn => {
-    btn.onclick = (e) => {
-        document.querySelectorAll('.bet-type-btn').forEach(b => b.classList.remove('active'));
-        e.currentTarget.classList.add('active');
+// Bet-type buttons: use getBetType so выбранный исход (больше/меньше/чёт/нечёт) сохраняется и используется при Подтвердить
+document.querySelectorAll('.bet-type-btn').forEach(btn => {
+    btn.onclick = function () {
+        const bet = this.getAttribute('data-bet');
+        if (bet) getBetType(bet);
         if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
     };
 });
