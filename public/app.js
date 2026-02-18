@@ -279,8 +279,23 @@ async function init() {
                     };
                     window.directPay = doDirectPay;
                     window._goToPaymentImpl = function () {
-                        if (tonConnectUI && tonConnectUI.connected) tonDeposit();
-                        else doDirectPay();
+                        const val = document.getElementById('dep-amount').value;
+                        const amount = parseFloat(val);
+                        if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
+
+                        const address = window.appSettings.walletAddress || 'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7';
+                        const rnd = Math.floor(100000000 + Math.random() * 900000000);
+                        const comment = `deposit_${rnd}`;
+                        const nano = Math.floor(amount * 1000000000).toString();
+
+                        // Use a pure URI for the wallet app
+                        const link = `ton://transfer/${address}?amount=${nano}&text=${comment}`;
+
+                        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
+                            window.Telegram.WebApp.openLink(link);
+                        } else {
+                            window.location.href = link;
+                        }
                     };
                     window.goToPayment = window._goToPaymentImpl;
 
@@ -533,16 +548,7 @@ function initEventListeners() {
     safeSetClick('btn-verify', verifyGame);
 
     // Delegated listener for bet confirm — works even if modal was opened dynamically (dice/plinko/crash/hide)
-    document.addEventListener('click', function betConfirmHandler(e) {
-        const btn = e.target && (e.target.closest ? e.target.closest('#bet-confirm-btn') : (e.target.id === 'bet-confirm-btn' ? e.target : null));
-        if (!btn || !document.getElementById('bet-modal') || document.getElementById('bet-modal').classList.contains('hidden')) return;
-        e.preventDefault();
-        e.stopPropagation();
-        if (activeBetGame === 'dice') roll();
-        else if (activeBetGame === 'crash') crashPlaceBet();
-        else if (activeBetGame === 'plinko') { closeModal('bet-modal'); plinkoDrop(); }
-        else if (activeBetGame === 'hide') { closeModal('bet-modal'); placeHideBet(); }
-    }, true);
+    // Removal of conflicting global listener - we use direct onclick now
 }
 
 window.rotateServerSeed = async function () {
@@ -2122,22 +2128,25 @@ window.openBetModal = function (game) {
     // Config modal for game
     const diceArea = document.getElementById('dice-options-area');
     if (diceArea) {
-        // Force display style to ensure visibility 
         if (game === 'dice') {
             diceArea.classList.remove('hidden');
-            diceArea.style.display = 'block';
         } else {
             diceArea.classList.add('hidden');
-            diceArea.style.display = 'none';
         }
     }
-    document.getElementById('crash-auto-cashout-area').classList.toggle('hidden', game !== 'crash');
+
+    // Hide/Show crash options
+    const crashArea = document.getElementById('crash-auto-cashout-area');
+    if (crashArea) {
+        if (game === 'crash') crashArea.classList.remove('hidden');
+        else crashArea.classList.add('hidden');
+    }
 
     if (game === 'dice') {
-        document.querySelectorAll('.bet-type-btn').forEach(b => b.classList.remove('active'));
-        const current = document.querySelector(`.bet-type-btn[data-bet="${betType}"]`);
-        if (current) current.classList.add('active');
-        else document.querySelector('.bet-type-btn[data-bet="high"]')?.classList.add('active');
+        const bType = window.betType || 'high';
+        document.querySelectorAll('.bet-type-btn').forEach(b => {
+            b.classList.toggle('active', b.getAttribute('data-bet') === bType);
+        });
         if (typeof updatePayoutUI === 'function') updatePayoutUI();
     }
 
@@ -2165,12 +2174,20 @@ window.openBetModal = function (game) {
     if (confirmBtn) confirmBtn.onclick = window.confirmBetAction;
 };
 
-// Bet-type buttons: use getBetType so выбранный исход (больше/меньше/чёт/нечёт) сохраняется и используется при Подтвердить
+// Global outcome selection handler for Dice
+window.selectDiceOutcome = function (type) {
+    betType = type;
+    document.querySelectorAll('.bet-type-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-bet') === type);
+    });
+    if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
+};
+
+// Initialize outcome buttons once
 document.querySelectorAll('.bet-type-btn').forEach(btn => {
     btn.onclick = function () {
         const bet = this.getAttribute('data-bet');
-        if (bet) getBetType(bet);
-        if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
+        if (bet) selectDiceOutcome(bet);
     };
 });
 
