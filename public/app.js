@@ -518,12 +518,6 @@ function initEventListeners() {
     // Подтверждение
     safeSetClick('roll-btn-confirm', roll);
 
-    // Пополнение
-    safeSetClick('start-deposit-btn', () => {
-        console.log('[Click] start-deposit-btn');
-        window.goToPayment();
-    });
-
     // Инпуты
     const pBetAmt = document.getElementById('plinko-bet-amount');
     if (pBetAmt) pBetAmt.oninput = updatePlinkoPreviews;
@@ -768,10 +762,13 @@ async function openInventory() {
             <div class="shop-item glass-card">
                 <a href="${getGiftLink(item.gift_id)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
                 <div class="shop-item-icon"><img src="${getGiftImg(item.model)}" alt=""></div>
-                <div class="shop-item-info">
+                <div class="shop-item-info" style="margin-bottom: 5px;">
                     <div class="shop-item-title">${item.title}</div>
                 </div>
-                <button class="buy-btn" onclick="openListSale(${item.instance_id})">ПРОДАТЬ</button>
+                <div class="item-actions" style="display: flex; gap: 5px; width: 100%;">
+                    <button class="buy-btn" onclick="openListSale(${item.instance_id})" style="flex: 1; padding: 6px 0; font-size: 10px;">ПРОДАТЬ</button>
+                    <button class="buy-btn" onclick="withdrawGift(${item.instance_id})" style="flex: 1; padding: 6px 0; font-size: 10px; background: rgba(0,136,204,0.2); border-color: #0088cc; color: #0088cc;">ВЫВЕСТИ</button>
+                </div>
             </div>`).join('');
 
         // Items already listed
@@ -803,6 +800,21 @@ async function cancelListing(listingId) {
         if (activeTab === 'shop') loadMarketplace(); // Also refresh markteplace if on that tab
     } catch (e) { toast(e.message, 'error'); }
 }
+
+window.withdrawGift = async function (instanceId) {
+    if (!confirm('Вы хотите вывести этот подарок в Telegram? \n\nПосле подтверждения подарок будет удален из игры и поставлен в очередь на отправку.')) return;
+    try {
+        const res = await api('/api/inventory/withdraw', 'POST', { instanceId });
+        toast(res.message, 'success');
+        openInventory(); // Refresh list
+        // Show the dealer reminder
+        if (localStorage.getItem('dealer_warned') !== '1') {
+            document.getElementById('dealer-warning-modal').classList.remove('hidden');
+        }
+    } catch (e) {
+        toast(e.message, 'error');
+    }
+};
 
 function openListSale(instanceId) {
     document.getElementById('sale-instance-id').value = instanceId;

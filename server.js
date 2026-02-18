@@ -794,6 +794,27 @@ app.get('/api/inventory/combined', auth, (req, res) => {
     res.secure({ inventory, listings });
 });
 
+app.post('/api/inventory/withdraw', auth, async (req, res) => {
+    const { instanceId } = req.body;
+    if (!instanceId) return res.status(400).secure({ error: 'Missing instanceId' });
+
+    try {
+        const inventory = inventoryOps.getByUser(req.tgUser.id);
+        const item = inventory.find(i => i.instance_id === Number(instanceId));
+        if (!item) return res.status(404).secure({ error: 'Item not found in inventory' });
+
+        // Add to transfer queue (using the actual gift_id from 'gifts' table)
+        giftOps.createTransfer(item.id, req.tgUser.id);
+
+        // Remove from inventory
+        inventoryOps.remove(instanceId);
+
+        res.secure({ success: true, message: 'Заявка на вывод создана. Напишите дилеру для получения подарка.' });
+    } catch (e) {
+        res.status(500).secure({ error: e.message });
+    }
+});
+
 // --- DAILY SPIN ---
 
 app.post('/api/daily-spin', auth, (req, res) => {
