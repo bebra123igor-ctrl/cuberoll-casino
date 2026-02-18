@@ -382,13 +382,13 @@ window.goToPayment = async function () {
         if (res.link) {
             if (tg) {
                 tg.openLink(res.link);
-                setTimeout(() => { tg.close(); }, 300);
+                setTimeout(() => { tg.close(); }, 1000);
             } else {
                 window.location.href = res.link;
             }
         } else {
             toast('Ссылка отправлена в чат!', 'success');
-            if (tg) setTimeout(() => { tg.close(); }, 500);
+            if (tg) setTimeout(() => { tg.close(); }, 1200);
         }
     } catch (e) {
         toast(e.message, 'error');
@@ -1806,13 +1806,13 @@ async function startDailySpin() {
         btn.textContent = 'КРУТИМ...';
 
         const wheel = document.getElementById('wheel');
-        // Calculate precise landing index
-        // Each segment is 30 degrees. res.index is 0..11.
-        // Rotation is clockwise. Arrow is at top (0 deg).
-        // To land on index I, we need to rotate -(I * 30 + 15) degrees.
-        const baseRotation = -(res.index * 30 + 15);
-        const fullSpins = 360 * 5; // 5 full spins
-        const finalRotation = fullSpins - baseRotation; // Subtract because we want to land at the calculated point
+        // Final math for perfect landing:
+        // One segment = 30 deg. Center of segment I = I*30 + 15.
+        // We need to rotate the wheel CLOCKWISE so that this center moves to 0 (top).
+        // Clockwise rotation to bring 15deg to 0deg is 345deg.
+        const targetAngle = res.index * 30 + 15;
+        const rotationToTop = 360 - targetAngle;
+        const finalRotation = (360 * 5) + rotationToTop;
 
         wheel.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
         wheel.style.transform = `rotate(${finalRotation}deg)`;
@@ -1830,10 +1830,9 @@ async function startDailySpin() {
                 toast('В этот раз не повезло. Попробуйте завтра!', 'info');
             }
 
-            // Reset wheel after delay to be ready for next time (visually clean)
             setTimeout(() => {
                 wheel.style.transition = 'none';
-                wheel.style.transform = `rotate(${-baseRotation}deg)`; // Stay on the prize
+                wheel.style.transform = `rotate(${rotationToTop}deg)`;
             }, 1000);
         }, 4100);
 
