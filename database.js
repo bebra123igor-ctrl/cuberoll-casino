@@ -671,4 +671,58 @@ const marketplaceOps = {
   }
 };
 
-module.exports = { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps, sessionOps, inventoryOps, marketplaceOps, setOnChange };
+// --- RAFFLE SYSTEM ---
+db.exec(`
+  CREATE TABLE IF NOT EXISTS raffle_tickets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    telegram_id INTEGER,
+    amount INTEGER DEFAULT 1,
+    reason TEXT,
+    source_deposit_hash TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (telegram_id) REFERENCES users(telegram_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_raffle_tgid ON raffle_tickets(telegram_id);
+`);
+
+// Track cumulative referral deposits for ticket awarding
+try {
+  db.exec('ALTER TABLE users ADD COLUMN raffle_ref_deposit_tracked REAL DEFAULT 0');
+} catch (e) { }
+
+const RAFFLE_START = '2026-02-26T09:00:00Z'; // 12:00 MSK = 09:00 UTC
+
+const raffleOps = {
+  addTickets(tgId, amount, reason, depositHash = null) {
+    if (amount <= 0) return;
+    return db.prepare('INSERT INTO raffle_tickets (telegram_id, amount, reason, source_deposit_hash) VALUES (?, ?, ?, ?)')
+      .run(tgId, amount, reason, depositHash);
+  },
+  getTickets(tgId) {
+    const row = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM raffle_tickets WHERE telegram_id = ? AND created_at >= ?`).get(tgId, RAFFLE_START);
+    return row ? row.total : 0;
+  },
+  getTicketDetails(tgId) {
+    return db.prepare('SELECT * FROM raffle_tickets WHERE telegram_id = ? AND created_at >= ? ORDER BY created_at DESC').all(tgId, RAFFLE_START);
+  },
+  getLeaderboard() {
+    return db.prepare(`
+      SELECT r.telegram_id, u.username, u.first_name, SUM(r.amount) as total_tickets
+      FROM raffle_tickets r
+      LEFT JOIN users u ON r.telegram_id = u.telegram_id
+      WHERE r.created_at >= ?
+      GROUP BY r.telegram_id
+      ORDER BY total_tickets DESC
+    `).all(RAFFLE_START);
+  },
+  getTotalTickets() {
+    const row = db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM raffle_tickets WHERE created_at >= ?').get(RAFFLE_START);
+    return row ? row.total : 0;
+  },
+  getParticipantCount() {
+    const row = db.prepare('SELECT COUNT(DISTINCT telegram_id) as c FROM raffle_tickets WHERE created_at >= ?').get(RAFFLE_START);
+    return row ? row.c : 0;
+  }
+};
+
+module.exports = { db, userOps, gameOps, settingsOps, giftOps, depositOps, promoOps, sessionOps, inventoryOps, marketplaceOps, raffleOps, setOnChange };

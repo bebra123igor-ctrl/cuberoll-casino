@@ -631,6 +631,11 @@
                         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                     </svg>
                 </div>
+                <div class="nav-item" data-p="raffle" title="Розыгрыш">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" />
+                    </svg>
+                </div>
                 <div class="nav-item" data-p="settings" title="Настройки">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <circle cx="12" cy="12" r="3" />
@@ -770,6 +775,30 @@
                 </div>
             </div>
 
+            <!-- Raffle Panel -->
+            <div class="panel" id="p-raffle">
+                <div class="stats-grid">
+                    <div class="stat-card gold">
+                        <div class="stat-label">Всего билетов</div>
+                        <div class="stat-value" id="s-raffle-tickets">0</div>
+                    </div>
+                    <div class="stat-card blue">
+                        <div class="stat-label">Участников</div>
+                        <div class="stat-value" id="s-raffle-participants">0</div>
+                    </div>
+                </div>
+                <div class="list-container">
+                    <div class="table-header">
+                        <div style="width: 40px;">#</div>
+                        <div style="width: 120px;">ID</div>
+                        <div style="flex: 1;">Игрок</div>
+                        <div style="width: 100px; text-align: right;">Билетов</div>
+                        <div style="width: 80px; text-align: right;">Шанс</div>
+                    </div>
+                    <div id="tbl-raffle"></div>
+                </div>
+            </div>
+
             <!-- Settings Panel -->
             <div class="panel" id="p-settings">
                 <div class="list-container" style="padding: 24px;">
@@ -883,6 +912,7 @@
                     users: 'Игроки',
                     games: 'История игр',
                     referrals: 'Рефералы',
+                    raffle: 'Розыгрыш NFT',
                     settings: 'Настройки'
                 };
                 document.getElementById('page-name').textContent = titleMap[p] || p;
@@ -892,9 +922,12 @@
                     users: 'Управление аккаунтами игроков и балансом',
                     games: 'Аудит недавних результатов игр',
                     referrals: 'Рост сети и логи комиссий',
+                    raffle: 'Управление розыгрышем NFT и билеты участников',
                     settings: 'Настройка параметров платформы'
                 };
                 document.getElementById('page-desc').textContent = descMap[p] || '';
+
+                if (p === 'raffle') loadRaffle();
             });
         });
 
@@ -914,7 +947,8 @@
                     loadUsers(),
                     loadGames(),
                     loadRefs(),
-                    loadSets()
+                    loadSets(),
+                    loadRaffle()
                 ]);
             } catch (e) {
                 status.innerHTML = '<div style="color:var(--red); font-weight:800; font-size:18px">ОШИБКА АВТОРИЗАЦИИ</div><div style="margin-top:8px">' + e.message + '</div>';
@@ -1047,6 +1081,34 @@
         }
 
         function closeRefModal() { document.getElementById('ref-modal').style.display = 'none'; }
+
+        async function loadRaffle() {
+            try {
+                const d = await api('/api/admin/raffle');
+                document.getElementById('s-raffle-tickets').textContent = d.totalTickets || 0;
+                document.getElementById('s-raffle-participants').textContent = d.participants || 0;
+                const t = document.getElementById('tbl-raffle');
+                if (!d.leaderboard?.length) {
+                    t.innerHTML = '<div style="padding:40px; text-align:center; color:var(--t4)">Нет участников розыгрыша</div>';
+                    return;
+                }
+                t.innerHTML = d.leaderboard.map((r, i) => {
+                    const medals = ['🥇', '🥈', '🥉'];
+                    const rank = i < 3 ? medals[i] : (i + 1);
+                    const name = r.username ? '@' + r.username : (r.first_name || 'Аноним');
+                    const chance = d.totalTickets > 0 ? ((r.total_tickets / d.totalTickets) * 100).toFixed(1) : '0';
+                    return `
+                        <div class="table-row">
+                            <div style="width:40px; text-align:center; font-weight:800">${rank}</div>
+                            <div class="user-id">${r.telegram_id}</div>
+                            <div class="user-name">${name}</div>
+                            <div style="width:100px; text-align:right; font-weight:800; color:var(--gold)">${r.total_tickets} 🎫</div>
+                            <div style="width:80px; text-align:right; color:var(--t3)">${chance}%</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) { console.error('[Raffle]', e); }
+        }
 
         async function loadSets() {
             try {

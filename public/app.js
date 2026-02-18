@@ -58,6 +58,7 @@ window.switchTab = function (tab) {
     if (navBtn) navBtn.classList.add('active');
 
     if (tab === 'shop') loadGifts();
+    if (tab === 'bonuses') loadRaffleData();
     if (tab === 'settings') {
         const toggle = document.getElementById('settings-haptic');
         if (toggle) toggle.checked = hapticEnabled;
@@ -331,6 +332,11 @@ async function init() {
                     try { initEventListeners(); } catch (e) { console.error('[Init] Listeners failed', e); }
                     try { initPlinko(); } catch (e) { console.error('[Init] Plinko failed', e); }
                     try { initWheelLabels(); } catch (e) { }
+
+                    // Set initial raffle data
+                    if (data.raffle && window._setInitialRaffleData) {
+                        window._setInitialRaffleData(data.raffle);
+                    }
 
                     finishLoading();
                     resolve();
@@ -2641,6 +2647,87 @@ function drawHouse(hx, hy, id, active, hit) {
     hideCtx.restore();
 }
 
+
+// --- RAFFLE SYSTEM ---
+const RAFFLE_TARGET_DATE = new Date('2026-02-26T09:00:00Z'); // 12:00 MSK
+
+function updateRaffleCountdown() {
+    const el = document.getElementById('raffle-countdown');
+    if (!el) return;
+
+    const now = new Date();
+    const diff = RAFFLE_TARGET_DATE - now;
+
+    if (diff <= 0) {
+        el.textContent = '🔥 РОЗЫГРЫШ НАЧАЛСЯ!';
+        el.style.color = '#00ff88';
+        return;
+    }
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+    el.textContent = `${days}д ${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+setInterval(updateRaffleCountdown, 1000);
+updateRaffleCountdown();
+
+async function loadRaffleData() {
+    try {
+        const data = await api('/api/raffle');
+        if (!data) return;
+
+        const myTicketsEl = document.getElementById('raffle-my-tickets');
+        const winChanceEl = document.getElementById('raffle-win-chance');
+        const totalTicketsEl = document.getElementById('raffle-total-tickets');
+        const participantsEl = document.getElementById('raffle-participants');
+        const lbEl = document.getElementById('raffle-leaderboard');
+
+        if (myTicketsEl) myTicketsEl.textContent = data.myTickets || 0;
+        if (winChanceEl) winChanceEl.textContent = (data.winChance || '0.00') + '%';
+        if (totalTicketsEl) totalTicketsEl.textContent = data.totalTickets || 0;
+        if (participantsEl) participantsEl.textContent = data.participants || 0;
+
+        // Render leaderboard
+        if (lbEl && data.leaderboard && data.leaderboard.length > 0) {
+            lbEl.innerHTML = data.leaderboard.map((p, i) => {
+                const medals = ['🥇', '🥈', '🥉'];
+                const medal = i < 3 ? medals[i] : `${i + 1}.`;
+                const name = p.username ? `@${p.username}` : (p.first_name || 'Аноним');
+                const pct = data.totalTickets > 0 ? ((p.total_tickets / data.totalTickets) * 100).toFixed(1) : '0';
+                return `<div style="display: flex; align-items: center; padding: 6px 10px; border-radius: 8px; margin-bottom: 4px; background: ${i < 3 ? 'rgba(243, 186, 47, 0.06)' : 'rgba(255,255,255,0.02)'}; font-size: 12px;">
+                    <span style="width: 28px; text-align: center; flex-shrink: 0;">${medal}</span>
+                    <span style="flex: 1; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${name}</span>
+                    <span style="font-weight: 800; color: #f3ba2f; margin-left: 8px;">${p.total_tickets}🎫</span>
+                    <span style="font-size: 10px; color: var(--t4); width: 40px; text-align: right;">${pct}%</span>
+                </div>`;
+            }).join('');
+        } else if (lbEl) {
+            lbEl.innerHTML = '<div style="text-align: center; color: var(--t4); padding: 20px; font-size: 12px;">Пока нет участников. Будь первым!</div>';
+        }
+    } catch (e) {
+        console.error('[Raffle] Load error:', e);
+    }
+}
+
+// Set initial raffle data from auth response
+window._setInitialRaffleData = function (raffle) {
+    if (!raffle) return;
+    const el = document.getElementById('raffle-my-tickets');
+    if (el) el.textContent = raffle.myTickets || 0;
+    const totalEl = document.getElementById('raffle-total-tickets');
+    if (totalEl) totalEl.textContent = raffle.totalTickets || 0;
+    const partEl = document.getElementById('raffle-participants');
+    if (partEl) partEl.textContent = raffle.participants || 0;
+    // Win chance
+    const chanceEl = document.getElementById('raffle-win-chance');
+    if (chanceEl && raffle.totalTickets > 0) {
+        chanceEl.textContent = ((raffle.myTickets / raffle.totalTickets) * 100).toFixed(2) + '%';
+    }
+};
 
 // Start the app
 init();
