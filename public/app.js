@@ -95,10 +95,8 @@ const _0x_dec = (s) => {
         try { return JSON.parse(s); } catch (e2) { throw e; }
     }
 };
-window.api = api;
-window.user = user;
 
-// тг
+// тг 
 function initTg() {
     if (window.Telegram && window.Telegram.WebApp) {
         tg = window.Telegram.WebApp;
@@ -156,6 +154,8 @@ async function api(url, method = 'GET', body = null) {
         throw err;
     }
 }
+window.api = api;
+window.user = user;
 
 function showBanScreen() {
     document.getElementById('ban-screen').style.display = 'flex';
@@ -402,21 +402,6 @@ window.toggleHaptic = function () {
     if (hapticEnabled) toast('Вибрация включена');
 };
 
-window.redeemPromo = async function () {
-    const input = document.getElementById('promo-input');
-    const code = input.value.trim();
-    if (!code) return toast('Введите промокод');
-
-    try {
-        const res = await api('/api/promocodes/redeem', 'POST', { code });
-        toast('✅ ' + res.message);
-        input.value = '';
-        if (res.newBalance !== undefined) setBalance(res.newBalance, true);
-        auth();
-    } catch (e) {
-        toast('❌ ' + e.message);
-    }
-}
 
 const sounds = {
     roll: new Audio('https://assets.mixkit.co/active_storage/sfx/2005/2005-preview.mp3'), // Короткий звук
@@ -432,13 +417,16 @@ function playSound(type) {
 // Игра
 window.getBetType = (t) => {
     betType = t;
-    document.querySelectorAll('.bet-type-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector(`[data-bet="${t}"]`)?.classList.add('active');
+    document.querySelectorAll('.bet-type-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-bet') === t);
+    });
 
     // Показ пикеров
-    document.getElementById('exact-picker').style.display = (t === 'exact') ? 'block' : 'none';
+    const exactPicker = document.getElementById('exact-picker');
+    if (exactPicker) exactPicker.style.display = (t === 'exact') ? 'block' : 'none';
 
     updatePayoutUI();
+    if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
 };
 
 function updatePayoutUI() {
@@ -526,14 +514,6 @@ function initEventListeners() {
         btn.onclick = () => getBetType(btn.getAttribute('data-bet'));
     });
 
-    // Модалка открытия ставки
-    safeSetClick('open-bet-modal-btn', () => {
-        const m = document.getElementById('bet-modal');
-        if (m) {
-            m.classList.remove('hidden');
-            updatePayoutUI();
-        }
-    });
 
     // Подтверждение
     safeSetClick('roll-btn-confirm', roll);
@@ -1108,11 +1088,11 @@ window.depositRequest = async function () {
         const depositComment = (res.comment || '').trim();
         const address = res.address.trim();
 
-        // Construct Direct Transfer Links 
+        const amountNano = Math.round(amountVal * 1e9).toString();
         // 1. Universal tonkeeper link (very reliable on mobile)
-        const tonkeeperLink = `https://app.tonkeeper.com/transfer/${address}?text=${encodeURIComponent(depositComment)}&amount=${BigInt(Math.round(amountVal * 1e9))}`;
+        const tonkeeperLink = `https://app.tonkeeper.com/transfer/${address}?text=${encodeURIComponent(depositComment)}&amount=${amountNano}`;
         // 2. Protocol link
-        const protoLink = `ton://transfer/${address}?text=${encodeURIComponent(depositComment)}&amount=${BigInt(Math.round(amountVal * 1e9))}`;
+        const protoLink = `ton://transfer/${address}?text=${encodeURIComponent(depositComment)}&amount=${amountNano}`;
 
         // Show the elegant link button
         const linkBtn = document.getElementById('direct-transfer-link');
@@ -2174,20 +2154,12 @@ window.openBetModal = function (game) {
     if (confirmBtn) confirmBtn.onclick = window.confirmBetAction;
 };
 
-// Global outcome selection handler for Dice
-window.selectDiceOutcome = function (type) {
-    betType = type;
-    document.querySelectorAll('.bet-type-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.getAttribute('data-bet') === type);
-    });
-    if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
-};
 
 // Initialize outcome buttons once
 document.querySelectorAll('.bet-type-btn').forEach(btn => {
     btn.onclick = function () {
         const bet = this.getAttribute('data-bet');
-        if (bet) selectDiceOutcome(bet);
+        if (bet && typeof window.getBetType === 'function') window.getBetType(bet);
     };
 });
 
@@ -2255,7 +2227,7 @@ function updateHideUI() {
 
     // Feedback on result
     if (hideStatus.phase === 'RESULT' && lastHidePhase === 'SEARCHING') {
-        const isHit = hideStatus.myRoom && hideStatus.killerTargets.includes(hideStatus.myRoom);
+        const isHit = hideStatus.myRoom && (hideStatus.killerTargets || []).some(t => t == hideStatus.myRoom);
         if (hideStatus.myRoom) {
             if (isHit) {
                 toast('ТЫ УМЕР!', 'error');
