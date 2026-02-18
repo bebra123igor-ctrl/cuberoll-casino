@@ -79,7 +79,10 @@ window.openHistory = function () {
 // "Шифрование" для "обычных смертных"
 const _SEC_KEY = 'cuberoll';
 const _0x_dec = (s) => {
+    if (!s || typeof s !== 'string') return s;
     try {
+        // Simple check if it's base64-ish
+        if (!/^[A-Za-z0-9+/=]+$/.test(s)) return JSON.parse(s);
         const raw = atob(s);
         const bytes = new Uint8Array(raw.length);
         for (let i = 0; i < raw.length; i++) {
@@ -87,9 +90,7 @@ const _0x_dec = (s) => {
         }
         return JSON.parse(new TextDecoder().decode(bytes));
     } catch (e) {
-        console.error('Decryption failed:', e, s);
-        // Если это уже JSON, пытаемся вернуть как есть (на случай если сервер прислал не маскированное)
-        try { return JSON.parse(s); } catch (e2) { throw e; }
+        try { return JSON.parse(s); } catch (e2) { return { error: s }; }
     }
 };
 
@@ -117,20 +118,18 @@ async function api(url, method = 'GET', body = null) {
     if (body) opts.body = JSON.stringify(body);
     try {
         const res = await fetch(API + url, opts);
-
         const rawData = await res.text();
 
-        if (res.status === 403) {
-            try {
-                const e = _0x_dec(rawData);
-                if (e.error === 'Account is banned') {
-                    showBanScreen();
-                    throw new Error('Banned');
-                }
-            } catch (err) { if (err.message === 'Banned') throw err; }
-        }
-
         if (!res.ok) {
+            if (res.status === 403) {
+                try {
+                    const e = _0x_dec(rawData);
+                    if (e.error === 'Account is banned') {
+                        showBanScreen();
+                        throw new Error('Banned');
+                    }
+                } catch (err) { if (err.message === 'Banned') throw err; }
+            }
             let e = {};
             try {
                 e = _0x_dec(rawData);
@@ -143,14 +142,15 @@ async function api(url, method = 'GET', body = null) {
             errResult.status = res.status;
             throw errResult;
         }
-
-        const decoded = _0x_dec(rawData);
-        // Sync global user reference if server returns user object
-        if (decoded && decoded.user) {
-            window.user = decoded.user;
-            user = decoded.user;
+        if (rawData && rawData.trim()) {
+            const decoded = _0x_dec(rawData);
+            if (decoded && decoded.user) {
+                window.user = decoded.user;
+                user = decoded.user;
+            }
+            return decoded;
         }
-        return decoded;
+        return {};
     } catch (err) {
         console.error('API Error:', err);
         throw err;
@@ -169,7 +169,10 @@ function showBanScreen() {
 window.onerror = function (msg, url, line, col, error) {
     console.error('CRITICAL ERROR:', msg, 'at', url, line, col, error);
     let displayMsg = msg;
-    if (msg === 'Script error.') displayMsg = 'Ошибка загрузки (CORS/Network)';
+    if (msg === 'Script error.') {
+        // Don't show confusing CORS message if everything is working
+        return;
+    }
     if (window.toast) toast('System Error: ' + displayMsg, 'error');
 };
 
@@ -398,7 +401,14 @@ window.getBetType = (t) => {
 
     // Показ пикеров
     const exactPicker = document.getElementById('exact-picker');
-    if (exactPicker) exactPicker.style.display = (t === 'exact') ? 'block' : 'none';
+    if (exactPicker) {
+        if (t === 'exact') {
+            exactPicker.style.display = 'block';
+            buildExactPicker();
+        } else {
+            exactPicker.style.display = 'none';
+        }
+    }
 
     updatePayoutUI();
     if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
@@ -1954,6 +1964,9 @@ window.openBetModal = function (game) {
         document.querySelectorAll('.bet-type-btn').forEach(b => {
             b.classList.toggle('active', b.getAttribute('data-bet') === bType);
         });
+        const exactPicker = document.getElementById('exact-picker');
+        if (exactPicker) exactPicker.classList.toggle('hidden', bType !== 'exact');
+        if (typeof buildExactPicker === 'function') buildExactPicker();
         if (typeof updatePayoutUI === 'function') updatePayoutUI();
     }
 
@@ -1982,13 +1995,6 @@ window.openBetModal = function (game) {
 };
 
 
-// Initialize outcome buttons once
-document.querySelectorAll('.bet-type-btn').forEach(btn => {
-    btn.onclick = function () {
-        const bet = this.getAttribute('data-bet');
-        if (bet && typeof window.getBetType === 'function') window.getBetType(bet);
-    };
-});
 
 
 // --- HIDE AND SEEK (ПРЯТКИ) ---
