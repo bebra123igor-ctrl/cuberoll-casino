@@ -383,7 +383,13 @@ window.goToPayment = async function () {
             // Using window.location.href to avoid WEBAPP_TG_URL_INVALID with ton:// protocol
             window.location.href = res.link;
 
-            // Show toast and leave the app open (allows returning to it later)
+            // Redirect to bot chat while keeping webapp active in background
+            if (tg && tg.openTelegramLink) {
+                setTimeout(() => {
+                    tg.openTelegramLink('https://t.me/CubeRollBot');
+                }, 500);
+            }
+
             toast('Открываем кошелек...', 'info');
         } else {
             toast('Заявка создана. Проверьте сообщения в боте.', 'success');
