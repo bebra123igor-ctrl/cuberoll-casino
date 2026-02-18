@@ -118,24 +118,23 @@ async function api(url, method = 'GET', body = null) {
     try {
         const res = await fetch(API + url, opts);
 
+        const rawData = await res.text();
+
         if (res.status === 403) {
-            const raw = await res.text();
             try {
-                const e = _0x_dec(raw);
+                const e = _0x_dec(rawData);
                 if (e.error === 'Account is banned') {
                     showBanScreen();
                     throw new Error('Banned');
                 }
-            } catch (err) { }
+            } catch (err) { if (err.message === 'Banned') throw err; }
         }
 
-        const rawData = await res.text();
         if (!res.ok) {
             let e = {};
             try {
                 e = _0x_dec(rawData);
             } catch (err) {
-                // Если не смогли расшифровать - значит сервер прислал обычную ошибку (например 502)
                 const errResult = new Error(`Server Error: ${res.status}`);
                 errResult.status = res.status;
                 throw errResult;
@@ -145,7 +144,13 @@ async function api(url, method = 'GET', body = null) {
             throw errResult;
         }
 
-        return _0x_dec(rawData);
+        const decoded = _0x_dec(rawData);
+        // Sync global user reference if server returns user object
+        if (decoded && decoded.user) {
+            window.user = decoded.user;
+            user = decoded.user;
+        }
+        return decoded;
     } catch (err) {
         console.error('API Error:', err);
         throw err;
@@ -161,9 +166,11 @@ function showBanScreen() {
 }
 
 // Global error handler for debugging
-window.onerror = function (msg, url, line) {
-    console.error('CRITICAL:', msg, 'at', line);
-    if (window.toast) toast('System Error: ' + msg, 'error');
+window.onerror = function (msg, url, line, col, error) {
+    console.error('CRITICAL ERROR:', msg, 'at', url, line, col, error);
+    let displayMsg = msg;
+    if (msg === 'Script error.') displayMsg = 'Ошибка загрузки (CORS/Network)';
+    if (window.toast) toast('System Error: ' + displayMsg, 'error');
 };
 
 // Manual retry for lock screen
@@ -244,6 +251,7 @@ async function init() {
                     console.log('[Init] Authenticating...');
                     const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
                     const data = await api('/api/auth', 'POST', { start_param: startParam });
+                    window.user = data.user;
                     user = data.user;
                     curSeeds = data.seeds;
                     window.appSettings = data.settings || {};
@@ -253,24 +261,6 @@ async function init() {
                         if (h) h.textContent = `Минимум: ${window.appSettings.minDeposit} TON`;
                     }
 
-                    window.goToPayment = function () {
-                        const val = document.getElementById('dep-amount').value;
-                        const amount = parseFloat(val);
-                        if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
-
-                        const address = window.appSettings.walletAddress || 'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7';
-                        const rnd = Math.floor(100000000 + Math.random() * 900000000);
-                        const comment = `deposit_${rnd}`;
-                        const nano = Math.round(amount * 1e9).toString();
-
-                        const link = `ton://transfer/${address}?amount=${nano}&text=${encodeURIComponent(comment)}`;
-
-                        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
-                            window.Telegram.WebApp.openLink(link);
-                        } else {
-                            window.location.href = link;
-                        }
-                    };
 
                     document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
                     document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
@@ -358,6 +348,27 @@ function copyReferralLink() {
         toast('Ссылка скопирована!', 'success');
     });
 }
+
+window.goToPayment = function () {
+    const valEl = document.getElementById('dep-amount');
+    if (!valEl) return toast('Interface Error (dep-amount)', 'error');
+    const amount = parseFloat(valEl.value);
+    if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
+
+    const settings = window.appSettings || {};
+    const address = settings.walletAddress || 'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7';
+    const rnd = Math.floor(100000000 + Math.random() * 900000000);
+    const comment = `deposit_${rnd}`;
+    const nano = Math.round(amount * 1e9).toString();
+
+    const link = `ton://transfer/${address}?amount=${nano}&text=${encodeURIComponent(comment)}`;
+
+    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
+        window.Telegram.WebApp.openLink(link);
+    } else {
+        window.location.href = link;
+    }
+};
 
 
 window.toggleHaptic = function () {
@@ -729,8 +740,7 @@ async function openInventory() {
                     <div class="shop-item-title">${item.title}</div>
                 </div>
                 <button class="buy-btn" onclick="openListSale(${item.instance_id})">ПРОДАТЬ</button>
-            </div>
-        `).join('');
+            </div>`).join('');
 
         // Items already listed
         html += listings.map(item => `
@@ -806,13 +816,19 @@ function showResult(res) {
     title.className = 'result-title ' + (res.won ? 'win' : 'loss');
 
     if (res.won) {
-        amt.textContent = '+' + res.payout.toFixed(2) + ' TON';
+        amt.textContent = '+' + (res.payout || 0).toFixed(2) + ' TON';
     } else {
-        amt.textContent = '-' + res.betAmount.toFixed(2) + ' TON';
+        amt.textContent = '-' + (res.betAmount || 0).toFixed(2) + ' TON';
     }
     amt.className = 'result-amount ' + (res.won ? 'win' : 'loss');
 
-    diceDisp.innerHTML = res.dice.map(v => `<div class="result-die-box">${v}</div>`).join('');
+    if (res.dice && res.dice.length) {
+        diceDisp.innerHTML = res.dice.map(v => `<div class="result-die-box">${v}</div>`).join('');
+    } else if (res.room) {
+        diceDisp.innerHTML = `<div class="result-die-box" style="width: 80px; border-radius: 12px; font-size: 14px;">ДОМ ${res.room}</div>`;
+    } else {
+        diceDisp.innerHTML = '';
+    }
 
     if (window.haptic && hapticEnabled) {
         if (res.won) haptic.notificationOccurred('success');
@@ -1450,18 +1466,24 @@ function initPlinko() {
     const multsDiv = document.getElementById('plinko-mults');
     if (multsDiv) {
         multsDiv.innerHTML = '';
-        PLINKO_MULTIS.forEach(m => {
+        const colorMap = {
+            0: '#ff3d00', // Center (0x)
+            1: '#ff9100', // 0.5x
+            2: '#ffcc00', // 1.2x
+            3: '#aeea00', // 2x
+            4: '#00e676', // 5x (Edge)
+        };
+
+        PLINKO_MULTIS.forEach((m, i) => {
             const slot = document.createElement('div');
             slot.className = 'plinko-multiplier-slot';
             slot.dataset.mult = m;
 
-            // Color logic
-            let color = '#fff';
+            // Distance from center (index 4)
+            const dist = Math.abs(i - 4);
+            const color = colorMap[dist] || '#fff';
             let label = m + 'x';
-            if (m < 0.8) { color = '#ff3333'; label = '💀'; }
-            else if (m < 1.0) { color = '#ff9100'; }
-            else if (m < 1.5) { color = '#76ff03'; }
-            else { color = '#00e676'; }
+            if (m === 0) label = '💀';
 
             slot.style.borderColor = color;
             slot.style.color = color;
@@ -1540,6 +1562,7 @@ async function plinkoDrop() {
             step: 0,
             targetSlot: res.result.slot,
             payout: res.result.payout,
+            betAmount: payload.betAmount || (selectedGift ? selectedGift.price : 0),
             multiplier: res.result.multiplier,
             color: '#ffffff',
             dieValue: Math.floor(Math.random() * 6) + 1,
@@ -1661,14 +1684,20 @@ function renderPlinko() {
                     ball.vx += diff * 0.1; // Stronger guidance at very end
                 }
 
-                if (ball.y >= h - 18) {
+                if (ball.y >= h - 10) {
                     ball.landed = true;
-                    ball.y = h - 20;
+                    ball.y = h - 8;
                     ball.vx = 0; ball.vy = 0;
-                    // Snap x to target slot so it visually lands in correct hole (no teleport during fall)
-                    ball.x = (ball.targetSlot + 0.5) * slotWidth;
+                    const targetX = (ball.targetSlot + 0.5) * slotWidth;
+                    ball.x = targetX;
+
                     highlightSlot(ball.targetSlot);
-                    if (ball.payout > 0) { toast(`Победа! ${ball.payout.toFixed(2)} TON`, 'success'); triggerConfetti(); }
+                    if (ball.payout > 0) {
+                        triggerConfetti();
+                        showResult({ won: true, payout: ball.payout, betAmount: ball.betAmount, dice: [ball.dieValue] });
+                    } else {
+                        showResult({ won: false, payout: 0, betAmount: ball.betAmount, dice: [ball.dieValue] });
+                    }
                     if (ball.newBalance !== undefined) setBalance(ball.newBalance, true);
                     if (window.haptic && hapticEnabled) haptic.notificationOccurred('success');
                 }
@@ -2027,13 +2056,13 @@ function updateHideUI() {
     if (hideStatus.phase === 'RESULT' && lastHidePhase === 'SEARCHING') {
         const isHit = hideStatus.myRoom && (hideStatus.killerTargets || []).some(t => t == hideStatus.myRoom);
         if (hideStatus.myRoom) {
-            if (isHit) {
-                toast('ТЫ УМЕР!', 'error');
-                if (window.haptic) haptic.notificationOccurred('error');
-            } else {
-                toast('ТЫ ВЫЖИЛ! ПОБЕДА!', 'success');
-                if (window.haptic) haptic.notificationOccurred('success');
-            }
+            const hideRes = {
+                won: !isHit,
+                betAmount: hideStatus.myBet?.amount || 0,
+                payout: isHit ? 0 : (hideStatus.myBet?.amount || 0) * (hideStatus.myBet?.mult || 2),
+                room: hideStatus.myRoom
+            };
+            showResult(hideRes);
         }
     }
     lastHidePhase = hideStatus.phase;
@@ -2171,8 +2200,9 @@ function renderHide() {
             const currentRoomIdx = Math.min(Math.floor(progress), pathLength - 1);
 
             const t = progress % 1;
-            const smoothT = t < 0.2 ? 0 : (t > 0.8 ? 1 : (t - 0.2) / 0.6);
-            const easeT = smoothT * smoothT * (3 - 2 * smoothT);
+            // Smoother movement without hard "contact" lags
+            const smoothT = Math.sin((t - 0.5) * Math.PI) * 0.5 + 0.5;
+            const easeT = smoothT;
 
             let p1, p2;
             if (targets.length > 0) {

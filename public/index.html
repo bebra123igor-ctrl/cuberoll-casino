@@ -804,9 +804,13 @@
             <label style="display:block; text-align:center; margin-bottom:10px; font-weight:800; color:var(--t4);">СУММА
               СТАВКИ</label>
             <div class="premium-bet-input">
-              <input type="number" id="bet-amount" value="1.0" min="0.1" step="0.1">
+              <input type="number" id="bet-amount" value="1.0" min="0.1" step="0.1"
+                oninput="typeof onBetInput === 'function' && onBetInput(); typeof updatePlinkoPreviews === 'function' && updatePlinkoPreviews();">
               <button class="bet-max"
-                onclick="document.getElementById('bet-amount').value = user.balance.toFixed(2)">MAX</button>
+                onclick="const b = (window.user && window.user.balance !== undefined ? window.user.balance : 0); document.getElementById('bet-amount').value = b.toFixed(2); typeof onBetInput==='function'&&onBetInput(); typeof updatePlinkoPreviews==='function'&&updatePlinkoPreviews();">MAX</button>
+            </div>
+            <div style="text-align: center; margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--gold);">
+              ВЫПЛАТА: <span id="potential-amount">0.00</span> TON
             </div>
           </div>
 
