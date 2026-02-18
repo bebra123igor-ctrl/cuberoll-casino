@@ -1976,7 +1976,7 @@ window.openBetModal = function (game) {
             b.classList.toggle('active', b.getAttribute('data-bet') === bType);
         });
         const exactPicker = document.getElementById('exact-picker');
-        if (exactPicker) exactPicker.classList.toggle('hidden', bType !== 'exact');
+        if (exactPicker) exactPicker.style.display = (bType === 'exact' ? 'block' : 'none');
         if (typeof buildExactPicker === 'function') buildExactPicker();
         if (typeof updatePayoutUI === 'function') updatePayoutUI();
     }
@@ -2374,3 +2374,5 @@ function drawHouse(hx, hy, id, active, hit) {
 }
 
 
+// Start the app
+init();
