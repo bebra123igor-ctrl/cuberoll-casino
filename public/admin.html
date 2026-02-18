@@ -527,6 +527,14 @@
                     <div class="st-l">Сегодня</div>
                     <div class="st-v" id="s-today">0</div>
                 </div>
+                <div class="st">
+                    <div class="st-l">Рефералов</div>
+                    <div class="st-v y" id="s-refs">0</div>
+                </div>
+                <div class="st">
+                    <div class="st-l">Реф. комиссии</div>
+                    <div class="st-v r" id="s-ref-earned">0</div>
+                </div>
             </div>
 
             <div class="tabs">
@@ -534,6 +542,7 @@
                 <button class="tab" data-p="games">🎮 Игры</button>
                 <button class="tab" data-p="gifts">🎁 Подарки</button>
                 <button class="tab" data-p="promos">🎫 Промо</button>
+                <button class="tab" data-p="refs">👥 Рефералы</button>
                 <button class="tab" data-p="settings">⚙️ Настройки</button>
             </div>
 
@@ -584,6 +593,13 @@
                 </div>
                 <div id="tbl-promos"></div>
             </div>
+            <div class="pnl" id="p-refs">
+                <div style="margin-bottom:14px">
+                    <h3 style="font-size:14px;font-weight:700;margin-bottom:4px">👥 Реферальная система</h3>
+                    <p style="font-size:11px;color:var(--t4)">Пользователи с хотя бы 1 рефералом</p>
+                </div>
+                <div id="tbl-refs"></div>
+            </div>
             <div class="pnl" id="p-settings">
                 <div class="sgrp" id="sgrp"></div>
                 <br>
@@ -610,6 +626,28 @@
                 <button class="btn" style="background:var(--surface);color:var(--t2)"
                     onclick="closeModal()">Отмена</button>
                 <button class="btn btn-p" id="m-save">Установить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Referral Detail Modal -->
+    <div class="modal-bg" id="ref-modal">
+        <div class="modal" style="max-width:500px;width:94%;max-height:85vh;overflow-y:auto">
+            <h3>👤 Рефералы <span id="rm-name" style="color:var(--gold)"></span></h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0">
+                <div class="st">
+                    <div class="st-l">Рефералов</div>
+                    <div class="st-v" id="rm-count">0</div>
+                </div>
+                <div class="st">
+                    <div class="st-l">Заработано</div>
+                    <div class="st-v y" id="rm-earned">0</div>
+                </div>
+            </div>
+            <div id="rm-list" style="margin-top:10px"></div>
+            <div class="modal-btns" style="margin-top:14px">
+                <button class="btn" style="background:var(--surface);color:var(--t2)"
+                    onclick="closeRefModal()">Закрыть</button>
             </div>
         </div>
     </div>
@@ -693,6 +731,7 @@
                     loadGames(),
                     loadGifts(),
                     loadPromos(),
+                    loadRefs(),
                     loadSets()
                 ]);
             } catch (e) {
@@ -716,6 +755,11 @@
                 document.getElementById('s-today').textContent = d.today?.total_games || 0;
                 const bar = document.getElementById('maint-bar');
                 d.settings?.maintenance_mode === '1' ? bar.classList.add('show') : bar.classList.remove('show');
+                // Referral stats
+                if (d.totalReferrals !== undefined) {
+                    document.getElementById('s-refs').textContent = d.totalReferrals || 0;
+                    document.getElementById('s-ref-earned').textContent = (d.totalRefEarned || 0).toFixed(2);
+                }
             } catch (e) { console.error(e); }
         }
 
@@ -811,6 +855,90 @@
                 loadPromos();
             } catch (e) { alert(e.message); }
         }
+
+        async function loadRefs() {
+            try {
+                const d = await api('/api/admin/referrals');
+                const t = document.getElementById('tbl-refs');
+
+                // Update overview stats
+                document.getElementById('s-refs').textContent = d.totalReferrals || 0;
+                document.getElementById('s-ref-earned').textContent = (d.totalEarned || 0).toFixed(2);
+
+                if (!d.referrers?.length) {
+                    t.innerHTML = '<p style="text-align:center;color:var(--t4);padding:20px">Нет рефереров</p>';
+                    return;
+                }
+                t.innerHTML = d.referrers.map(r => `<div class="row" style="cursor:pointer" onclick="openRefDetail(${r.telegram_id})">
+                    <div class="cid">${r.telegram_id}</div>
+                    <div class="cname">${r.username ? '@' + r.username : (r.first_name || '—')}</div>
+                    <div style="width:60px;text-align:center;font-weight:700;color:var(--gold)">${r.actual_refs} реф.</div>
+                    <div style="width:80px;text-align:right;font-size:11px;color:var(--green)">${(r.referral_earned || 0).toFixed(2)} TON</div>
+                    <div style="width:30px;text-align:center">${r.referral_bonus_claimed ? '✅' : ''}</div>
+                </div>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function openRefDetail(id) {
+            try {
+                const d = await api('/api/admin/referrals/' + id);
+                const r = d.referrer;
+                document.getElementById('rm-name').textContent = r.username ? '@' + r.username : (r.first_name || r.telegram_id);
+                document.getElementById('rm-count').textContent = d.referrals.length;
+                document.getElementById('rm-earned').textContent = (r.referral_earned || 0).toFixed(2);
+
+                const list = document.getElementById('rm-list');
+                if (!d.referrals.length) {
+                    list.innerHTML = '<p style="color:var(--t4);text-align:center;padding:16px">Нет рефералов</p>';
+                } else {
+                    list.innerHTML = d.referrals.map(ref => {
+                        const lost = ref.total_wagered - ref.total_won;
+                        const commission = ref.commissionGenerated || 0;
+                        return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:6px">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                                <div>
+                                    <strong style="font-size:13px">${ref.username ? '@' + ref.username : (ref.first_name || '—')}</strong>
+                                    <span style="font-size:10px;color:var(--t4);margin-left:6px">ID: ${ref.telegram_id}</span>
+                                </div>
+                                <span style="font-size:11px;color:var(--gold);font-weight:700">${(ref.balance || 0).toFixed(2)} TON</span>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:10px">
+                                <div style="text-align:center;padding:6px;background:var(--card);border-radius:4px">
+                                    <div style="color:var(--t4)">ПОПОЛН.</div>
+                                    <div style="font-weight:700;color:var(--green);margin-top:2px">${(ref.total_deposits || 0).toFixed(2)}</div>
+                                </div>
+                                <div style="text-align:center;padding:6px;background:var(--card);border-radius:4px">
+                                    <div style="color:var(--t4)">ВЫВОД</div>
+                                    <div style="font-weight:700;color:var(--red);margin-top:2px">${Math.abs(ref.total_withdrawals || 0).toFixed(2)}</div>
+                                </div>
+                                <div style="text-align:center;padding:6px;background:var(--card);border-radius:4px">
+                                    <div style="color:var(--t4)">СТАВОК</div>
+                                    <div style="font-weight:700;margin-top:2px">${(ref.total_wagered || 0).toFixed(2)}</div>
+                                </div>
+                                <div style="text-align:center;padding:6px;background:var(--card);border-radius:4px">
+                                    <div style="color:var(--t4)">ВЫИГР.</div>
+                                    <div style="font-weight:700;color:var(--green);margin-top:2px">${(ref.total_won || 0).toFixed(2)}</div>
+                                </div>
+                                <div style="text-align:center;padding:6px;background:var(--card);border-radius:4px">
+                                    <div style="color:var(--t4)">ПРОИГР.</div>
+                                    <div style="font-weight:700;color:var(--red);margin-top:2px">${Math.max(0, lost).toFixed(2)}</div>
+                                </div>
+                                <div style="text-align:center;padding:6px;background:var(--card);border-radius:4px;border:1px solid rgba(0,136,204,.2)">
+                                    <div style="color:var(--t4)">КОМИССИЯ</div>
+                                    <div style="font-weight:700;color:var(--gold);margin-top:2px">${commission.toFixed(2)}</div>
+                                </div>
+                            </div>
+                            <div style="font-size:9px;color:var(--t4);margin-top:6px;text-align:right">Игр: ${ref.games_played || 0} · ${ref.created_at ? new Date(ref.created_at).toLocaleDateString('ru') : '—'}</div>
+                        </div>`;
+                    }).join('');
+                }
+
+                document.getElementById('ref-modal').classList.add('show');
+            } catch (e) { alert(e.message); }
+        }
+
+        function closeRefModal() { document.getElementById('ref-modal').classList.remove('show'); }
+        document.getElementById('ref-modal').addEventListener('click', e => { if (e.target.id === 'ref-modal') closeRefModal(); });
 
         let parsedData = null;
         async function parseLink() {

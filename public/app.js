@@ -2238,15 +2238,16 @@ function renderRoomsList() {
     let h = '';
     const roomCount = hideStatus.finalRoomCount || 4;
     const targets = hideStatus.killerTargets || [];
-    const activeTarget = targets[hideStatus.currentSearchingIdx];
+    const visited = hideStatus._visitedHouses || new Set();
 
     for (let i = 1; i <= roomCount; i++) {
         const r = hideStatus.rooms[i] || [];
         const isMy = hideStatus.myRoom == i;
-        const killerInside = hideStatus.phase === 'SEARCHING' && activeTarget == i;
-        const wereHit = (hideStatus.phase === 'RESULT' || hideStatus.phase === 'SEARCHING') && targets.slice(0, hideStatus.phase === 'RESULT' ? 3 : hideStatus.currentSearchingIdx + 1).includes(i);
+        // House is hit if killer has visited it (real-time) or in RESULT phase
+        const wereHit = (hideStatus.phase === 'RESULT' && targets.includes(i)) ||
+            (hideStatus.phase === 'SEARCHING' && visited.has(i));
 
-        h += `<div class="room-node ${isMy ? 'active' : ''} ${r.length >= 3 ? 'full' : ''} ${killerInside ? 'killer-inside' : ''} ${wereHit ? 'hit' : ''}" onclick="selectHideRoom(${i})">
+        h += `<div class="room-node ${isMy ? 'active' : ''} ${r.length >= 3 ? 'full' : ''} ${wereHit ? 'hit' : ''}" onclick="selectHideRoom(${i})">
                 <span class="room-num">${i}</span>
                 <span class="room-p-count">${wereHit ? '💀' : r.length + '/3'}</span>
               </div>`;
@@ -2349,88 +2350,116 @@ function renderHide() {
 
         for (let i = 1; i <= roomCount; i++) {
             const pos = getHousePos(i, roomCount);
-            const wasHit = (hideStatus.phase === 'RESULT' || hideStatus.phase === 'SEARCHING') && (hideStatus.killerTargets || []).slice(0, hideStatus.phase === 'RESULT' ? 3 : hideStatus.currentSearchingIdx + 1).includes(i);
+            const visited = hideStatus._visitedHouses || new Set();
+            const wasHit = (hideStatus.phase === 'RESULT' && (hideStatus.killerTargets || []).includes(i)) ||
+                (hideStatus.phase === 'SEARCHING' && visited.has(i));
             const isUserRoom = hideStatus.myRoom === i;
             drawHouse(pos.x, pos.y, i, isUserRoom, wasHit);
         }
 
         if (hideStatus.phase === 'SEARCHING') {
-            // Killer moves ONLY between houses that will die (killerTargets)
             const totalDuration = 9;
             const elapsed = totalDuration - hideStatus.timeLeft;
             const targets = hideStatus.killerTargets || [];
-            const pathLength = targets.length > 0 ? targets.length : roomCount;
-            const progress = (elapsed / totalDuration) * pathLength;
-            const currentRoomIdx = Math.min(Math.floor(progress), pathLength - 1);
+            if (targets.length === 0) { hideAnimId = requestAnimationFrame(renderHide); return; }
 
-            const t = progress % 1;
-            // Smoother movement without hard "contact" lags
-            const smoothT = Math.sin((t - 0.5) * Math.PI) * 0.5 + 0.5;
-            const easeT = smoothT;
+            // Build waypoints from killer targets
+            const waypoints = targets.map(t => {
+                const p = getHousePos(t, roomCount);
+                return { x: p.x + 30, y: p.y + 50 };
+            });
 
-            let p1, p2;
-            if (targets.length > 0) {
-                const idx1 = Math.min(currentRoomIdx, targets.length - 1);
-                const idx2 = Math.min(currentRoomIdx + 1, targets.length - 1);
-                p1 = getHousePos(targets[idx1], roomCount);
-                p2 = idx2 > idx1 ? getHousePos(targets[idx2], roomCount) : p1;
-            } else {
-                const p1Idx = (currentRoomIdx % roomCount) + 1;
-                const p2Idx = ((currentRoomIdx + 1) % roomCount) + 1;
-                p1 = getHousePos(p1Idx, roomCount);
-                p2 = getHousePos(p2Idx, roomCount);
+            // Mark visited houses immediately as killer passes them
+            if (!hideStatus._visitedHouses) hideStatus._visitedHouses = new Set();
+            const rawProgress = Math.min(elapsed / totalDuration, 1);
+            // Ease-out for gravity feel
+            const progress = rawProgress * (2 - rawProgress);
+            const segFloat = progress * (waypoints.length - 1);
+            const si = Math.min(Math.floor(segFloat), waypoints.length - 2);
+
+            // Mark all houses up to current index as visited
+            for (let vi = 0; vi <= si; vi++) {
+                hideStatus._visitedHouses.add(targets[vi]);
+            }
+            // Also mark current if we're past 70% into the segment
+            const localT = segFloat - si;
+            if (localT > 0.7 && si + 1 < targets.length) {
+                hideStatus._visitedHouses.add(targets[si + 1]);
             }
 
-            const startX = p1.x + 30; const startY = p1.y + 60;
-            const endX = p2.x + 30; const endY = p2.y + 60;
+            // Re-render rooms with updated hit status
+            renderRoomsList();
 
-            const kX = startX + (endX - startX) * easeT;
-            const kY = startY + (endY - startY) * easeT - 10;
-            const isWalking = (t > 0.2 && t < 0.8);
+            // Catmull-Rom spline for smooth path
+            const wp = waypoints;
+            const t = localT;
+            const p0 = wp[Math.max(0, si - 1)];
+            const p1 = wp[si];
+            const p2 = wp[Math.min(si + 1, wp.length - 1)];
+            const p3 = wp[Math.min(si + 2, wp.length - 1)];
 
-            // Draw "THE KILLER" (CUBE FORM)
+            const t2 = t * t, t3 = t2 * t;
+            const kX = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
+            const kY = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
+
+            // Trail particles
+            hideCtx.globalAlpha = 0.15;
+            for (let tp = 0; tp < 5; tp++) {
+                const trailT = Math.max(0, segFloat - tp * 0.08);
+                const tsi = Math.min(Math.floor(trailT), wp.length - 2);
+                const tt = trailT - tsi;
+                const tp0 = wp[Math.max(0, tsi - 1)], tp1 = wp[tsi];
+                const tp2 = wp[Math.min(tsi + 1, wp.length - 1)], tp3 = wp[Math.min(tsi + 2, wp.length - 1)];
+                const tt2 = tt * tt, tt3 = tt2 * tt;
+                const tx = 0.5 * ((2 * tp1.x) + (-tp0.x + tp2.x) * tt + (2 * tp0.x - 5 * tp1.x + 4 * tp2.x - tp3.x) * tt2 + (-tp0.x + 3 * tp1.x - 3 * tp2.x + tp3.x) * tt3);
+                const ty = 0.5 * ((2 * tp1.y) + (-tp0.y + tp2.y) * tt + (2 * tp0.y - 5 * tp1.y + 4 * tp2.y - tp3.y) * tt2 + (-tp0.y + 3 * tp1.y - 3 * tp2.y + tp3.y) * tt3);
+                hideCtx.beginPath();
+                hideCtx.arc(tx, ty, 3 - tp * 0.4, 0, Math.PI * 2);
+                hideCtx.fillStyle = '#e74c3c';
+                hideCtx.fill();
+            }
+            hideCtx.globalAlpha = 1;
+
+            // Draw KILLER as a DICE CUBE
             hideCtx.save();
             hideCtx.translate(kX, kY);
 
-            // Glow and Shadow
-            hideCtx.shadowBlur = 35;
-            hideCtx.shadowColor = '#e74c3c';
+            // Floating animation
+            const hover = Math.sin(Date.now() / 250) * 5;
+            hideCtx.translate(0, hover - 15);
 
-            // Bobbing animation for the cube
-            const hover = Math.sin(Date.now() / 200) * 8;
-            hideCtx.translate(0, hover);
+            // Rotation based on movement
+            hideCtx.rotate(segFloat * 0.3);
 
-            // Isometric Cube Draw
-            const kSize = 16;
+            const dSize = 20, dr = 5;
 
-            // Top Face
-            hideCtx.fillStyle = '#ff0000'; // Bright red top
+            // Glow
+            hideCtx.shadowBlur = 30;
+            hideCtx.shadowColor = 'rgba(231, 76, 60, 0.7)';
+
+            // White dice body
+            hideCtx.fillStyle = '#fff';
             hideCtx.beginPath();
-            hideCtx.moveTo(0, -kSize);
-            hideCtx.lineTo(kSize, -kSize / 2);
-            hideCtx.lineTo(0, 0);
-            hideCtx.lineTo(-kSize, -kSize / 2);
-            hideCtx.closePath(); hideCtx.fill();
+            hideCtx.roundRect(-dSize / 2, -dSize / 2, dSize, dSize, dr);
+            hideCtx.fill();
 
-            // Right Face
-            hideCtx.fillStyle = '#8b0000'; // Dark red side
-            hideCtx.beginPath();
-            hideCtx.moveTo(0, 0);
-            hideCtx.lineTo(kSize, -kSize / 2);
-            hideCtx.lineTo(kSize, kSize / 2);
-            hideCtx.lineTo(0, kSize);
-            hideCtx.closePath(); hideCtx.fill();
-
-            // Left Face
-            hideCtx.fillStyle = '#c00000'; // Mid red side
-            hideCtx.beginPath();
-            hideCtx.moveTo(0, 0);
-            hideCtx.lineTo(-kSize, -kSize / 2);
-            hideCtx.lineTo(-kSize, kSize / 2);
-            hideCtx.lineTo(0, kSize);
-            hideCtx.closePath(); hideCtx.fill();
+            // Dots (random face)
+            hideCtx.shadowBlur = 0;
+            hideCtx.fillStyle = '#e74c3c';
+            const dp = dSize / 4, dotR = 2.2;
+            const drawDot = (dx, dy) => { hideCtx.beginPath(); hideCtx.arc(dx, dy, dotR, 0, Math.PI * 2); hideCtx.fill(); };
+            // Show 6 (death dice)
+            drawDot(-dp, -dp); drawDot(dp, -dp);
+            drawDot(-dp, 0); drawDot(dp, 0);
+            drawDot(-dp, dp); drawDot(dp, dp);
 
             hideCtx.restore();
+
+            // "KILLER" label above dice
+            hideCtx.fillStyle = '#e74c3c';
+            hideCtx.font = '900 9px "Inter", sans-serif';
+            hideCtx.textAlign = 'center';
+            hideCtx.fillText('💀 KILLER', kX, kY + hover - 43);
         }
     }
 }

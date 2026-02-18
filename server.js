@@ -1240,9 +1240,12 @@ app.get('/api/admin/monitor-logs', auth, adminOnly, (req, res) => {
 });
 
 app.get('/api/admin/stats', auth, adminOnly, (req, res) => {
+    const totalReferrals = db.prepare('SELECT COUNT(*) as c FROM users WHERE referred_by IS NOT NULL').get().c;
+    const totalRefEarned = db.prepare('SELECT COALESCE(SUM(referral_earned), 0) as s FROM users').get().s;
     res.secure({
         overall: gameOps.getStats(), today: gameOps.getTodayStats(),
-        userCount: userOps.getCount(), settings: settingsOps.getAll()
+        userCount: userOps.getCount(), settings: settingsOps.getAll(),
+        totalReferrals, totalRefEarned
     });
 });
 
@@ -1307,7 +1310,69 @@ app.delete('/api/admin/promocodes/:id', auth, adminOnly, (req, res) => {
     res.secure({ success: true });
 });
 
+// --- ADMIN: REFERRALS ---
+app.get('/api/admin/referrals', auth, adminOnly, (req, res) => {
+    try {
+        const referrers = db.prepare(`
+            SELECT u.telegram_id, u.username, u.first_name, u.referral_count, u.referral_earned, u.referral_code, u.referral_bonus_claimed,
+                   (SELECT COUNT(*) FROM users r WHERE r.referred_by = u.telegram_id) as actual_refs
+            FROM users u
+            WHERE (SELECT COUNT(*) FROM users r WHERE r.referred_by = u.telegram_id) > 0
+            ORDER BY actual_refs DESC
+        `).all();
 
+        // Also get overall referral stats
+        const totalReferrals = db.prepare('SELECT COUNT(*) as c FROM users WHERE referred_by IS NOT NULL').get().c;
+        const totalEarned = db.prepare('SELECT COALESCE(SUM(referral_earned), 0) as s FROM users').get().s;
+
+        res.secure({ referrers, totalReferrals, totalEarned });
+    } catch (e) {
+        console.error('[Admin] Referrals error:', e.message);
+        res.status(500).secure({ error: e.message });
+    }
+});
+
+app.get('/api/admin/referrals/:id', auth, adminOnly, (req, res) => {
+    try {
+        const referrerId = parseInt(req.params.id);
+        const referrer = userOps.get(referrerId);
+        if (!referrer) return res.status(404).secure({ error: 'User not found' });
+
+        const referrals = db.prepare(`
+            SELECT u.telegram_id, u.username, u.first_name, u.balance,
+                   u.total_wagered, u.total_won, u.total_lost, u.games_played,
+                   COALESCE((SELECT SUM(amount) FROM transactions WHERE telegram_id = u.telegram_id AND type = 'deposit'), 0) as total_deposits,
+                   COALESCE((SELECT SUM(amount) FROM transactions WHERE telegram_id = u.telegram_id AND type = 'withdrawal'), 0) as total_withdrawals,
+                   u.created_at
+            FROM users u
+            WHERE u.referred_by = ?
+            ORDER BY u.created_at DESC
+        `).all(referrerId);
+
+        // Calculate net profit per referral (for the house)
+        const detailedRefs = referrals.map(r => ({
+            ...r,
+            netProfit: (r.total_deposits || 0) - (r.total_withdrawals || 0) - r.balance,
+            lostToHouse: r.total_wagered - r.total_won,
+            commissionGenerated: Math.max(0, r.total_wagered - r.total_won) * 0.1
+        }));
+
+        res.secure({
+            referrer: {
+                telegram_id: referrer.telegram_id,
+                username: referrer.username,
+                first_name: referrer.first_name,
+                referral_earned: referrer.referral_earned,
+                referral_count: referrer.referral_count,
+                referral_bonus_claimed: referrer.referral_bonus_claimed
+            },
+            referrals: detailedRefs
+        });
+    } catch (e) {
+        console.error('[Admin] Referral details error:', e.message);
+        res.status(500).secure({ error: e.message });
+    }
+});
 
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
