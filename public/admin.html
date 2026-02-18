@@ -588,6 +588,15 @@
                 <div class="sgrp" id="sgrp"></div>
                 <br>
                 <button class="btn btn-p" onclick="saveSets()">💾 Сохранить</button>
+
+                <div style="margin-top: 40px; border-top: 1px solid var(--border); padding-top: 20px;">
+                    <h3 style="color: var(--red); font-size: 14px; margin-bottom: 10px;">ОПАСНАЯ ЗОНА</h3>
+                    <button class="btn btn-d" onclick="resetStats()" style="width: 100%;">🚨 СБРОСИТЬ ВСЮ
+                        СТАТИСТИКУ</button>
+                    <p style="font-size: 10px; color: var(--t4); margin-top: 8px; text-align: center;">Это действие
+                        удалит ВСЮ историю игр и сбросит показатели игроков до нуля. <br>Балансы пользователей затронуты
+                        НЕ БУДУТ.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -877,6 +886,19 @@
         async function saveSets() {
             for (const i of document.querySelectorAll('.si-i[data-k]')) { try { await api('/api/admin/settings', 'POST', { key: i.dataset.k, value: i.value }); } catch (e) { } }
             alert('Сохранено ✅'); loadAll();
+        }
+
+        async function resetStats() {
+            if (!confirm('ВНИМАНИЕ! Вы собираетесь СБРОСИТЬ ВСЮ СТАТИСТИКУ игр.')) return;
+            if (!confirm('Это действие НЕОБРАТИМО. Все данные о ставках и играх будут удалены.')) return;
+            const p = prompt('Введите RESET для подтверждения:');
+            if (p !== 'RESET') return;
+
+            try {
+                const res = await api('/api/admin/stats/reset', 'POST');
+                alert(res.message);
+                loadAll();
+            } catch (e) { alert(e.message); }
         }
 
         let mUid = null;

@@ -370,6 +370,25 @@ const gameOps = {
         SUM(profit) as total_profit
       FROM games WHERE date(created_at) = date('now')
     `).get();
+  },
+
+  resetAllStats() {
+    return db.transaction(() => {
+      // 1. Clear games history
+      db.prepare('DELETE FROM games').run();
+      // 2. Reset user stats
+      db.prepare(`
+        UPDATE users SET 
+          total_wagered = 0,
+          total_won = 0,
+          total_lost = 0,
+          games_played = 0,
+          games_won = 0,
+          biggest_win_mult = 0
+      `).run();
+      // 3. Clear sessions
+      db.prepare('DELETE FROM active_sessions').run();
+    })();
   }
 };
 

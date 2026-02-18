@@ -1202,6 +1202,11 @@ app.get('/api/admin/stats', auth, adminOnly, (req, res) => {
     });
 });
 
+app.post('/api/admin/stats/reset', auth, adminOnly, (req, res) => {
+    gameOps.resetAllStats();
+    res.secure({ success: true, message: 'Все статистические данные сброшены' });
+});
+
 app.get('/api/admin/users', auth, adminOnly, (req, res) => {
     res.secure({ users: userOps.getAll() });
 });
