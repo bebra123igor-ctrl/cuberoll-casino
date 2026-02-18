@@ -863,7 +863,7 @@
 
                 // Update overview stats
                 document.getElementById('s-refs').textContent = d.totalReferrals || 0;
-                document.getElementById('s-ref-earned').textContent = (d.totalEarned || 0).toFixed(2);
+                document.getElementById('s-ref-earned').textContent = (d.totalRefEarned || 0).toFixed(2);
 
                 if (!d.referrers?.length) {
                     t.innerHTML = '<p style="text-align:center;color:var(--t4);padding:20px">Нет рефереров</p>';

@@ -1314,18 +1314,26 @@ app.delete('/api/admin/promocodes/:id', auth, adminOnly, (req, res) => {
 app.get('/api/admin/referrals', auth, adminOnly, (req, res) => {
     try {
         const referrers = db.prepare(`
-            SELECT u.telegram_id, u.username, u.first_name, u.referral_count, u.referral_earned, u.referral_code, u.referral_bonus_claimed,
-                   (SELECT COUNT(*) FROM users r WHERE r.referred_by = u.telegram_id) as actual_refs
-            FROM users u
-            WHERE (SELECT COUNT(*) FROM users r WHERE r.referred_by = u.telegram_id) > 0
+            SELECT 
+                r.referred_by as telegram_id, 
+                u.username, 
+                u.first_name, 
+                COALESCE(u.referral_count, 0) as referral_count, 
+                COALESCE(u.referral_earned, 0) as referral_earned, 
+                u.referral_code, 
+                COALESCE(u.referral_bonus_claimed, 0) as referral_bonus_claimed,
+                COUNT(*) as actual_refs
+            FROM users r
+            LEFT JOIN users u ON CAST(u.telegram_id AS TEXT) = CAST(r.referred_by AS TEXT)
+            WHERE r.referred_by IS NOT NULL
+            GROUP BY r.referred_by
             ORDER BY actual_refs DESC
         `).all();
 
-        // Also get overall referral stats
         const totalReferrals = db.prepare('SELECT COUNT(*) as c FROM users WHERE referred_by IS NOT NULL').get().c;
-        const totalEarned = db.prepare('SELECT COALESCE(SUM(referral_earned), 0) as s FROM users').get().s;
+        const totalRefEarned = db.prepare('SELECT COALESCE(SUM(referral_earned), 0) as s FROM users').get().s;
 
-        res.secure({ referrers, totalReferrals, totalEarned });
+        res.secure({ referrers, totalReferrals, totalRefEarned });
     } catch (e) {
         console.error('[Admin] Referrals error:', e.message);
         res.status(500).secure({ error: e.message });
@@ -1345,7 +1353,7 @@ app.get('/api/admin/referrals/:id', auth, adminOnly, (req, res) => {
                    COALESCE((SELECT SUM(amount) FROM transactions WHERE telegram_id = u.telegram_id AND type = 'withdrawal'), 0) as total_withdrawals,
                    u.created_at
             FROM users u
-            WHERE u.referred_by = ?
+            WHERE CAST(u.referred_by AS TEXT) = CAST(? AS TEXT)
             ORDER BY u.created_at DESC
         `).all(referrerId);
 
