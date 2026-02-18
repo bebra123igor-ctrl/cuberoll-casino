@@ -1315,25 +1315,25 @@ app.get('/api/admin/referrals', auth, adminOnly, (req, res) => {
     try {
         const referrers = db.prepare(`
             SELECT 
-                u.telegram_id, 
-                u.username, 
-                u.first_name, 
-                COALESCE(u.referral_count, 0) as referral_count, 
-                COALESCE(u.referral_earned, 0) as referral_earned, 
-                u.referral_code, 
-                COALESCE(u.referral_bonus_claimed, 0) as referral_bonus_claimed,
-                (SELECT COUNT(*) FROM users r WHERE CAST(r.referred_by AS TEXT) = CAST(u.telegram_id AS TEXT)) as actual_refs
-            FROM users u
-            WHERE u.referral_count > 0 
-               OR u.referral_earned > 0
-               OR EXISTS (SELECT 1 FROM users r WHERE CAST(r.referred_by AS TEXT) = CAST(u.telegram_id AS TEXT))
-            ORDER BY actual_refs DESC, u.referral_count DESC
+                r.referred_by as telegram_id, 
+                MAX(u.username) as username, 
+                MAX(u.first_name) as first_name, 
+                COALESCE(MAX(u.referral_count), 0) as referral_count, 
+                COALESCE(MAX(u.referral_earned), 0) as referral_earned, 
+                MAX(u.referral_code) as referral_code, 
+                COALESCE(MAX(u.referral_bonus_claimed), 0) as referral_bonus_claimed,
+                COUNT(*) as actual_refs
+            FROM users r
+            LEFT JOIN users u ON CAST(u.telegram_id AS TEXT) = CAST(r.referred_by AS TEXT)
+            WHERE r.referred_by IS NOT NULL AND r.referred_by != '' AND r.referred_by != '0'
+            GROUP BY r.referred_by
+            ORDER BY actual_refs DESC
         `).all();
 
-        const totalReferrals = db.prepare('SELECT COUNT(*) as c FROM users WHERE referred_by IS NOT NULL AND referred_by != ""').get().c;
+        const totalReferrals = db.prepare('SELECT COUNT(*) as c FROM users WHERE referred_by IS NOT NULL AND referred_by != "" AND referred_by != "0"').get().c;
         const totalRefEarned = db.prepare('SELECT COALESCE(SUM(referral_earned), 0) as s FROM users').get().s;
 
-        console.log(`[Admin] Referrals API: found ${referrers.length} referrers. Total ref count in DB: ${totalReferrals}`);
+        console.log(`[Admin] Referrals API: found ${referrers.length} unique referrers. Total ref count: ${totalReferrals}`);
         res.secure({ referrers, totalReferrals, totalRefEarned });
     } catch (e) {
         console.error('[Admin] Referrals error:', e.message);
