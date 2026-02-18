@@ -383,12 +383,10 @@ window.goToPayment = async function () {
             // Using window.location.href to avoid WEBAPP_TG_URL_INVALID with ton:// protocol
             window.location.href = res.link;
 
-            // Show toast and close app after delay to allow protocol handler to fire
+            // Show toast and leave the app open (allows returning to it later)
             toast('Открываем кошелек...', 'info');
-            if (tg) setTimeout(() => { tg.close(); }, 1500);
         } else {
             toast('Заявка создана. Проверьте сообщения в боте.', 'success');
-            if (tg) setTimeout(() => { tg.close(); }, 1200);
         }
     } catch (e) {
         toast(e.message, 'error');
