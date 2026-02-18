@@ -1670,7 +1670,8 @@ function renderPlinko() {
         const h = plinkoCanvas.height;
         plinkoCtx.clearRect(0, 0, w, h);
 
-        const rowGap = (h - 60) / (PLINKO_ROWS + 1);
+        const topPad = 55;
+        const rowGap = (h - 80) / (PLINKO_ROWS + 1);
         const colGap = w / (PLINKO_ROWS + 2);
         const slotWidth = w / PLINKO_MULTIS.length;
 
@@ -1678,7 +1679,7 @@ function renderPlinko() {
         function pegPos(row, col) {
             const rowCols = row + 1;
             const startX = (w - (rowCols - 1) * colGap) / 2;
-            return { x: startX + col * colGap, y: 40 + row * rowGap };
+            return { x: startX + col * colGap, y: topPad + row * rowGap };
         }
 
         // Draw drop indicator
@@ -1692,7 +1693,7 @@ function renderPlinko() {
         // Draw Pegs
         plinkoCtx.fillStyle = 'rgba(255,255,255,0.2)';
         for (let r = 1; r <= PLINKO_ROWS; r++) {
-            const rowY = 40 + r * rowGap;
+            const rowY = topPad + r * rowGap;
             const rowCols = r + 1;
             const startX = (w - (rowCols - 1) * colGap) / 2;
             for (let c = 0; c < rowCols; c++) {
@@ -1714,14 +1715,14 @@ function renderPlinko() {
 
         // --- Ball animation (deterministic path interpolation) ---
         const now = performance.now();
-        const STEP_MS = 180;
-        const LAND_MS = 120;
+        const STEP_MS = 250;
+        const LAND_MS = 180;
 
         plinkoBalls = plinkoBalls.filter(ball => {
             // Build waypoints once on first frame
             if (!ball._startTime) {
                 ball._startTime = now;
-                ball._waypoints = [{ x: ball.x, y: 20 }];
+                ball._waypoints = [{ x: ball.x, y: topPad - 20 }];
 
                 // Find nearest col in row 1
                 let col = 0;
@@ -1770,10 +1771,12 @@ function renderPlinko() {
                 const t = Math.min(sf - si, 1);
                 const from = ball._waypoints[si], to = ball._waypoints[si + 1];
                 if (from && to) {
-                    const e = 1 - Math.pow(1 - t, 2.5);
+                    // Smooth cubic ease-in-out
+                    const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
                     ball.x = from.x + (to.x - from.x) * e;
                     ball.y = from.y + (to.y - from.y) * e;
-                    if (t < 0.25 && si > 0) ball.y -= Math.sin(t / 0.25 * Math.PI) * 4;
+                    // Gentle bounce at peg
+                    if (t < 0.2 && si > 0) ball.y -= Math.sin(t / 0.2 * Math.PI) * 2.5;
                 }
             }
 
