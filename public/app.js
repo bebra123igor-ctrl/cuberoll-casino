@@ -40,7 +40,6 @@ window.confirmBetAction = null;
 window.openStats = () => window.switchTab('invite');
 
 window.switchTab = function (tab) {
-    console.log('[Tab] Switching to', tab);
     activeTab = tab;
 
     if (tab === 'leaderboard') { openLeaderboard(); return; }
@@ -366,38 +365,33 @@ window.connectWallet = async function () {
 
 window.goToPayment = async function () {
     const valEl = document.getElementById('dep-amount');
-    if (!valEl) return toast('Interface Error', 'error');
+    if (!valEl) return;
     const amount = parseFloat(valEl.value);
-    if (isNaN(amount) || amount < 0.01) return toast('Минимум 0.01 TON', 'error');
+    const min = (settings && settings.minDeposit) || 0.001;
+    if (isNaN(amount) || amount < min) return toast(`Минимум ${min} TON`, 'error');
 
     try {
         const btn = document.getElementById('deposit-link');
         if (btn) {
-            btn.innerText = 'ОЖИДАЙТЕ...';
+            btn.innerText = 'ПРОВЕРКА...';
             btn.style.pointerEvents = 'none';
-            btn.style.opacity = '0.6';
         }
 
         await api('/api/deposit/request', 'POST', { amount });
 
-        toast('Ссылка на оплату отправлена вам в боте!', 'success');
+        toast('Ссылка отправлена в чат!', 'success');
 
-        setTimeout(() => {
-            if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.close();
-            }
-        }, 2000);
-
+        if (tg) {
+            setTimeout(() => { tg.close(); }, 500);
+        }
     } catch (e) {
         toast(e.message, 'error');
         const btn = document.getElementById('deposit-link');
         if (btn) {
             btn.innerText = 'ОПЛАТИТЬ';
             btn.style.pointerEvents = 'auto';
-            btn.style.opacity = '1';
         }
     }
-    return false;
 };
 
 

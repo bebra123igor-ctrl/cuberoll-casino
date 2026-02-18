@@ -69,8 +69,6 @@ app.use(express.json());
 
 // Обычное "шифрование" для "обычных смертных"
 const _SEC_KEY = 'cuberoll';
-// DEPLOYMENT TRIGGER: 2026-02-14 20:12
-console.log('--- SITE INITIALIZING ---');
 app.use((req, res, next) => {
     res.secure = (data) => {
         const str = JSON.stringify(data);
@@ -191,7 +189,7 @@ app.post('/api/auth', auth, (req, res) => {
             minBet: parseFloat(settingsOps.get('min_bet') || '0.1'),
             maxBet: parseFloat(settingsOps.get('max_bet') || '100'),
             tonWallet: settingsOps.get('ton_wallet'),
-            minDeposit: parseFloat(settingsOps.get('min_deposit') || '0.1')
+            minDeposit: parseFloat(settingsOps.get('min_deposit') || '0.001')
         },
         isAdmin: ADMIN_IDS.includes(u.id)
     });
@@ -860,9 +858,7 @@ app.post('/api/user/auto-cashout', auth, (req, res) => {
 app.post('/api/deposit/request', auth, (req, res) => {
     const { amount } = req.body;
     const amt = parseFloat(amount);
-    let minDep = parseFloat(settingsOps.get('min_deposit') || 0.01);
-    // Force lower if user requested
-    if (minDep > 0.01) minDep = 0.01;
+    let minDep = parseFloat(settingsOps.get('min_deposit') || 0.001);
 
     if (isNaN(amt) || amt < minDep) return res.status(400).secure({ error: `Минимум: ${minDep} TON` });
 
