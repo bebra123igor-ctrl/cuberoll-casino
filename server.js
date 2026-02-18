@@ -1360,9 +1360,9 @@ app.get('/api/admin/referrals/:id', auth, adminOnly, (req, res) => {
         const refIdStr = req.params.id; // Could be ID or Code
         const referrer = db.prepare('SELECT * FROM users WHERE CAST(telegram_id AS TEXT) = CAST(? AS TEXT) OR referral_code = ?').get(refIdStr, refIdStr);
 
-        // We look for everyone whose referred_by matches this person's ID or their Code
+        // Match by any variation: TRIM + CAST for both ID and Code
         const idToMatch = referrer ? referrer.telegram_id : refIdStr;
-        const codeToMatch = referrer ? referrer.referral_code : refIdStr;
+        const codeToMatch = (referrer && referrer.referral_code) ? referrer.referral_code : refIdStr;
 
         const referrals = db.prepare(`
             SELECT u.telegram_id, u.username, u.first_name, u.balance,
@@ -1371,10 +1371,10 @@ app.get('/api/admin/referrals/:id', auth, adminOnly, (req, res) => {
                    COALESCE((SELECT SUM(amount) FROM transactions WHERE telegram_id = u.telegram_id AND type = 'withdrawal'), 0) as total_withdrawals,
                    u.created_at
             FROM users u
-            WHERE CAST(u.referred_by AS TEXT) = CAST(? AS TEXT)
-               OR (u.referred_by = ?)
+            WHERE TRIM(CAST(u.referred_by AS TEXT)) = TRIM(CAST(? AS TEXT))
+               OR (TRIM(CAST(u.referred_by AS TEXT)) = TRIM(CAST(? AS TEXT)))
             ORDER BY u.created_at DESC
-        `).all(idToMatch, codeToMatch);
+        `).all(String(idToMatch), String(codeToMatch));
 
         // Calculate net profit per referral (for the house)
         const detailedRefs = referrals.map(r => ({
