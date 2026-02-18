@@ -352,24 +352,52 @@ function copyReferralLink() {
     });
 }
 
-window.goToPayment = function () {
+window.connectWallet = async function () {
+    if (!window.TON_CONNECT_UI) return toast('Wallet UI not loaded', 'error');
+    if (!tonConnectUI) return toast('Initializing wallet...', 'info');
+    try {
+        if (!tonConnectUI.connected) {
+            await tonConnectUI.openModal();
+        } else {
+            await tonConnectUI.disconnect();
+        }
+    } catch (e) { console.error('Wallet error:', e); }
+};
+
+window.goToPayment = async function () {
     const valEl = document.getElementById('dep-amount');
     if (!valEl) return toast('Interface Error (dep-amount)', 'error');
     const amount = parseFloat(valEl.value);
     if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
 
-    const settings = window.appSettings || {};
-    const address = settings.walletAddress || 'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7';
+    if (!userWalletAddress) {
+        return toast('Сначала подключите кошелек (иконка кошелька вверху)', 'error');
+    }
+
+    if (!window.TonWeb) return toast('TonWeb not loaded', 'error');
+
+    const address = (window.appSettings && window.appSettings.walletAddress) || 'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7';
     const rnd = Math.floor(100000000 + Math.random() * 900000000);
     const comment = `deposit_${rnd}`;
-    const nano = Math.round(amount * 1e9).toString();
 
-    const link = `ton://transfer/${address}?amount=${nano}&text=${encodeURIComponent(comment)}`;
+    // Пакет TON Connect (как был 16 февраля)
+    try {
+        const transaction = {
+            validUntil: Math.floor(Date.now() / 1000) + 600,
+            messages: [
+                {
+                    address: address,
+                    amount: (amount * 1e9).toFixed(0),
+                    payload: TonWeb.utils.bytesToBase64(new TonWeb.boc.Cell().writeString(comment).toUint8Array())
+                }
+            ]
+        };
 
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
-        window.Telegram.WebApp.openLink(link);
-    } else {
-        window.location.href = link;
+        await tonConnectUI.sendTransaction(transaction);
+        toast('Транзакция отправлена на подпись!', 'success');
+    } catch (e) {
+        toast('Ошибка или отмена транзакции', 'error');
+        console.error('Payment error:', e);
     }
 };
 
