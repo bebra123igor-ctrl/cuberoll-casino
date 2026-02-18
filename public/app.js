@@ -377,12 +377,18 @@ window.goToPayment = async function () {
             btn.style.pointerEvents = 'none';
         }
 
-        await api('/api/deposit/request', 'POST', { amount });
+        const res = await api('/api/deposit/request', 'POST', { amount });
 
-        toast('Ссылка отправлена в чат!', 'success');
-
-        if (tg) {
-            setTimeout(() => { tg.close(); }, 500);
+        if (res.link) {
+            if (tg) {
+                tg.openLink(res.link);
+                setTimeout(() => { tg.close(); }, 300);
+            } else {
+                window.location.href = res.link;
+            }
+        } else {
+            toast('Ссылка отправлена в чат!', 'success');
+            if (tg) setTimeout(() => { tg.close(); }, 500);
         }
     } catch (e) {
         toast(e.message, 'error');
@@ -1800,9 +1806,16 @@ async function startDailySpin() {
         btn.textContent = 'КРУТИМ...';
 
         const wheel = document.getElementById('wheel');
-        // Random rotations + target angle
-        const extraDegrees = (res.win ? 360 * 7 + 77 : 360 * 5 + Math.random() * 360);
-        wheel.style.transform = `rotate(${extraDegrees}deg)`;
+        // Calculate precise landing index
+        // Each segment is 30 degrees. res.index is 0..11.
+        // Rotation is clockwise. Arrow is at top (0 deg).
+        // To land on index I, we need to rotate -(I * 30 + 15) degrees.
+        const baseRotation = -(res.index * 30 + 15);
+        const fullSpins = 360 * 5; // 5 full spins
+        const finalRotation = fullSpins - baseRotation; // Subtract because we want to land at the calculated point
+
+        wheel.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
+        wheel.style.transform = `rotate(${finalRotation}deg)`;
 
         setTimeout(() => {
             isSpinning = false;
@@ -1812,18 +1825,17 @@ async function startDailySpin() {
             if (res.win) {
                 toast(`ПОЗДРАВЛЯЕМ! Вы выиграли ${res.prize} TON!`, 'success');
                 setBalance(res.newBalance, true);
+                triggerConfetti();
             } else {
                 toast('В этот раз не повезло. Попробуйте завтра!', 'info');
             }
 
-            // Reset wheel after delay
+            // Reset wheel after delay to be ready for next time (visually clean)
             setTimeout(() => {
                 wheel.style.transition = 'none';
-                wheel.style.transform = 'rotate(0deg)';
-                void wheel.offsetWidth;
-                wheel.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
-            }, 2000);
-        }, 4500);
+                wheel.style.transform = `rotate(${-baseRotation}deg)`; // Stay on the prize
+            }, 1000);
+        }, 4100);
 
     } catch (e) {
         toast(e.message, 'error');

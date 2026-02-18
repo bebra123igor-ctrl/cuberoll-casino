@@ -236,6 +236,8 @@ app.post('/api/bet', auth, async (req, res) => {
         console.log(`[Game] User ${u.id} betting with gift ${item.title} (Value: ${amt} TON)`);
     } else {
         amt = Math.round(parseFloat(betAmount) * 1e9) / 1e9;
+        const minBet = parseFloat(settingsOps.get('min_bet') || '0.1');
+        if (isNaN(amt) || amt < minBet) return res.status(400).secure({ error: `Минимум: ${minBet} TON` });
         if (amt > user.balance + 0.000000001) return res.status(400).secure({ error: 'Insufficient balance' });
     }
 
@@ -823,28 +825,42 @@ app.post('/api/daily-spin', auth, (req, res) => {
         const last = new Date(user.last_daily_spin);
         const diff = now - last;
         if (diff < 24 * 60 * 60 * 1000) {
-            return res.status(400).secure({ error: 'Retry in ' + Math.ceil((24 * 60 * 60 * 1000 - diff) / 3600000) + 'h' });
+            const rem = 24 * 60 * 60 * 1000 - diff;
+            const h = Math.floor(rem / 3600000);
+            const m = Math.floor((rem % 3600000) / 60000);
+            return res.status(400).secure({ error: `Вернитесь через ${h}ч ${m}м` });
         }
     }
 
-    // Almost impossible logic: 1 in 1000
-    const roll = Math.floor(Math.random() * 1000);
-    let prize = 0;
-    let win = false;
+    // Prizes matching Frontend initWheelLabels
+    // ['0.01', '💀', '0.05', '💀', '0.1', '💀', '0.5', '💀', '1.0', '💀', '10.0', '💀']
+    const prizes = [0.01, 0, 0.05, 0, 0.1, 0, 0.5, 0, 1.0, 0, 10.0, 0];
 
-    if (roll === 777) {
-        prize = 10; // Big prize
-        win = true;
-    } else if (roll < 5) {
-        prize = 1; // Small prize
-        win = true;
+    // Weighted probabilities (total 1000)
+    // 0: 0.01 (300/1000), 1: 💀 (200/1000), 2: 0.05 (150/1000), 3: 💀 (100/1000), 
+    // 4: 0.1 (80/1000), 5: 💀 (70/1000), 6: 0.5 (50/1000), 7: 💀 (30/1000),
+    // 8: 1.0 (15/1000), 9: 💀 (4/1000), 10: 10.0 (1/1000), 11: 💀 (0/1000)
+    const weights = [300, 200, 150, 100, 80, 70, 50, 30, 15, 4, 1, 0];
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    const roll = Math.floor(Math.random() * totalWeight);
+
+    let current = 0, index = 0;
+    for (let i = 0; i < weights.length; i++) {
+        current += weights[i];
+        if (roll < current) {
+            index = i;
+            break;
+        }
     }
 
-    if (win) userOps.updateBalance(req.tgUser.id, prize, 'daily_spin_win', 'Won on wheel');
+    const prize = prizes[index];
+    const win = prize > 0;
+
+    if (win) userOps.updateBalance(req.tgUser.id, prize, 'daily_spin_win', 'Won on Wheel of Fortune');
 
     db.prepare("UPDATE users SET last_daily_spin = datetime('now') WHERE telegram_id = ?").run(req.tgUser.id);
 
-    res.secure({ roll, win, prize, newBalance: userOps.get(req.tgUser.id).balance });
+    res.secure({ index, win, prize, newBalance: userOps.get(req.tgUser.id).balance });
 });
 
 app.post('/api/user/auto-cashout', auth, (req, res) => {
