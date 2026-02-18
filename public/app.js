@@ -661,7 +661,7 @@ window.roll = async function () {
     const amt = parseFloat(betEl.value);
     if (betMode === 'ton') {
         if (isNaN(amt) || amt < 0.1) return toast('Мин. ставка 0.1 TON', 'error');
-        if (amt > user.balance) return toast('Недостаточно баланса', 'error');
+        if (!window.demoMode && amt > user.balance) return toast('Недостаточно баланса', 'error');
     } else {
         if (!selectedGift) return toast('Выберите подарок', 'error');
     }
@@ -1689,7 +1689,7 @@ async function plinkoDrop() {
     } else {
         const amt = parseFloat(document.getElementById('bet-amount').value);
         if (isNaN(amt) || amt < 0.1) return toast('Минимум 0.1 TON', 'error');
-        if (amt > user.balance) return toast('Недостаточно баланса', 'error');
+        if (!window.demoMode && amt > user.balance) return toast('Недостаточно баланса', 'error');
         payload.betAmount = amt;
     }
 
@@ -2459,6 +2459,8 @@ function renderHide() {
 
             // Mark visited houses immediately as killer passes them
             if (!hideStatus._visitedHouses) hideStatus._visitedHouses = new Set();
+            const oldVisitedCount = hideStatus._visitedHouses.size;
+
             const rawProgress = Math.min(elapsed / totalDuration, 1);
             // Ease-out for gravity feel
             const progress = rawProgress * (2 - rawProgress);
@@ -2475,8 +2477,10 @@ function renderHide() {
                 hideStatus._visitedHouses.add(targets[si + 1]);
             }
 
-            // Re-render rooms with updated hit status
-            renderRoomsList();
+            // Re-render rooms list ONLY when a new house is hit
+            if (hideStatus._visitedHouses.size !== oldVisitedCount) {
+                renderRoomsList();
+            }
 
             // Catmull-Rom spline for smooth path
             const wp = waypoints;
