@@ -1,4 +1,5 @@
 // cuberoll frontend
+window.demoMode = false;
 // TonWeb Safety Helper - Ensure library is available
 function getTonWeb() {
     if (window.tonweb) return window.tonweb;
@@ -673,6 +674,36 @@ window.roll = async function () {
     try {
         const activeBtn = document.querySelector('.bet-type-btn.active');
         const bType = activeBtn ? activeBtn.dataset.bet : 'high';
+
+        // DEMO MODE: simulate locally
+        if (window.demoMode) {
+            const d1 = Math.floor(Math.random() * 6) + 1;
+            const d2 = Math.floor(Math.random() * 6) + 1;
+            const total = d1 + d2;
+            let won = false;
+            let mult = 1.95;
+            if (bType === 'high') won = total >= 8;
+            else if (bType === 'low') won = total <= 6;
+            else if (bType === 'even') won = total % 2 === 0;
+            else if (bType === 'odd') won = total % 2 !== 0;
+            else if (bType === 'exact') {
+                won = total === exactNum;
+                const exactMults = { 2: 18, 3: 12, 4: 9, 5: 7.2, 6: 6, 7: 5.14, 8: 6, 9: 7.2, 10: 9, 11: 12, 12: 18 };
+                mult = exactMults[exactNum] || 6;
+            }
+            const payout = won ? amt * mult : 0;
+
+            if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
+            animateDice([d1, d2]);
+
+            setTimeout(() => {
+                showResult({ won, betAmount: amt, payout, multiplier: won ? mult : 0, dice: [d1, d2] });
+                toast('🎮 ДЕМО — баланс не изменён', 'info');
+                rolling = false;
+                if (rollBtn) rollBtn.disabled = false;
+            }, 1200);
+            return;
+        }
 
         const payload = {
             betAmount: amt,
@@ -1664,6 +1695,50 @@ async function plinkoDrop() {
 
     try {
         const dropX = window.plinkoDropX || 0.5;
+
+        // DEMO MODE: simulate locally
+        if (window.demoMode) {
+            const path = [];
+            let currentSlot = Math.floor(dropX * PLINKO_ROWS);
+            // Better slot calculation: bits are directions. 
+            // 0 = left, 1 = right. 
+            for (let i = 0; i < PLINKO_ROWS; i++) {
+                const bit = Math.random() > 0.5 ? 1 : 0;
+                path.push(bit);
+            }
+
+            // Calculate final slot based on path
+            let slot = Math.floor(dropX * (PLINKO_ROWS + 1));
+            path.forEach(dir => { if (dir === 1) slot++; else slot--; });
+            // Clamp slot
+            slot = Math.max(0, Math.min(PLINKO_ROWS, Math.floor(slot / 2) + Math.floor(PLINKO_ROWS / 2)));
+            // Wait, standard plinko slot logic is simple: count of 'rights' (1s)
+            let rights = 0;
+            path.forEach(b => { if (b === 1) rights++; });
+            slot = rights;
+
+            const multiplier = PLINKO_MULTIS[slot] || 0;
+            const amt = payload.betAmount || 0;
+            const payout = amt * multiplier;
+
+            plinkoBalls = plinkoBalls.filter(b => !b.landed);
+            const ball = {
+                x: plinkoCanvas.width * dropX,
+                y: 20,
+                path: path,
+                targetSlot: slot,
+                payout: payout,
+                betAmount: amt,
+                multiplier: multiplier,
+                dieValue: Math.floor(Math.random() * 6) + 1,
+                landed: false,
+                isDemo: true
+            };
+            plinkoBalls.push(ball);
+            toast('🎮 ДЕМО — баланс не изменён', 'info');
+            return;
+        }
+
         const res = await api('/api/plinko/bet', 'POST', { x: dropX, ...payload });
 
         // Update balance IMMEDIATELY to prevent 'insufficient balance' on rapid drops
@@ -2094,6 +2169,13 @@ window.openBetModal = function (game) {
 
     modal.classList.remove('hidden');
 
+    // Show/Hide demo toggle exclusively for Dice/Plinko
+    const demoToggle = document.getElementById('demo-toggle-wrap');
+    if (demoToggle) {
+        if (game === 'dice' || game === 'plinko') demoToggle.style.display = 'flex';
+        else demoToggle.style.display = 'none';
+    }
+
     // Config modal for game
     const diceArea = document.getElementById('dice-options-area');
     if (diceArea) {
@@ -2162,6 +2244,7 @@ let hideCanvas = null;
 let hideCtx = null;
 let hideAnimId = null;
 let lastHidePhase = null;
+let lastHideStatusUpdate = 0;
 
 function startHidePolling() {
     if (hidePolling) return;
@@ -2177,7 +2260,9 @@ function stopHidePolling() {
 
 async function pollHide() {
     try {
-        hideStatus = await api('/api/hide/status');
+        const data = await api('/api/hide/status');
+        hideStatus = data;
+        lastHideStatusUpdate = Date.now();
         updateHideUI();
     } catch (e) { }
 }
@@ -2359,7 +2444,10 @@ function renderHide() {
 
         if (hideStatus.phase === 'SEARCHING') {
             const totalDuration = 9;
-            const elapsed = totalDuration - hideStatus.timeLeft;
+            // Use client-side interpolation for smooth movement
+            const timeSinceUpdate = (Date.now() - lastHideStatusUpdate) / 1000;
+            const smoothRemainingTime = Math.max(0, hideStatus.timeLeft - timeSinceUpdate);
+            const elapsed = totalDuration - smoothRemainingTime;
             const targets = hideStatus.killerTargets || [];
             if (targets.length === 0) { hideAnimId = requestAnimationFrame(renderHide); return; }
 
