@@ -364,42 +364,40 @@ window.connectWallet = async function () {
     } catch (e) { console.error('Wallet error:', e); }
 };
 
-/** Reactively update the native link for TON transfer. This bypasses many JS blockers. */
-window.syncDepositLink = function () {
+window.goToPayment = async function () {
     const valEl = document.getElementById('dep-amount');
-    const linkEl = document.getElementById('deposit-link');
-    if (!valEl || !linkEl) return;
-
-    const amount = parseFloat(valEl.value) || 0;
-    const address = (window.appSettings && window.appSettings.tonWallet) || 'UQCCy-dvxLvZ8f4_ifO0PqavqPMGJkuONSf6WZNvPU3M0eQf';
-
-    // We use a sticky comment for the CURRENT input session to avoid link changes on every digit
-    if (!window.currentDepositComment) window.currentDepositComment = `deposit_${Math.floor(Date.now() / 1000)}`;
-    const comment = window.currentDepositComment;
-
-    const nano = Math.round(amount * 1e9).toString();
-    const link = `ton://transfer/${address}?amount=${nano}&text=${encodeURIComponent(comment)}`;
-
-    linkEl.href = link;
-
-    // Update labels too
-    const mAddr = document.getElementById('manual-addr');
-    const mComm = document.getElementById('manual-comm');
-    if (mAddr) mAddr.textContent = address;
-    if (mComm) mComm.textContent = comment;
-};
-
-window.goToPayment = function () {
-    // If validation fails, we stop the link click
-    const valEl = document.getElementById('dep-amount');
+    if (!valEl) return toast('Interface Error', 'error');
     const amount = parseFloat(valEl.value);
-    if (!amount || amount < 0.01) {
-        toast('Минимум 0.01 TON', 'error');
-        return false;
+    if (isNaN(amount) || amount < 0.01) return toast('Минимум 0.01 TON', 'error');
+
+    try {
+        const btn = document.getElementById('deposit-link');
+        if (btn) {
+            btn.innerText = 'ОЖИДАЙТЕ...';
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.6';
+        }
+
+        await api('/api/deposit/request', 'POST', { amount });
+
+        toast('Ссылка на оплату отправлена вам в боте!', 'success');
+
+        setTimeout(() => {
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.close();
+            }
+        }, 2000);
+
+    } catch (e) {
+        toast(e.message, 'error');
+        const btn = document.getElementById('deposit-link');
+        if (btn) {
+            btn.innerText = 'ОПЛАТИТЬ';
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+        }
     }
-    // Record that we tried
-    console.log('[Payment] Opening link:', document.getElementById('deposit-link').href);
-    return true;
+    return false;
 };
 
 
@@ -981,13 +979,6 @@ async function refreshBalance() {
         setBalance(user.balance);
     } catch (e) { }
 }
-
-window.connectWallet = async function () {
-    try {
-        if (tonConnectUI.connected) await tonConnectUI.disconnect();
-        else await tonConnectUI.openModal();
-    } catch (e) { toast('Ошибка привязки', 'error'); }
-};
 
 async function loadHistory() {
     try {

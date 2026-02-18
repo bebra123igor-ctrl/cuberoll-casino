@@ -580,37 +580,8 @@
                     транзакции.</p>
                 </div>
 
-                <a id="deposit-link" href="#" onclick="return window.goToPayment()" class="claim-btn-premium"
+                <a id="deposit-link" href="javascript:void(0)" onclick="window.goToPayment()" class="claim-btn-premium"
                   style="display: block; width: 100%; margin-top: 20px; border-radius: 18px; text-decoration: none; text-align: center; line-height: 48px; border: none; outline: none; -webkit-tap-highlight-color: transparent;">ОПЛАТИТЬ</a>
-
-                <!-- Backup Manual Copy -->
-                <div
-                  style="margin-top: 15px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 14px; border: 1px solid var(--border);">
-                  <div style="font-size: 9px; opacity: 0.5; margin-bottom: 8px; text-align: center;">НЕ СРАБОТАЛА
-                    КНОПКА? СКОПИРУЙТЕ ДАННЫЕ:</div>
-                  <div style="margin-bottom: 8px;">
-                    <div
-                      style="display: flex; justify-content: space-between; font-size: 8px; opacity: 0.6; margin-bottom: 2px;">
-                      <span>АДРЕС ПОЛУЧАТЕЛЯ</span> <span
-                        onclick="navigator.clipboard.writeText(document.getElementById('manual-addr').textContent); toast('Скопировано')"
-                        style="color:var(--gold); cursor: pointer;">COPY</span>
-                    </div>
-                    <div id="manual-addr"
-                      style="font-size: 9px; background: #000; padding: 8px; border-radius: 8px; word-break: break-all; border: 1px solid rgba(255,255,255,0.05);">
-                      UQCCy-dvxLvZ8f4_ifO0PqavqPMGJkuONSf6WZNvPU3M0eQf</div>
-                  </div>
-                  <div>
-                    <div
-                      style="display: flex; justify-content: space-between; font-size: 8px; opacity: 0.6; margin-bottom: 2px;">
-                      <span>КОММЕНТАРИЙ</span> <span
-                        onclick="navigator.clipboard.writeText(document.getElementById('manual-comm').textContent); toast('Скопировано')"
-                        style="color:var(--gold); cursor: pointer;">COPY</span>
-                    </div>
-                    <div id="manual-comm"
-                      style="font-size: 9px; background: #000; padding: 8px; border-radius: 8px; color: var(--gold); border: 1px solid rgba(255,255,255,0.05);">
-                      ... (нажмите оплатить)</div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

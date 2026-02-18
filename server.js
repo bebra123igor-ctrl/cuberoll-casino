@@ -878,7 +878,29 @@ app.post('/api/deposit/request', auth, (req, res) => {
     if (!wallet || wallet.includes('...') || wallet === 'UQ...') {
         return res.status(500).secure({ error: 'Admin wallet address is not configured yet.' });
     }
-    res.secure({ comment, address: wallet });
+
+    const nano = Math.round(amt * 1e9).toString();
+    const link = `ton://transfer/${wallet}?amount=${nano}&text=${encodeURIComponent(comment)}`;
+
+    // Send BOT message for direct payment
+    if (bot) {
+        bot.sendMessage(req.tgUser.id,
+            `💰 *Заявка на пополнение*\n\n` +
+            `💵 Сумма: *${amt.toFixed(2)} TON*\n` +
+            `📝 Комментарий: \`${comment}\`\n\n` +
+            `Нажмите на кнопку ниже, чтобы перейти к оплате в TON кошельке.`,
+            {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '💎 ОПЛАТИТЬ (Direct Link)', url: link }]
+                    ]
+                }
+            }
+        ).catch(e => console.error('[Bot] Send payment error:', e.message));
+    }
+
+    res.secure({ success: true, comment, address: wallet, link });
 });
 
 app.get('/api/deposit/check', auth, (req, res) => {
