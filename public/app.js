@@ -380,15 +380,15 @@ window.goToPayment = async function () {
         const res = await api('/api/deposit/request', 'POST', { amount });
 
         if (res.link) {
-            // Using window.location.href for ton:// protocol as tg.openLink only likes http/https
-            window.location.href = res.link;
-
-            // Give user time to see success toast or for browser to trigger protocol handler
-            toast('Открываем кошелек...', 'info');
-            if (tg) setTimeout(() => { tg.close(); }, 2000);
+            if (tg) {
+                tg.openLink(res.link);
+                setTimeout(() => { tg.close(); }, 300);
+            } else {
+                window.location.href = res.link;
+            }
         } else {
             toast('Ссылка отправлена в чат!', 'success');
-            if (tg) setTimeout(() => { tg.close(); }, 1500);
+            if (tg) setTimeout(() => { tg.close(); }, 500);
         }
     } catch (e) {
         toast(e.message, 'error');
@@ -1806,14 +1806,16 @@ async function startDailySpin() {
         btn.textContent = 'КРУТИМ...';
 
         const wheel = document.getElementById('wheel');
-        // Perfect Landing Logic:
-        // Segment 0 center is at 15deg. To move it to top (0deg), we rotate wheel -15deg (or 345deg).
-        // For index I, center is at (I * 30 + 15). To move to top, rotate 360 - (I * 30 + 15).
-        const rotationToTop = (360 - (res.index * 30 + 15)) % 360;
-        const totalRotation = (360 * 5) + rotationToTop;
+        // Calculate precise landing index
+        // Each segment is 30 degrees. res.index is 0..11.
+        // Rotation is clockwise. Arrow is at top (0 deg).
+        // To land on index I, we need to rotate -(I * 30 + 15) degrees.
+        const baseRotation = -(res.index * 30 + 15);
+        const fullSpins = 360 * 5; // 5 full spins
+        const finalRotation = fullSpins - baseRotation; // Subtract because we want to land at the calculated point
 
         wheel.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
-        wheel.style.transform = `rotate(${totalRotation}deg)`;
+        wheel.style.transform = `rotate(${finalRotation}deg)`;
 
         setTimeout(() => {
             isSpinning = false;
@@ -1828,10 +1830,10 @@ async function startDailySpin() {
                 toast('В этот раз не повезло. Попробуйте завтра!', 'info');
             }
 
-            // Sync visual state for next spin start
+            // Reset wheel after delay to be ready for next time (visually clean)
             setTimeout(() => {
                 wheel.style.transition = 'none';
-                wheel.style.transform = `rotate(${rotationToTop}deg)`;
+                wheel.style.transform = `rotate(${-baseRotation}deg)`; // Stay on the prize
             }, 1000);
         }, 4100);
 
