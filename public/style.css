@@ -5339,3 +5339,38 @@ input:checked+.toggle-slider:before {
   color: var(--gold);
   font-weight: 800;
 }
+
+/* Referral Promo Banner */
+.referral-promo-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 183, 0, 0.12), rgba(255, 145, 0, 0.08));
+  border: 1px solid rgba(255, 183, 0, 0.25);
+}
+
+.referral-promo-banner .promo-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.referral-promo-banner .promo-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--t2);
+}
+
+.referral-promo-banner .promo-text b {
+  color: var(--gold);
+  font-size: 13px;
+}
+
+.referral-promo-banner .promo-text span {
+  color: var(--t4);
+  font-size: 11px;
+}

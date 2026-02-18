@@ -270,11 +270,41 @@ async function init() {
                     setBalance(user.balance);
 
                     // Update Referral Info
-                    const refLink = `https://t.me/CubeRollBot/play?startapp=${user.telegramId}`;
+                    const refCode = user.referralCode || user.telegramId;
+                    const refLink = `https://t.me/cuberoll_robot?start=ref_${refCode}`;
                     const refLinkEl = document.getElementById('referral-link');
                     if (refLinkEl) refLinkEl.textContent = refLink;
                     const refEarnedEl = document.getElementById('ref-earned-value');
                     if (refEarnedEl) refEarnedEl.textContent = (user.referralEarned || 0).toFixed(2) + ' TON';
+
+                    // Referral count
+                    const refCount = user.referralCount || 0;
+                    const refCountEl = document.getElementById('ref-count-value');
+                    if (refCountEl) refCountEl.textContent = `${refCount} чел.`;
+
+                    // Referral promo
+                    const promo = data.referralPromo;
+                    if (promo && promo.active) {
+                        const banner = document.getElementById('ref-promo-banner');
+                        if (banner) banner.style.display = 'flex';
+
+                        const progressWrap = document.getElementById('ref-progress-wrap');
+                        if (progressWrap && !user.referralBonusClaimed) {
+                            progressWrap.style.display = 'block';
+                            const pct = Math.min(refCount / promo.requiredReferrals * 100, 100);
+                            const bar = document.getElementById('ref-progress-bar');
+                            if (bar) bar.style.width = pct + '%';
+                            const label = document.getElementById('ref-progress-label');
+                            if (label) label.textContent = `${Math.min(refCount, promo.requiredReferrals)}/${promo.requiredReferrals}`;
+                        }
+                        if (user.referralBonusClaimed) {
+                            const banner2 = document.getElementById('ref-promo-banner');
+                            if (banner2) {
+                                banner2.querySelector('.promo-text b').textContent = '✅ Бонус 3 TON получен!';
+                                banner2.querySelector('.promo-text span').textContent = 'Спасибо за приглашения';
+                            }
+                        }
+                    }
 
                     // Update UI for Auto Cashout
                     const autoEl = document.getElementById('crash-auto-cashout');
@@ -350,6 +380,16 @@ function copyReferralLink() {
     navigator.clipboard.writeText(link).then(() => {
         toast('Ссылка скопирована!', 'success');
     });
+}
+
+function shareReferralLink() {
+    const link = document.getElementById('referral-link').textContent;
+    const text = '🎲 Играй в CubeRoll Casino и выигрывай TON! Присоединяйся по моей ссылке:';
+    if (window.Telegram?.WebApp?.openTelegramLink) {
+        window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`);
+    } else {
+        navigator.clipboard.writeText(link).then(() => toast('Ссылка скопирована!', 'success'));
+    }
 }
 
 window.connectWallet = async function () {

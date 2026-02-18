@@ -605,10 +605,36 @@
           <p>Получай <b>10%</b> с каждого <b>проигрыша</b> твоего реферала ПОЖИЗНЕННО!</p>
         </div>
 
+        <!-- Promo banner -->
+        <div id="ref-promo-banner" class="referral-promo-banner" style="display:none;">
+          <div class="promo-icon">🎁</div>
+          <div class="promo-text">
+            <b>АКЦИЯ: Пригласи 10 друзей — получи 3 TON!</b>
+            <span id="ref-promo-deadline">Действует до 22.02.2026</span>
+          </div>
+        </div>
+
         <div class="stats-grid" style="margin-bottom: 20px;">
+          <div class="stat-card">
+            <span class="stat-label">Приглашено</span>
+            <span class="stat-value" id="ref-count-value">0 / 10</span>
+          </div>
           <div class="stat-card">
             <span class="stat-label">Заработано</span>
             <span class="stat-value" id="ref-earned-value">0.00 TON</span>
+          </div>
+        </div>
+
+        <!-- Progress bar for referral bonus -->
+        <div id="ref-progress-wrap" style="margin-bottom: 20px; display:none;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t4);margin-bottom:6px;">
+            <span>Прогресс до бонуса</span>
+            <span id="ref-progress-label">0/10</span>
+          </div>
+          <div style="height:8px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden;">
+            <div id="ref-progress-bar"
+              style="height:100%;border-radius:4px;background:linear-gradient(90deg,var(--gold),#ff9100);width:0%;transition:width 0.5s ease;">
+            </div>
           </div>
         </div>
 
@@ -623,6 +649,10 @@
               </svg>
             </button>
           </div>
+          <button onclick="shareReferralLink()"
+            style="width:100%;margin-top:10px;padding:12px;border:none;border-radius:14px;background:linear-gradient(135deg,var(--gold),#ff9100);color:#000;font-weight:700;font-size:14px;cursor:pointer;">
+            📤 Поделиться ссылкой
+          </button>
         </div>
       </div>
     </div>

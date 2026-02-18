@@ -24,12 +24,28 @@ function isAdmin(id) {
 
 const WELCOME_IMG = `${WEBAPP}/welcome.png`; // Твоя картинка на хостинге
 
-bot.onText(/\/start/, async (msg) => {
+bot.onText(/\/start(.*)/, async (msg, match) => {
     const chatId = msg.chat.id;
     const u = msg.from;
+    const startParam = (match[1] || '').trim();
+
+    // Resolve referrer from start param
+    let referrerId = null;
+    if (startParam) {
+        if (startParam.startsWith('ref_')) {
+            const code = startParam.slice(4);
+            const referrer = userOps.getByReferralCode(code);
+            if (referrer && referrer.telegram_id !== u.id) {
+                referrerId = referrer.telegram_id;
+            }
+        } else {
+            const parsed = parseInt(startParam);
+            if (!isNaN(parsed) && parsed !== u.id) referrerId = parsed;
+        }
+    }
 
     try {
-        userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '');
+        userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '', referrerId);
     } catch (e) { }
 
     const caption = `👑 *CubeRoll Casino*\n\nПривет, ${u.first_name || 'игрок'}!\n\nИграй в кости и выигрывай TON. Самый честный софт на блокчейне.\n\nЖми кнопку ниже, чтобы начать!`;

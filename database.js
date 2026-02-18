@@ -152,7 +152,19 @@ try {
 } catch (e) { }
 
 try {
-  db.exec('ALTER TABLE users ADD COLUMN wallet_address TEXT DEFAULT NULL');
+  db.exec('ALTER TABLE users ADD COLUMN referral_code TEXT DEFAULT NULL');
+} catch (e) { }
+
+try {
+  db.exec('ALTER TABLE users ADD COLUMN referral_count INTEGER DEFAULT 0');
+} catch (e) { }
+
+try {
+  db.exec('ALTER TABLE users ADD COLUMN referral_bonus_claimed INTEGER DEFAULT 0');
+} catch (e) { }
+
+try {
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_referral_code ON users(referral_code)');
 } catch (e) { }
 
 // Marketplace Table
@@ -233,18 +245,61 @@ const userOps = {
       if (existing) {
         db.prepare('UPDATE users SET username = ?, first_name = ?, last_name = ?, last_active = datetime(\'now\') WHERE telegram_id = ?')
           .run(username || '', firstName || '', lastName || '', tgId);
+        // Generate referral code if missing
+        if (!existing.referral_code) {
+          const code = this.generateReferralCode();
+          db.prepare('UPDATE users SET referral_code = ? WHERE telegram_id = ?').run(code, tgId);
+        }
         return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
       }
 
-      console.log(`[DB] Creating new user: ${tgId} (${username}), referred by: ${referrerId}`);
-      db.prepare('INSERT INTO users (telegram_id, username, first_name, last_name, balance, referred_by) VALUES (?, ?, ?, ?, ?, ?)')
-        .run(tgId, username || '', firstName || '', lastName || '', startBal, referrerId);
+      const refCode = this.generateReferralCode();
+      console.log(`[DB] Creating new user: ${tgId} (${username}), referred by: ${referrerId}, code: ${refCode}`);
+      db.prepare('INSERT INTO users (telegram_id, username, first_name, last_name, balance, referred_by, referral_code) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .run(tgId, username || '', firstName || '', lastName || '', startBal, referrerId, refCode);
+
+      // Increment referrer's referral_count and check for bonus
+      if (referrerId && referrerId !== tgId) {
+        db.prepare('UPDATE users SET referral_count = referral_count + 1 WHERE telegram_id = ?').run(referrerId);
+        this.checkReferralBonus(referrerId);
+      }
 
       return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
     } catch (err) {
       console.error(`[DB Error] getOrCreate failed for user ${tgId}:`, err.message);
       return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
     }
+  },
+
+  generateReferralCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let code;
+    do {
+      code = '';
+      for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    } while (db.prepare('SELECT 1 FROM users WHERE referral_code = ?').get(code));
+    return code;
+  },
+
+  getByReferralCode(code) {
+    return db.prepare('SELECT * FROM users WHERE referral_code = ?').get(code);
+  },
+
+  checkReferralBonus(referrerId) {
+    const referrer = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(referrerId);
+    if (!referrer) return;
+    // Bonus: 3 TON for 10 referrals, only until 2026-02-22, claim once
+    const deadline = new Date('2026-02-22T23:59:59+03:00');
+    if (referrer.referral_count >= 10 && !referrer.referral_bonus_claimed && new Date() <= deadline) {
+      db.prepare('UPDATE users SET referral_bonus_claimed = 1 WHERE telegram_id = ?').run(referrerId);
+      this.updateBalance(referrerId, 3, 'referral_bonus', 'Бонус за 10 рефералов: +3 TON');
+      console.log(`[Referral] User ${referrerId} claimed 3 TON bonus for 10 referrals!`);
+    }
+  },
+
+  getReferralCount(tgId) {
+    const r = db.prepare('SELECT COUNT(*) as count FROM users WHERE referred_by = ?').get(tgId);
+    return r ? r.count : 0;
   },
 
   get(tgId) {

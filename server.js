@@ -169,12 +169,31 @@ const { logMonitor, monitoringLogs } = require('./logger');
 app.post('/api/auth', auth, (req, res) => {
     const u = req.tgUser;
     const { start_param } = req.body; // Telegram referral parameter
-    const referrerId = start_param ? parseInt(start_param) : null;
+
+    // Resolve referrer: support both "ref_CODE" and raw user ID
+    let referrerId = null;
+    if (start_param) {
+        if (start_param.startsWith('ref_')) {
+            const code = start_param.slice(4);
+            const referrer = userOps.getByReferralCode(code);
+            if (referrer && referrer.telegram_id !== u.id) {
+                referrerId = referrer.telegram_id;
+            }
+        } else {
+            const parsed = parseInt(start_param);
+            if (!isNaN(parsed) && parsed !== u.id) referrerId = parsed;
+        }
+    }
 
     const user = userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '', referrerId);
     if (user.is_banned) return res.status(403).secure({ error: 'Account is banned' });
 
     const s = getSeed(u.id);
+
+    // Referral promo active until 2026-02-22
+    const promoDeadline = new Date('2026-02-22T23:59:59+03:00');
+    const promoActive = new Date() <= promoDeadline;
+
     res.secure({
         user: {
             telegramId: user.telegram_id, username: user.username, firstName: user.first_name,
@@ -182,7 +201,10 @@ app.post('/api/auth', auth, (req, res) => {
             totalWagered: user.total_wagered, totalWon: user.total_won, totalLost: user.total_lost,
             lastDailyClaim: user.last_daily_claim, lastDailySpin: user.last_daily_spin,
             walletAddress: user.wallet_address, biggestWinMult: user.biggest_win_mult,
-            referralEarned: user.referral_earned, autoCashout: user.auto_cashout
+            referralEarned: user.referral_earned, autoCashout: user.auto_cashout,
+            referralCode: user.referral_code,
+            referralCount: user.referral_count || 0,
+            referralBonusClaimed: !!user.referral_bonus_claimed
         },
         seeds: s,
         settings: {
@@ -190,6 +212,12 @@ app.post('/api/auth', auth, (req, res) => {
             maxBet: parseFloat(settingsOps.get('max_bet') || '100'),
             tonWallet: settingsOps.get('ton_wallet'),
             minDeposit: parseFloat(settingsOps.get('min_deposit') || '0.001')
+        },
+        referralPromo: {
+            active: promoActive,
+            deadline: '22.02.2026',
+            bonus: 3,
+            requiredReferrals: 10
         },
         isAdmin: ADMIN_IDS.includes(u.id)
     });
