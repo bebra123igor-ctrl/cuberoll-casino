@@ -331,6 +331,7 @@ function toast(txt, type = 'info') {
 }
 
 function setBalance(val, anim = false) {
+    user.balance = val; // Always sync internal balance immediately
     const el = document.getElementById('balance-amount');
     if (!el) return;
     const old = parseFloat(el.textContent) || 0;
@@ -633,10 +634,12 @@ window.roll = async function () {
         if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
         animateDice(res.result.dice);
 
-        // Reset rolling flag after animation
+        // Update balance immediately to prevent 'insufficient balance' on rapid bets
+        user.balance = res.result.newBalance;
+
+        // Show result and animate balance after dice animation
         setTimeout(() => {
-            user.balance = res.result.newBalance;
-            setBalance(user.balance, true);
+            setBalance(res.result.newBalance, true);
             showResult(res.result);
             rolling = false;
             if (rollBtn) rollBtn.disabled = false;
@@ -1608,6 +1611,9 @@ async function plinkoDrop() {
     try {
         const dropX = window.plinkoDropX || 0.5;
         const res = await api('/api/plinko/bet', 'POST', { x: dropX, ...payload });
+
+        // Update balance IMMEDIATELY to prevent 'insufficient balance' on rapid drops
+        user.balance = res.result.newBalance;
 
         // Remove old landed balls to keep canvas clean
         plinkoBalls = plinkoBalls.filter(b => !b.landed);
