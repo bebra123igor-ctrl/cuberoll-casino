@@ -1736,7 +1736,13 @@ function renderPlinko() {
 
                 for (let i = 0; i < PLINKO_ROWS; i++) {
                     const pos = pegPos(i + 1, col);
-                    ball._waypoints.push({ x: pos.x + (Math.random() - 0.5) * 3, y: pos.y });
+                    // Ball deflects to the side of the peg, not through it
+                    const dir = ball.path[i] === 1 ? 1 : -1;
+                    const offsetX = dir * colGap * 0.35;
+                    ball._waypoints.push({
+                        x: pos.x + offsetX + (Math.random() - 0.5) * 2,
+                        y: pos.y + rowGap * 0.25
+                    });
                     if (ball.path[i] === 1) col++;
                 }
 
