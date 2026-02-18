@@ -37,10 +37,7 @@ window.closeModal = (id) => {
 };
 
 window.confirmBetAction = null;
-window.goToPayment = function () {
-    if (typeof window._goToPaymentImpl === 'function') window._goToPaymentImpl();
-    else if (window.toast) window.toast('Подготовка...', 'info');
-};
+window.openStats = () => window.switchTab('invite');
 
 window.switchTab = function (tab) {
     console.log('[Tab] Switching to', tab);
@@ -256,40 +253,17 @@ async function init() {
                         if (h) h.textContent = `Минимум: ${window.appSettings.minDeposit} TON`;
                     }
 
-                    function doDirectPay() {
+                    window.goToPayment = function () {
                         const val = document.getElementById('dep-amount').value;
                         const amount = parseFloat(val);
                         if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
 
-                        // Fallback address
                         const address = window.appSettings.walletAddress || 'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7';
-
                         const rnd = Math.floor(100000000 + Math.random() * 900000000);
                         const comment = `deposit_${rnd}`;
-                        const nano = Math.floor(amount * 1000000000).toString();
+                        const nano = Math.round(amount * 1e9).toString();
 
-                        // Standard ton:// link is often most reliable on mobile if openLink is used
                         const link = `ton://transfer/${address}?amount=${nano}&text=${encodeURIComponent(comment)}`;
-
-                        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
-                            window.Telegram.WebApp.openLink(link);
-                        } else {
-                            window.open(link, '_blank');
-                        }
-                    };
-                    window.directPay = doDirectPay;
-                    window._goToPaymentImpl = function () {
-                        const val = document.getElementById('dep-amount').value;
-                        const amount = parseFloat(val);
-                        if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
-
-                        const address = window.appSettings.walletAddress || 'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7';
-                        const rnd = Math.floor(100000000 + Math.random() * 900000000);
-                        const comment = `deposit_${rnd}`;
-                        const nano = Math.floor(amount * 1000000000).toString();
-
-                        // Use a pure URI for the wallet app
-                        const link = `ton://transfer/${address}?amount=${nano}&text=${comment}`;
 
                         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
                             window.Telegram.WebApp.openLink(link);
@@ -297,7 +271,6 @@ async function init() {
                             window.location.href = link;
                         }
                     };
-                    window.goToPayment = window._goToPaymentImpl;
 
                     document.getElementById('user-name').textContent = user.username || user.firstName || 'Player';
                     document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
@@ -377,15 +350,6 @@ function setBalance(val, anim = false) {
         void p.offsetWidth;
         p.classList.add(val > old ? 'pulse' : 'pulse-loss');
     }
-}
-
-function openStats() {
-    if (!user) return;
-    document.getElementById('stat-wagered').textContent = (user.totalWagered || 0).toFixed(2);
-    document.getElementById('stat-won').textContent = (user.totalWon || 0).toFixed(2);
-    document.getElementById('stat-lost').textContent = (user.totalLost || 0).toFixed(2);
-    document.getElementById('stat-max-mult').textContent = (user.biggestWinMult || 0).toFixed(2) + 'x';
-    document.getElementById('stats-modal').classList.remove('hidden');
 }
 
 function copyReferralLink() {
@@ -664,69 +628,6 @@ function setDiceFace(el, val) {
     el.style.transform = rotations[val] || rotations[1];
 }
 
-// --- GIFT BETTING LOGIC ---
-let selectedGiftForBet = null;
-
-window.setBetMode = function (mode) {
-    const tonBtn = document.getElementById('bet-mode-ton');
-    const giftBtn = document.getElementById('bet-mode-gifts');
-    const tonArea = document.getElementById('bet-ton-input-area');
-    const giftArea = document.getElementById('bet-gift-input-area');
-    const betInput = document.getElementById('bet-amount');
-
-    if (mode === 'ton') {
-        tonBtn.classList.add('active');
-        giftBtn.classList.remove('active');
-        tonArea.classList.remove('hidden');
-        giftArea.classList.add('hidden');
-        selectedGiftForBet = null;
-        betInput.disabled = false;
-        betInput.style.color = '';
-    } else {
-        tonBtn.classList.remove('active');
-        giftBtn.classList.add('active');
-        tonArea.classList.add('hidden');
-        giftArea.classList.remove('hidden');
-        loadInventoryForBet();
-    }
-};
-
-async function loadInventoryForBet() {
-    const list = document.getElementById('gift-selection-list');
-    list.innerHTML = '<div class="empty-state">...</div>';
-
-    try {
-        const { inventory } = await api('/api/inventory');
-        if (!inventory || inventory.length === 0) {
-            list.innerHTML = '<div style="grid-column: 1/-1; padding: 20px; text-align: center; font-size: 11px; opacity: 0.5;">Инвентарь пуст</div>';
-            return;
-        }
-
-        list.innerHTML = inventory.map(item => `
-            <div class="gift-select-card" onclick="setBetGift(${item.instance_id}, '${item.title.replace(/'/g, "\\'")}', ${item.price}, this)">
-                <div class="gift-avatar"><img src="${getGiftImg(item.model)}" alt=""></div>
-                <div class="gift-title">${item.title}</div>
-                <div class="gift-cost">${item.price} TON</div>
-            </div>
-        `).join('');
-    } catch (e) {
-        list.innerHTML = '<div class="empty-state">Ошибка</div>';
-    }
-}
-
-window.setBetGift = function (instanceId, title, price, el) {
-    document.querySelectorAll('.gift-select-card').forEach(c => c.classList.remove('active'));
-    if (el) el.classList.add('active');
-
-    selectedGiftForBet = { instanceId, title, price };
-    const betInput = document.getElementById('bet-amount');
-    if (betInput) {
-        betInput.value = price;
-        betInput.disabled = true;
-        betInput.style.color = 'var(--gold)';
-    }
-    toast(`Выбран: ${title}`, 'success');
-};
 
 function getGiftImg(model) {
     if (!model) return 'https://i.imgur.com/8YvYyZp.png';
@@ -735,11 +636,10 @@ function getGiftImg(model) {
 }
 
 function getGiftLink(id) {
-    // If ID is missing or looks like a placeholder, link to general collection
     if (!id || id === 'undefined') return 'https://t.me/nft/gift';
-    // If ID is numeric, it might need a slug prefix, but for now we fallback/direct
     return `https://t.me/nft/gift/${id}`;
 }
+
 
 // --- SHOP TAB LOGIC ---
 function switchShopTab(tab) {
@@ -954,9 +854,6 @@ async function loadGifts() {
 }
 window.loadGifts = loadGifts;
 
-function getGiftLink(id) {
-    return `https://t.me/nft/gift/${id}`; // Simplified link format as requested
-}
 
 let currentBuyId = null;
 let currentBuyPrice = 0;
@@ -1003,9 +900,6 @@ async function confirmPurchase(id) {
 }
 window.confirmPurchase = confirmPurchase;
 
-window.closeModal = function (id) {
-    document.getElementById(id).classList.add('hidden');
-};
 
 async function refreshBalance() {
     try {
@@ -1068,69 +962,6 @@ async function loadLeaderboard() {
     } catch (e) { }
 }
 
-window.depositRequest = async function () {
-    const amountEl = document.getElementById('dep-amount');
-    let amountValRaw = amountEl ? amountEl.value : '';
-    amountValRaw = amountValRaw.replace(',', '.');
-    const amountVal = parseFloat(amountValRaw);
-    const minD = window.appSettings?.minDeposit || 0.1;
-
-    if (isNaN(amountVal) || amountVal < minD) return toast(`Мин. сумма ${minD} TON`, 'error');
-
-    const btn = document.getElementById('dep-btn-go');
-    btn.disabled = true;
-    btn.textContent = 'ГЕНЕРАЦИЯ...';
-
-    try {
-        const res = await api('/api/deposit/request', 'POST', { amount: parseFloat(amountVal) });
-        if (!res.address) throw new Error('Адрес не настроен.');
-
-        const depositComment = (res.comment || '').trim();
-        const address = res.address.trim();
-
-        const amountNano = Math.round(amountVal * 1e9).toString();
-        // 1. Universal tonkeeper link (very reliable on mobile)
-        const tonkeeperLink = `https://app.tonkeeper.com/transfer/${address}?text=${encodeURIComponent(depositComment)}&amount=${amountNano}`;
-        // 2. Protocol link
-        const protoLink = `ton://transfer/${address}?text=${encodeURIComponent(depositComment)}&amount=${amountNano}`;
-
-        // Show the elegant link button
-        const linkBtn = document.getElementById('direct-transfer-link');
-        const linkContainer = document.querySelector('.direct-link-container');
-        if (linkBtn && linkContainer) {
-            linkBtn.href = tonkeeperLink;
-            linkContainer.classList.remove('hidden');
-        }
-
-        // Try to open protocol link first, then fallback to tonkeeper link
-        setTimeout(() => { window.location.href = protoLink; }, 100);
-
-        toast('Заявка создана! Перенаправляем в кошелек...', 'success');
-
-        // Monitoring poller
-        const checkDeposit = async () => {
-            for (let i = 0; i < 40; i++) {
-                await new Promise(r => setTimeout(r, 10000));
-                try {
-                    const status = await api('/api/deposit/check');
-                    if (status.completed && status.completed.some(d => d.comment === depositComment)) {
-                        toast('Пополнение зачислено!', 'success');
-                        triggerConfetti();
-                        refreshBalance();
-                        return;
-                    }
-                } catch (e) { }
-            }
-        };
-        checkDeposit();
-
-    } catch (e) {
-        toast(`Ошибка: ${e.message}`, 'error');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = 'ОПЛАТИТЬ';
-    }
-}
 
 window.copyToClipboard = function (id) {
     const text = document.getElementById(id).textContent;
@@ -2011,11 +1842,13 @@ async function tonDeposit() {
         const req = await api('/api/deposit/request', 'POST', { amount: amt });
         const payloadB64 = buildCommentBoc(req.comment);
 
+        const amountNano = Math.round(amt * 1e9).toString();
+
         const tx = {
             validUntil: Math.floor(Date.now() / 1000) + 600,
             messages: [{
                 address: req.address,
-                amount: (amt * 1e9).toString(),
+                amount: amountNano,
                 payload: payloadB64
             }]
         };
