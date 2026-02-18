@@ -860,7 +860,10 @@ app.post('/api/user/auto-cashout', auth, (req, res) => {
 app.post('/api/deposit/request', auth, (req, res) => {
     const { amount } = req.body;
     const amt = parseFloat(amount);
-    const minDep = parseFloat(settingsOps.get('min_deposit') || 0.01);
+    let minDep = parseFloat(settingsOps.get('min_deposit') || 0.01);
+    // Force lower if user requested
+    if (minDep > 0.01) minDep = 0.01;
+
     if (isNaN(amt) || amt < minDep) return res.status(400).secure({ error: `Минимум: ${minDep} TON` });
 
     const comment = 'deposit_' + Math.floor(100000 + Math.random() * 900000);

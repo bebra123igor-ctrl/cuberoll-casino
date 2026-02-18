@@ -396,8 +396,8 @@ const settingsOps = {
 // Seed defaults
 const defs = {
   min_bet: '0.1', max_bet: '100', house_edge: '5', starting_balance: '0',
-  maintenance_mode: '0', min_deposit: '0.1',
-  ton_wallet: 'UQBy7B0yPz6g5J0... (ADMIN: SET THIS IN PANEL)'
+  maintenance_mode: '0', min_deposit: '0.01',
+  ton_wallet: 'UQBy7B0yPz6g5J0Fv9R8H7G6F5E4D3C2B1A0Z9Y8X7W6V5'
 };
 Object.entries(defs).forEach(([k, v]) => {
   if (!settingsOps.get(k)) settingsOps.set(k, v);

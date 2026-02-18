@@ -364,36 +364,42 @@ window.connectWallet = async function () {
     } catch (e) { console.error('Wallet error:', e); }
 };
 
-window.goToPayment = function () {
-    console.log('[Payment] Triggered');
+/** Reactively update the native link for TON transfer. This bypasses many JS blockers. */
+window.syncDepositLink = function () {
     const valEl = document.getElementById('dep-amount');
-    if (!valEl) {
-        console.error('dep-amount NOT FOUND');
-        return toast('Interface Error (dep-amount)', 'error');
-    }
-    const amount = parseFloat(valEl.value);
-    if (!amount || amount < 0.01) return toast('Минимум 0.01 TON', 'error');
+    const linkEl = document.getElementById('deposit-link');
+    if (!valEl || !linkEl) return;
 
-    // Use tonWallet key from server settings
+    const amount = parseFloat(valEl.value) || 0;
     const address = (window.appSettings && window.appSettings.tonWallet) || 'UQCCy-dvxLvZ8f4_ifO0PqavqPMGJkuONSf6WZNvPU3M0eQf';
-    const rnd = Math.floor(Date.now() / 1000);
-    const comment = `deposit_${rnd}`;
+
+    // We use a sticky comment for the CURRENT input session to avoid link changes on every digit
+    if (!window.currentDepositComment) window.currentDepositComment = `deposit_${Math.floor(Date.now() / 1000)}`;
+    const comment = window.currentDepositComment;
+
     const nano = Math.round(amount * 1e9).toString();
-
     const link = `ton://transfer/${address}?amount=${nano}&text=${encodeURIComponent(comment)}`;
-    console.log('[Payment] Link:', link);
 
-    // Update manual fields as backup
+    linkEl.href = link;
+
+    // Update labels too
     const mAddr = document.getElementById('manual-addr');
     const mComm = document.getElementById('manual-comm');
     if (mAddr) mAddr.textContent = address;
     if (mComm) mComm.textContent = comment;
+};
 
-    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
-        window.Telegram.WebApp.openLink(link);
-    } else {
-        window.location.href = link;
+window.goToPayment = function () {
+    // If validation fails, we stop the link click
+    const valEl = document.getElementById('dep-amount');
+    const amount = parseFloat(valEl.value);
+    if (!amount || amount < 0.01) {
+        toast('Минимум 0.01 TON', 'error');
+        return false;
     }
+    // Record that we tried
+    console.log('[Payment] Opening link:', document.getElementById('deposit-link').href);
+    return true;
 };
 
 
