@@ -1315,34 +1315,32 @@ app.get('/api/admin/referrals', auth, adminOnly, (req, res) => {
     try {
         // ULTIMATE SEARCH: Union of all possible referrer sources
         const referrers = db.prepare(`
-            WITH referrer_ids AS (
-                -- 1. IDs found in referred_by column (cast to text)
-                SELECT DISTINCT CAST(referred_by AS TEXT) as ref_id FROM users 
-                WHERE referred_by IS NOT NULL AND referred_by != '' AND referred_by != '0'
-                UNION
-                -- 2. Users who have a positive referral count
-                SELECT CAST(telegram_id AS TEXT) as ref_id FROM users WHERE referral_count > 0
-                UNION
-                -- 3. Users who have earned referral commission
-                SELECT CAST(telegram_id AS TEXT) as ref_id FROM users WHERE referral_earned > 0
-            )
             SELECT 
-                ids.ref_id as telegram_id,
-                u.username,
-                u.first_name,
-                COALESCE(u.referral_count, 0) as referral_count,
-                COALESCE(u.referral_earned, 0) as referral_earned,
-                u.referral_code,
+                u.telegram_id, 
+                u.username, 
+                u.first_name, 
+                COALESCE(u.referral_count, 0) as referral_count, 
+                COALESCE(u.referral_earned, 0) as referral_earned, 
+                u.referral_code, 
                 COALESCE(u.referral_bonus_claimed, 0) as referral_bonus_claimed,
                 (
-                    SELECT COUNT(*) FROM users r 
-                    WHERE CAST(r.referred_by AS TEXT) = ids.ref_id
-                       OR (u.referral_code IS NOT NULL AND r.referred_by = u.referral_code)
+                    SELECT MAX(cnt) FROM (
+                        SELECT COUNT(*) as cnt FROM users r 
+                        WHERE TRIM(CAST(r.referred_by AS TEXT)) = TRIM(CAST(u.telegram_id AS TEXT))
+                           OR (u.referral_code IS NOT NULL AND TRIM(CAST(r.referred_by AS TEXT)) = TRIM(CAST(u.referral_code AS TEXT)))
+                        UNION ALL
+                        SELECT COALESCE(u.referral_count, 0) as cnt
+                    )
                 ) as actual_refs
-            FROM referrer_ids ids
-            LEFT JOIN users u ON CAST(u.telegram_id AS TEXT) = ids.ref_id
-            WHERE u.telegram_id IS NOT NULL OR ids.ref_id != ''
-            ORDER BY actual_refs DESC, referral_count DESC
+            FROM users u
+            WHERE u.referral_count > 0 
+               OR u.referral_earned > 0
+               OR EXISTS (
+                   SELECT 1 FROM users r 
+                   WHERE TRIM(CAST(r.referred_by AS TEXT)) = TRIM(CAST(u.telegram_id AS TEXT))
+                      OR (u.referral_code IS NOT NULL AND TRIM(CAST(r.referred_by AS TEXT)) = TRIM(CAST(u.referral_code AS TEXT)))
+               )
+            ORDER BY actual_refs DESC, u.referral_count DESC
         `).all();
 
         // Total count of unique referral links ever created (users who joined via someone)
