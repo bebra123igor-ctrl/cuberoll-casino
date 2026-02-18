@@ -365,8 +365,12 @@ window.connectWallet = async function () {
 };
 
 window.goToPayment = function () {
+    console.log('[Payment] Triggered');
     const valEl = document.getElementById('dep-amount');
-    if (!valEl) return toast('Interface Error (dep-amount)', 'error');
+    if (!valEl) {
+        console.error('dep-amount NOT FOUND');
+        return toast('Interface Error (dep-amount)', 'error');
+    }
     const amount = parseFloat(valEl.value);
     if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
 
@@ -376,6 +380,7 @@ window.goToPayment = function () {
     const nano = Math.round(amount * 1e9).toString();
 
     const link = `ton://transfer/${address}?amount=${nano}&text=${encodeURIComponent(comment)}`;
+    console.log('[Payment] Link:', link);
 
     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
         window.Telegram.WebApp.openLink(link);
@@ -512,6 +517,12 @@ function initEventListeners() {
 
     // Подтверждение
     safeSetClick('roll-btn-confirm', roll);
+
+    // Пополнение
+    safeSetClick('start-deposit-btn', () => {
+        console.log('[Click] start-deposit-btn');
+        window.goToPayment();
+    });
 
     // Инпуты
     const pBetAmt = document.getElementById('plinko-bet-amount');
@@ -1976,7 +1987,10 @@ window.openBetModal = function (game) {
             b.classList.toggle('active', b.getAttribute('data-bet') === bType);
         });
         const exactPicker = document.getElementById('exact-picker');
-        if (exactPicker) exactPicker.style.display = (bType === 'exact' ? 'block' : 'none');
+        if (exactPicker) {
+            exactPicker.style.display = (bType === 'exact' ? 'block' : 'none');
+            exactPicker.classList.remove('hidden'); // Double safety
+        }
         if (typeof buildExactPicker === 'function') buildExactPicker();
         if (typeof updatePayoutUI === 'function') updatePayoutUI();
     }
