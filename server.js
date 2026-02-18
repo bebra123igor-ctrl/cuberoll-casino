@@ -292,8 +292,8 @@ app.post('/api/bet', auth, async (req, res) => {
 });
 
 // --- PLINKO GAME ---
-const PLINKO_ROWS = 8;
-const PLINKO_MULTIS = [5, 2, 1.2, 0.5, 0, 0.5, 1.2, 2, 5];
+const PLINKO_ROWS = 10;
+const PLINKO_MULTIS = [15, 6, 2.5, 1.3, 0.6, 0.3, 0.6, 1.3, 2.5, 6, 15];
 
 app.post('/api/plinko/bet', auth, async (req, res) => {
     const u = req.tgUser;

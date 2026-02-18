@@ -4412,7 +4412,7 @@ input:checked+.toggle-slider:before {
   border-radius: 6px;
   padding: 6px 0;
   text-align: center;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
   color: #fff;
   transition: all 0.3s;
@@ -4435,9 +4435,9 @@ input:checked+.toggle-slider:before {
   background: rgba(255, 255, 255, 0.03);
   border: 2px solid rgba(255, 255, 255, 0.05);
   border-radius: 12px;
-  padding: 8px 0;
+  padding: 6px 0;
   text-align: center;
-  min-height: 52px;
+  min-height: 48px;
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -4445,10 +4445,10 @@ input:checked+.toggle-slider:before {
 }
 
 .mult-val {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 900;
-  line-height: 1;
-  margin-bottom: 2px;
+  line-height: 1.1;
+  margin-bottom: 3px;
 }
 
 .mult-payout-preview {

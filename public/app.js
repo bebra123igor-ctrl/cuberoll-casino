@@ -1507,8 +1507,8 @@ window.setMaxCrashBet = function () {
 
 document.addEventListener('DOMContentLoaded', init);
 // --- PLINKO GAME LOGIC ---
-const PLINKO_ROWS = 8;
-const PLINKO_MULTIS = [5, 2, 1.2, 0.5, 0, 0.5, 1.2, 2, 5];
+const PLINKO_ROWS = 10;
+const PLINKO_MULTIS = [15, 6, 2.5, 1.3, 0.6, 0.3, 0.6, 1.3, 2.5, 6, 15];
 
 function initPlinko() {
     console.log('[Plinko] Initializing...');
@@ -1523,20 +1523,23 @@ function initPlinko() {
     if (multsDiv) {
         multsDiv.innerHTML = '';
         const colorMap = {
-            0: '#ff3d00', // Center (0x)
-            1: '#ff9100', // 0.5x
-            2: '#ffcc00', // 1.2x
-            3: '#aeea00', // 2x
-            4: '#00e676', // 5x (Edge)
+            0: '#ff3d00', // Center (0.3x)
+            1: '#ff6d00', // 0.6x
+            2: '#ff9100', // 1.3x
+            3: '#ffcc00', // 2.5x
+            4: '#aeea00', // 6x
+            5: '#00e676', // 15x (Edge)
         };
+        // Center of 11 slots is index 5
+        const midIndex = Math.floor(PLINKO_MULTIS.length / 2);
 
         PLINKO_MULTIS.forEach((m, i) => {
             const slot = document.createElement('div');
             slot.className = 'plinko-multiplier-slot';
             slot.dataset.mult = m;
 
-            // Distance from center (index 4)
-            const dist = Math.abs(i - 4);
+            // Distance from center
+            const dist = Math.abs(i - midIndex);
             const color = colorMap[dist] || '#fff';
             let label = m + 'x';
             if (m === 0) label = '💀';

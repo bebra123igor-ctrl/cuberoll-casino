@@ -710,9 +710,9 @@
                 const d = await api('/api/admin/stats');
                 document.getElementById('s-users').textContent = d.userCount || 0;
                 document.getElementById('s-games').textContent = d.overall?.total_games || 0;
-                document.getElementById('s-wager').textContent = (d.overall?.total_wagered || 0).toFixed(0);
-                document.getElementById('s-pay').textContent = (d.overall?.total_payouts || 0).toFixed(0);
-                document.getElementById('s-profit').textContent = (-(d.overall?.total_profit || 0)).toFixed(0);
+                document.getElementById('s-wager').textContent = (d.overall?.total_wagered || 0).toFixed(2);
+                document.getElementById('s-pay').textContent = (d.overall?.total_payouts || 0).toFixed(2);
+                document.getElementById('s-profit').textContent = (-(d.overall?.total_profit || 0)).toFixed(2);
                 document.getElementById('s-today').textContent = d.today?.total_games || 0;
                 const bar = document.getElementById('maint-bar');
                 d.settings?.maintenance_mode === '1' ? bar.classList.add('show') : bar.classList.remove('show');
@@ -727,7 +727,7 @@
                 t.innerHTML = d.users.map(u => `<div class="row">
           <div class="cid">${u.telegram_id}</div>
           <div class="cname">${u.username ? '@' + u.username : (u.first_name || '—')}</div>
-          <div class="cbal">${u.balance.toFixed(0)}</div>
+          <div class="cbal">${u.balance.toFixed(2)}</div>
           <div class="cgames">${u.games_played}</div>
           <div class="cst"><span class="badge ${u.is_banned ? 'badge-ban' : 'badge-ok'}">${u.is_banned ? 'BAN' : 'OK'}</span></div>
           <div class="cact">
@@ -749,8 +749,8 @@
                     return `<div class="grow">
             <div class="gu">${g.username ? '@' + g.username : (g.first_name || g.telegram_id)}</div>
             <div class="gt">${g.player_choice}</div><div class="gd">${g.dice_result} (${g.dice_total})</div>
-            <div class="gb">${g.bet_amount.toFixed(0)}</div>
-            <div class="gr ${w ? 'w' : 'l'}">${w ? '+' + g.payout.toFixed(0) : '-' + g.bet_amount.toFixed(0)}</div>
+            <div class="gb">${g.bet_amount.toFixed(2)}</div>
+            <div class="gr ${w ? 'w' : 'l'}">${w ? '+' + g.payout.toFixed(2) : '-' + g.bet_amount.toFixed(2)}</div>
             <div class="gtime">${tm}</div>
           </div>`;
                 }).join('');
