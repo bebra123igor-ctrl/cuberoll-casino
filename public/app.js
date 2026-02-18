@@ -1508,7 +1508,7 @@ window.setMaxCrashBet = function () {
 document.addEventListener('DOMContentLoaded', init);
 // --- PLINKO GAME LOGIC ---
 const PLINKO_ROWS = 10;
-const PLINKO_MULTIS = [15, 6, 2.5, 1.3, 0.6, 0.3, 0.6, 1.3, 2.5, 6, 15];
+const PLINKO_MULTIS = [15, 6, 2.5, 1.3, 0.6, 0, 0.6, 1.3, 2.5, 6, 15];
 
 function initPlinko() {
     console.log('[Plinko] Initializing...');
