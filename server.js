@@ -1240,7 +1240,7 @@ app.get('/api/admin/monitor-logs', auth, adminOnly, (req, res) => {
 });
 
 app.get('/api/admin/stats', auth, adminOnly, (req, res) => {
-    const totalReferrals = db.prepare("SELECT COUNT(*) as c FROM users WHERE referred_by IS NOT NULL AND referred_by != '' AND referred_by != '0'").get().c;
+    const totalReferrals = db.prepare('SELECT COALESCE(SUM(referral_count), 0) as c FROM users').get().c;
     const totalRefEarned = db.prepare('SELECT COALESCE(SUM(referral_earned), 0) as s FROM users').get().s;
     res.secure({
         overall: gameOps.getStats(), today: gameOps.getTodayStats(),
@@ -1343,8 +1343,8 @@ app.get('/api/admin/referrals', auth, adminOnly, (req, res) => {
             ORDER BY actual_refs DESC, u.referral_count DESC
         `).all();
 
-        // Total count of unique referral links ever created (users who joined via someone)
-        const totalReferrals = db.prepare("SELECT COUNT(*) as c FROM users WHERE referred_by IS NOT NULL AND referred_by != '' AND referred_by != '0'").get().c;
+        // Total count of unique referral links ever created
+        const totalReferrals = db.prepare('SELECT COALESCE(SUM(referral_count), 0) as c FROM users').get().c;
         const totalRefEarned = db.prepare('SELECT COALESCE(SUM(referral_earned), 0) as s FROM users').get().s;
 
         console.log(`[Admin] Referrals Final Check: ${referrers.length} lines in table. Total refs in DB: ${totalReferrals}`);

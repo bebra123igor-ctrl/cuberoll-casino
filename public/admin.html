@@ -3,669 +3,841 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CubeRoll — Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CubeRoll Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg: #121212;
-            --bg2: #1a1a1a;
-            --card: #1e1e1e;
-            --card2: #242424;
-            --card-h: #2a2a2a;
-            --surface: #2f2f2f;
-            --gold: #0088cc;
-            --gold2: #00aaff;
-            --gold-g: rgba(0, 136, 204, .2);
-            --green: #5cb85c;
-            --red: #d9534f;
+            --bg: #0a0a0c;
+            --sidebar: #111115;
+            --card: #18191e;
+            --card-h: #1e2028;
             --accent: #0088cc;
-            --t1: #f5f5f5;
-            --t2: #a0a0a0;
-            --t3: #666;
-            --t4: #444;
-            --border: rgba(255, 255, 255, .05);
-            --border2: rgba(255, 255, 255, .08);
-            --r: 12px;
-            --r-sm: 8px;
-            --font: 'Inter', sans-serif;
+            --accent-glow: rgba(0, 136, 204, 0.4);
+            --gold: #f3ba2f;
+            --gold-glow: rgba(243, 186, 47, 0.3);
+            --green: #00f2a1;
+            --red: #ff4757;
+            --t1: #ffffff;
+            --t2: #e0e0e0;
+            --t3: #9ea4b0;
+            --t4: #545b6a;
+            --border: rgba(255, 255, 255, 0.06);
+            --font: 'Outfit', sans-serif;
+            --sh: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
-        *,
-        *::before,
-        *::after {
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             font-family: var(--font);
             background: var(--bg);
             color: var(--t1);
-            min-height: 100vh;
+            overflow: hidden;
+            height: 100vh;
         }
 
-        .wrap {
-            max-width: 760px;
-            margin: 0 auto;
-            padding: 16px;
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
         }
 
-        .hdr {
-            text-align: center;
-            padding: 20px 0 16px;
+        ::-webkit-scrollbar-track {
+            background: transparent;
         }
 
-        .hdr h1 {
-            font-size: 22px;
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--t4);
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 80px;
+            background: var(--sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 0;
+            z-index: 10;
+        }
+
+        .logo {
+            width: 42px;
+            height: 42px;
+            background: var(--accent);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 20px;
+            box-shadow: 0 0 20px var(--accent-glow);
+            margin-bottom: 40px;
+            cursor: pointer;
+        }
+
+        .nav-item {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+            cursor: pointer;
+            color: var(--t4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .nav-item:hover {
+            color: var(--t2);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+            background: rgba(0, 136, 204, 0.1);
+        }
+
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            left: -16px;
+            width: 4px;
+            height: 20px;
+            background: var(--accent);
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .nav-item svg {
+            width: 22px;
+            height: 22px;
+            stroke-width: 2px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            position: relative;
+        }
+
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .header-title h1 {
+            font-size: 24px;
             font-weight: 800;
-            color: var(--t1);
-            letter-spacing: -.5px;
+            letter-spacing: -0.5px;
         }
 
-        .hdr p {
-            color: var(--t4);
-            font-size: 12px;
-            margin-top: 2px;
-            letter-spacing: .5px;
-            text-transform: uppercase;
-        }
-
-        .auth-box {
-            max-width: 380px;
-            margin: 32px auto;
-            text-align: center;
-        }
-
-        .auth-msg {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: var(--r-sm);
-            padding: 18px;
-            color: var(--t3);
+        .header-title p {
             font-size: 13px;
-            line-height: 1.6;
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 8px;
-            margin-bottom: 18px;
-        }
-
-        .st {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: var(--r-sm);
-            padding: 14px;
-            transition: all .2s;
-        }
-
-        .st:hover {
-            border-color: var(--border2);
-        }
-
-        .st-l {
-            font-size: 10px;
             color: var(--t4);
-            text-transform: uppercase;
-            letter-spacing: 1px;
             font-weight: 500;
         }
 
-        .st-v {
+        .refresh-btn {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--t2);
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: var(--card-h);
+            border-color: var(--t4);
+        }
+
+        .refresh-btn:active {
+            transform: scale(0.96);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--t4);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
             font-size: 22px;
             font-weight: 800;
             margin-top: 4px;
-            color: var(--t1);
-            letter-spacing: -.5px;
+            letter-spacing: -0.5px;
         }
 
-        .st-v.g {
-            color: var(--green);
+        .stat-card.blue .stat-icon {
+            background: rgba(0, 136, 204, 0.15);
+            color: var(--accent);
         }
 
-        .st-v.y {
+        .stat-card.gold .stat-icon {
+            background: rgba(243, 186, 47, 0.15);
             color: var(--gold);
         }
 
-        .st-v.r {
+        .stat-card.green .stat-icon {
+            background: rgba(0, 242, 161, 0.15);
+            color: var(--green);
+        }
+
+        .stat-card.red .stat-icon {
+            background: rgba(255, 71, 87, 0.15);
             color: var(--red);
         }
 
-        .tabs {
-            display: flex;
-            gap: 2px;
-            margin-bottom: 14px;
-            background: var(--bg2);
-            border-radius: 6px;
-            padding: 3px;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 9px;
-            border: none;
-            background: transparent;
-            color: var(--t4);
-            font-family: var(--font);
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: all .15s;
-        }
-
-        .tab.active {
-            background: var(--card2);
-            color: var(--t1);
-        }
-
-        .tab:hover:not(.active) {
-            color: var(--t2);
-        }
-
-        .pnl {
+        /* Panels */
+        .panel {
             display: none;
+            animation: slideUp 0.4s ease-out;
         }
 
-        .pnl.active {
+        .panel.active {
             display: block;
-            animation: fi .25s ease;
         }
 
-        @keyframes fi {
+        @keyframes slideUp {
             from {
                 opacity: 0;
-                transform: translateY(4px)
+                transform: translateY(15px);
             }
 
             to {
                 opacity: 1;
-                transform: translateY(0)
+                transform: translateY(0);
             }
         }
 
-        .sgrp {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .si {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+        /* Tables & Lists */
+        .list-container {
             background: var(--card);
             border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 10px 14px;
+            border-radius: 24px;
+            overflow: hidden;
         }
 
-        .si-l {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--t2);
-        }
-
-        .si-i {
-            width: 110px;
-            padding: 7px 10px;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: var(--t1);
-            font-family: var(--font);
-            font-size: 13px;
-            text-align: right;
-            outline: none;
-        }
-
-        .si-i:focus {
-            border-color: var(--border2);
-        }
-
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            font-family: var(--font);
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all .15s;
-        }
-
-        .btn-p {
-            background: var(--t1);
-            color: var(--bg);
-        }
-
-        .btn-p:hover {
-            background: #fff;
-        }
-
-        .btn-d {
-            background: rgba(217, 83, 79, .15);
-            color: var(--red);
-            border: 1px solid rgba(217, 83, 79, .2);
-        }
-
-        .btn-s {
-            background: rgba(92, 184, 92, .15);
-            color: var(--green);
-            border: 1px solid rgba(92, 184, 92, .2);
-        }
-
-        .btn-sm {
-            padding: 5px 10px;
+        .table-header {
+            display: flex;
+            padding: 18px 24px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--border);
             font-size: 11px;
+            font-weight: 700;
+            color: var(--t4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .row {
+        .table-row {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 9px 12px;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            margin-bottom: 4px;
-            font-size: 12px;
-            transition: background .15s;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.2s;
+            font-size: 14px;
         }
 
-        .row:hover {
-            background: var(--card-h);
+        .table-row:last-child {
+            border-bottom: none;
         }
 
-        .row .cid {
-            width: 90px;
-            color: var(--t4);
+        .table-row:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .user-id {
             font-family: monospace;
-            font-size: 11px;
-        }
-
-        .row .cname {
-            flex: 1;
-            font-weight: 600;
-        }
-
-        .row .cbal {
-            width: 90px;
-            text-align: right;
-            font-weight: 700;
-            color: var(--gold);
-        }
-
-        .row .cgames {
-            width: 60px;
-            text-align: center;
-            color: var(--t3);
-        }
-
-        .row .cact {
-            display: flex;
-            gap: 4px;
-        }
-
-        .cst {
-            width: 50px;
-            text-align: center;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 2px 7px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 600;
-        }
-
-        .badge-ok {
-            background: rgba(92, 184, 92, .1);
-            color: var(--green);
-        }
-
-        .badge-ban {
-            background: rgba(217, 83, 79, .1);
-            color: var(--red);
-        }
-
-        .grow {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 7px 12px;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            margin-bottom: 3px;
-            font-size: 11px;
-        }
-
-        .grow .gu {
-            width: 90px;
-            font-weight: 600;
-        }
-
-        .grow .gt {
-            width: 70px;
-            color: var(--t3);
-        }
-
-        .grow .gd {
-            width: 55px;
-            text-align: center;
-        }
-
-        .grow .gb {
-            width: 70px;
-            text-align: right;
-            color: var(--t3);
-        }
-
-        .grow .gr {
-            width: 70px;
-            text-align: right;
-            font-weight: 700;
-        }
-
-        .grow .gr.w {
-            color: var(--green);
-        }
-
-        .grow .gr.l {
-            color: var(--red);
-        }
-
-        .grow .gtime {
-            flex: 1;
-            text-align: right;
             color: var(--t4);
-            font-size: 10px;
+            font-size: 12px;
+            width: 120px;
         }
 
-        .modal-bg {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, .7);
-            backdrop-filter: blur(12px);
-            display: none;
+        .user-name {
+            flex: 1;
+            font-weight: 600;
+        }
+
+        .user-balance {
+            width: 100px;
+            font-weight: 800;
+            color: var(--gold);
+            text-align: right;
+        }
+
+        .user-actions {
+            width: 100px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 100;
-        }
-
-        .modal-bg.show {
-            display: flex;
-        }
-
-        .modal {
-            background: var(--card);
-            border: 1px solid var(--border2);
-            border-radius: var(--r);
-            padding: 22px;
-            width: 88%;
-            max-width: 340px;
-        }
-
-        .modal h3 {
-            margin-bottom: 14px;
-            font-size: 16px;
-            font-weight: 700;
-        }
-
-        .modal-in {
-            width: 100%;
-            padding: 9px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
             background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: var(--t1);
-            font-family: var(--font);
-            font-size: 15px;
-            outline: none;
-            margin-bottom: 14px;
         }
 
-        .modal-btns {
-            display: flex;
-            gap: 6px;
-            justify-content: flex-end;
+        .action-btn.gold:hover {
+            color: var(--gold);
+            border-color: var(--gold);
+            background: rgba(243, 186, 47, 0.1);
         }
 
-        .hidden {
-            display: none;
-        }
-
-        .maint {
-            background: rgba(217, 83, 79, .08);
-            border: 1px solid rgba(217, 83, 79, .2);
-            border-radius: 6px;
-            padding: 9px 14px;
-            font-size: 12px;
+        .action-btn.red:hover {
             color: var(--red);
+            border-color: var(--red);
+            background: rgba(255, 71, 87, 0.1);
+        }
+
+        .action-btn.blue:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: rgba(0, 136, 204, 0.1);
+        }
+
+        /* Auth Box */
+        .auth-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
             text-align: center;
-            margin-bottom: 14px;
+        }
+
+        .auth-card {
+            max-width: 400px;
+            background: var(--card);
+            padding: 40px;
+            border-radius: 32px;
+            border: 1px solid var(--border);
+            box-shadow: var(--sh);
+        }
+
+        .auth-icon {
+            font-size: 48px;
+            margin-bottom: 24px;
+        }
+
+        /* Maintenance bar */
+        .maint-bar {
+            background: var(--red);
+            color: white;
+            padding: 8px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 700;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 20;
             display: none;
         }
 
-        .maint.show {
+        .maint-bar.active {
             display: block;
         }
 
-        .topbar {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 10px;
+        /* Search bar */
+        .search-container {
+            margin-bottom: 20px;
+            position: relative;
         }
 
-        .rbtn {
+        .search-input {
+            width: 100%;
             background: var(--card);
             border: 1px solid var(--border);
-            border-radius: 6px;
-            color: var(--t2);
-            padding: 7px 12px;
-            font-size: 12px;
+            border-radius: 16px;
+            padding: 14px 14px 14px 44px;
+            color: var(--t1);
             font-family: var(--font);
-            cursor: pointer;
-            transition: all .15s;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
         }
 
-        .rbtn:hover {
-            background: var(--card-h);
+        .search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(0, 136, 204, 0.15);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 14px;
+            color: var(--t4);
+        }
+
+        /* Modals */
+        .modal-bg {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 200;
+            display: none;
+            padding: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 32px;
+            padding: 32px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: var(--sh);
+            animation: modalPop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+
+        @keyframes modalPop {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            color: var(--t4);
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .form-input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px 16px;
             color: var(--t1);
+            font-family: var(--font);
+            outline: none;
+        }
+
+        .primary-btn {
+            width: 100%;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 15px var(--accent-glow);
+            transition: all 0.2s;
+        }
+
+        .primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--accent-glow);
+        }
+
+        .primary-btn:active {
+            transform: translateY(0);
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .badge-green {
+            background: rgba(0, 242, 161, 0.1);
+            color: var(--green);
+        }
+
+        .badge-red {
+            background: rgba(255, 71, 87, 0.1);
+            color: var(--red);
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 64px;
+            }
+
+            .logo {
+                width: 36px;
+                height: 36px;
+                margin-bottom: 24px;
+            }
+
+            .nav-item {
+                width: 42px;
+                height: 42px;
+            }
+
+            .main-content {
+                padding: 16px;
+            }
+
+            .header-title h1 {
+                font-size: 20px;
+            }
+
+            .user-id {
+                display: none;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div class="wrap">
-        <div class="hdr">
-            <h1>👑 CubeRoll Admin</h1>
-            <p>Панель управления</p>
-        </div>
+    <div id="maint-bar" class="maint-bar">🔧 MAINTENANCE MODE ACTIVE</div>
 
-        <div id="auth-box" class="auth-box">
-            <div class="auth-msg">🔐 Откройте через Telegram бота или войдите как админ.<br><br>В дев режиме авторизация
-                не нужна.</div>
-        </div>
-
-        <div id="content" class="hidden">
-            <div id="maint-bar" class="maint">🔧 Обслуживание ВКЛ</div>
-            <div class="topbar"><button class="rbtn" onclick="loadAll()">🔄 Обновить</button></div>
-
-            <div class="stats">
-                <div class="st">
-                    <div class="st-l">Юзеры</div>
-                    <div class="st-v" id="s-users">0</div>
-                </div>
-                <div class="st">
-                    <div class="st-l">Всего игр</div>
-                    <div class="st-v" id="s-games">0</div>
-                </div>
-                <div class="st">
-                    <div class="st-l">Поставлено</div>
-                    <div class="st-v y" id="s-wager">0</div>
-                </div>
-                <div class="st">
-                    <div class="st-l">Выплачено</div>
-                    <div class="st-v r" id="s-pay">0</div>
-                </div>
-                <div class="st">
-                    <div class="st-l">Профит</div>
-                    <div class="st-v g" id="s-profit">0</div>
-                </div>
-                <div class="st">
-                    <div class="st-l">Сегодня</div>
-                    <div class="st-v" id="s-today">0</div>
-                </div>
-                <div class="st">
-                    <div class="st-l">Рефералов</div>
-                    <div class="st-v y" id="s-refs">0</div>
-                </div>
-                <div class="st">
-                    <div class="st-l">Реф. комиссии</div>
-                    <div class="st-v r" id="s-ref-earned">0</div>
-                </div>
-            </div>
-
-            <div class="tabs">
-                <button class="tab active" data-p="users">👥 Игроки</button>
-                <button class="tab" data-p="games">🎮 Игры</button>
-                <button class="tab" data-p="gifts">🎁 Подарки</button>
-                <button class="tab" data-p="promos">🎫 Промо</button>
-                <button class="tab" data-p="refs">👥 Рефералы</button>
-                <button class="tab" data-p="settings">⚙️ Настройки</button>
-            </div>
-
-            <div class="pnl active" id="p-users">
-                <div id="tbl-users"></div>
-            </div>
-            <div class="pnl" id="p-games">
-                <div id="tbl-games"></div>
-            </div>
-            <div class="pnl" id="p-gifts">
-                <!-- gifts content -->
-                <div class="si" style="margin-bottom:12px;display:block">
-                    <h3 style="font-size:14px;margin-bottom:10px">Добавить подарок</h3>
-                    <div style="display:flex;flex-direction:column;gap:8px">
-                        <input type="text" id="gift-link" class="si-i" style="width:100%;text-align:left"
-                            placeholder="Ссылка на подарок">
-                        <button class="btn btn-p" onclick="parseLink()">Спарсить инфо</button>
-                        <div id="gift-preview-box"
-                            style="display:none;padding:10px;background:var(--bg2);border-radius:6px;gap:10px;align-items:center;margin-top:8px">
-                            <div id="gift-parsed-icon" style="width:50px;height:50px;background:#333;border-radius:6px">
-                            </div>
-                            <div style="flex:1">
-                                <input type="text" id="gift-title" class="si-i"
-                                    style="width:100%;text-align:left;margin-bottom:4px" placeholder="Название">
-                                <input type="number" id="gift-price" class="si-i" style="width:100%;text-align:left"
-                                    placeholder="Цена (TON)">
-                            </div>
-                        </div>
-                        <button id="btn-save-gift" class="btn btn-s" style="display:none;margin-top:8px"
-                            onclick="saveGift()">Сохранить</button>
-                    </div>
-                </div>
-                <div id="tbl-gifts"></div>
-            </div>
-            <div class="pnl" id="p-promos">
-                <div class="si" style="margin-bottom:12px;display:block">
-                    <h3 style="font-size:14px;margin-bottom:10px">Создать промокод</h3>
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-                        <input type="text" id="promo-code" class="si-i" style="width:100%;text-align:left"
-                            placeholder="КОД">
-                        <input type="number" id="promo-amt" class="si-i" style="width:100%;text-align:left"
-                            placeholder="Сумма (TON)">
-                        <input type="number" id="promo-max" class="si-i" style="width:100%;text-align:left"
-                            placeholder="Активаций">
-                    </div>
-                    <button class="btn btn-s" style="width:100%;margin-top:10px"
-                        onclick="createPromo()">СОЗДАТЬ</button>
-                </div>
-                <div id="tbl-promos"></div>
-            </div>
-            <div class="pnl" id="p-refs">
-                <div style="margin-bottom:14px">
-                    <h3 style="font-size:14px;font-weight:700;margin-bottom:4px">👥 Реферальная система</h3>
-                    <p style="font-size:11px;color:var(--t4)">Пользователи с хотя бы 1 рефералом</p>
-                </div>
-                <div id="tbl-refs"></div>
-            </div>
-            <div class="pnl" id="p-settings">
-                <div class="sgrp" id="sgrp"></div>
-                <br>
-                <button class="btn btn-p" onclick="saveSets()">💾 Сохранить</button>
-
-                <div style="margin-top: 40px; border-top: 1px solid var(--border); padding-top: 20px;">
-                    <h3 style="color: var(--red); font-size: 14px; margin-bottom: 10px;">ОПАСНАЯ ЗОНА</h3>
-                    <button class="btn btn-d" onclick="resetStats()" style="width: 100%;">🚨 СБРОСИТЬ ВСЮ
-                        СТАТИСТИКУ</button>
-                    <p style="font-size: 10px; color: var(--t4); margin-top: 8px; text-align: center;">Это действие
-                        удалит ВСЮ историю игр и сбросит показатели игроков до нуля. <br>Балансы пользователей затронуты
-                        НЕ БУДУТ.</p>
-                </div>
-            </div>
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-card">
+            <div class="auth-icon">🛡️</div>
+            <h2 style="margin-bottom: 12px;">Admin Authentication</h2>
+            <div id="auth-status" style="color: var(--t3); font-size: 14px; line-height: 1.5;"> Checking credentials and
+                verifying access... </div>
         </div>
     </div>
 
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">C</div>
+            <nav>
+                <div class="nav-item active" data-p="dashboard" title="Dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                </div>
+                <div class="nav-item" data-p="users" title="Users">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                </div>
+                <div class="nav-item" data-p="games" title="Game History">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M12 8V12L15 15" />
+                        <circle cx="12" cy="12" r="10" />
+                    </svg>
+                </div>
+                <div class="nav-item" data-p="referrals" title="Referrals">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                </div>
+                <div class="nav-item" data-p="settings" title="Settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-title">
+                    <h1 id="page-name">Dashboard</h1>
+                    <p id="page-desc">System overview and key metrics</p>
+                </div>
+                <button class="refresh-btn" onclick="loadAll()">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                        </path>
+                    </svg>
+                    Refresh
+                </button>
+            </header>
+
+            <!-- Dashboard Panel -->
+            <div class="panel active" id="p-dashboard">
+                <div class="stats-grid">
+                    <div class="stat-card blue">
+                        <div class="stat-icon"><svg width="20" height="20" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-width="2"
+                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                                </path>
+                            </svg></div>
+                        <div class="stat-label">Total Users</div>
+                        <div class="stat-value" id="s-users">0</div>
+                    </div>
+                    <div class="stat-card gold">
+                        <div class="stat-icon"><svg width="20" height="20" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg></div>
+                        <div class="stat-label">Games Played</div>
+                        <div class="stat-value" id="s-games">0</div>
+                    </div>
+                    <div class="stat-card green">
+                        <div class="stat-icon"><svg width="20" height="20" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-width="2"
+                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                                </path>
+                            </svg></div>
+                        <div class="stat-label">Total Wagered</div>
+                        <div class="stat-value" id="s-wager">0.00</div>
+                    </div>
+                    <div class="stat-card red">
+                        <div class="stat-icon"><svg width="20" height="20" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg></div>
+                        <div class="stat-label">Net Profit</div>
+                        <div class="stat-value" id="s-profit">0.00</div>
+                    </div>
+                    <div class="stat-card gold" style="border: 2px solid var(--gold); background: var(--gold-glow);">
+                        <div class="stat-icon" style="background: var(--gold); color: black;"><svg width="20"
+                                height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-width="2"
+                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                                </path>
+                            </svg></div>
+                        <div class="stat-label" style="color: white; opacity: 0.8;">Total Referrals</div>
+                        <div class="stat-value" id="s-refs">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Panel -->
+            <div class="panel" id="p-users">
+                <div class="search-container">
+                    <span class="search-icon"><svg width="18" height="18" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="8" stroke-width="2.5" />
+                            <path d="M21 21l-4.35-4.35" stroke-width="2.5" />
+                        </svg></span>
+                    <input type="text" class="search-input" id="user-search" placeholder="Search by username or ID..."
+                        oninput="filterUsers()">
+                </div>
+                <div class="list-container">
+                    <div class="table-header">
+                        <div style="width: 120px;">ID</div>
+                        <div style="flex: 1;">User</div>
+                        <div style="width: 100px; text-align: right;">Balance</div>
+                        <div style="width: 80px; text-align: center;">Status</div>
+                        <div style="width: 100px; text-align: right;">Action</div>
+                    </div>
+                    <div id="tbl-users"></div>
+                </div>
+            </div>
+
+            <!-- Games Panel -->
+            <div class="panel" id="p-games">
+                <div class="list-container">
+                    <div class="table-header">
+                        <div style="flex: 1;">User</div>
+                        <div style="width: 80px;">Choice</div>
+                        <div style="width: 80px; text-align: center;">Result</div>
+                        <div style="width: 80px; text-align: right;">Bet</div>
+                        <div style="width: 80px; text-align: right;">Profit</div>
+                        <div style="width: 100px; text-align: right;">Time</div>
+                    </div>
+                    <div id="tbl-games"></div>
+                </div>
+            </div>
+
+            <!-- Referrals Panel -->
+            <div class="panel" id="p-referrals">
+                <div class="stats-grid">
+                    <div class="stat-card gold">
+                        <div class="stat-label">Total Referrals</div>
+                        <div class="stat-value" id="s-refs-tab">0</div>
+                    </div>
+                    <div class="stat-card blue">
+                        <div class="stat-label">Total Commission Paid</div>
+                        <div class="stat-value" id="s-ref-earned">0.00</div>
+                    </div>
+                </div>
+                <div class="list-container">
+                    <div class="table-header">
+                        <div style="width: 120px;">Referrer ID</div>
+                        <div style="flex: 1;">Username</div>
+                        <div style="width: 80px; text-align: center;">Invitations</div>
+                        <div style="width: 100px; text-align: right;">Earned</div>
+                    </div>
+                    <div id="tbl-refs"></div>
+                </div>
+            </div>
+
+            <!-- Settings Panel -->
+            <div class="panel" id="p-settings">
+                <div class="list-container" style="padding: 24px;">
+                    <div id="sgrp"
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                    </div>
+                    <div style="margin-top: 32px; display: flex; gap: 12px;">
+                        <button class="primary-btn" onclick="saveSets()" style="flex: 1;">💾 Save All Changes</button>
+                    </div>
+                    <div style="margin-top: 48px; border-top: 1px solid var(--border); padding-top: 32px;">
+                        <h3 style="color: var(--red); font-size: 16px; margin-bottom: 8px;">🚨 Danger Zone</h3>
+                        <p style="color: var(--t4); font-size: 13px; margin-bottom: 20px;">Be careful: resetting
+                            statistics will purge all game history records. User balances are safe.</p>
+                        <button class="primary-btn" onclick="resetStats()"
+                            style="background: rgba(255, 71, 87, 0.1); color: var(--red); border: 1px solid var(--red); box-shadow: none;">Purge
+                            System Stats</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modals -->
     <div class="modal-bg" id="bal-modal">
-        <div class="modal">
-            <h3>💰 Установить баланс</h3>
-            <p style="font-size:12px;color:var(--t3);margin-bottom:10px">Юзер: <strong id="m-name">—</strong></p>
-            <input type="number" class="modal-in" id="m-bal" placeholder="Новый баланс">
-            <div class="modal-btns">
-                <button class="btn" style="background:var(--surface);color:var(--t2)"
-                    onclick="closeModal()">Отмена</button>
-                <button class="btn btn-p" id="m-save">Установить</button>
+        <div class="modal-card">
+            <h2 style="margin-bottom: 24px;">Update Balance</h2>
+            <div class="form-group">
+                <label class="form-label">User</label>
+                <div id="m-name" style="font-weight: 700; color: var(--accent);">—</div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">New Balance (TON)</label>
+                <input type="number" class="form-input" id="m-bal" placeholder="0.00">
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 32px;">
+                <button class="primary-btn" style="background: var(--card); color: var(--t4); box-shadow: none;"
+                    onclick="closeModal()">Cancel</button>
+                <button class="primary-btn" id="m-save">Update</button>
             </div>
         </div>
     </div>
 
-    <!-- Referral Detail Modal -->
     <div class="modal-bg" id="ref-modal">
-        <div class="modal" style="max-width:500px;width:94%;max-height:85vh;overflow-y:auto">
-            <h3>👤 Рефералы <span id="rm-name" style="color:var(--gold)"></span></h3>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0">
-                <div class="st">
-                    <div class="st-l">Рефералов</div>
-                    <div class="st-v" id="rm-count">0</div>
-                </div>
-                <div class="st">
-                    <div class="st-l">Заработано</div>
-                    <div class="st-v y" id="rm-earned">0</div>
-                </div>
-            </div>
-            <div id="rm-list" style="margin-top:10px"></div>
-            <div class="modal-btns" style="margin-top:14px">
-                <button class="btn" style="background:var(--surface);color:var(--t2)"
-                    onclick="closeRefModal()">Закрыть</button>
-            </div>
+        <div class="modal-card" style="max-width: 600px;">
+            <h2 style="margin-bottom: 8px;">Invited Users</h2>
+            <div style="color: var(--gold); font-weight: 700; margin-bottom: 24px;" id="rm-name"></div>
+
+            <div style="max-height: 400px; overflow-y: auto;" id="rm-list"></div>
+
+            <button class="primary-btn" style="margin-top: 32px;" onclick="closeRefModal()">Close View</button>
         </div>
     </div>
 
     <script>
         let tg = null, initData = '';
+        let allUsers = [];
 
         function initTg() {
             if (window.Telegram && window.Telegram.WebApp) {
                 tg = window.Telegram.WebApp;
                 tg.expand();
                 tg.ready();
-                try { tg.setHeaderColor('#121212'); tg.setBackgroundColor('#121212'); } catch (e) { }
+                try { tg.setHeaderColor('#0a0a0c'); tg.setBackgroundColor('#0a0a0c'); } catch (e) { }
                 initData = tg.initData;
             }
         }
 
-        // "Шифрование" для "обычных смертных"
         const _SEC_KEY = 'cuberoll';
         const _0x_dec = (s) => {
             try {
@@ -676,7 +848,7 @@
                 }
                 return JSON.parse(new TextDecoder().decode(bytes));
             } catch (e) {
-                try { return JSON.parse(s); } catch (e2) { throw e; }
+                try { return JSON.parse(s); } catch (e2) { return null; }
             }
         };
 
@@ -689,60 +861,57 @@
 
             const r = await fetch(url, o);
             const raw = await r.text();
-
-            if (!r.ok) {
-                let e = {};
-                try { e = _0x_dec(raw); } catch (err) {
-                    try { e = JSON.parse(raw); } catch (ex) { e = { error: 'Server Error ' + r.status }; }
-                }
-                throw new Error(e.error || e.message || 'Unknown Error');
-            }
-
-            return _0x_dec(raw);
+            const data = _0x_dec(raw);
+            if (!r.ok) throw new Error(data?.error || 'Request failed');
+            return data;
         }
 
-        document.querySelectorAll('.tab').forEach(t => {
-            t.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-                document.querySelectorAll('.pnl').forEach(x => x.classList.remove('active'));
-                t.classList.add('active');
-                document.getElementById('p-' + t.dataset.p).classList.add('active');
+        // Tab Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const p = item.dataset.p;
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(pnl => pnl.classList.remove('active'));
+
+                item.classList.add('active');
+                const panel = document.getElementById('p-' + (p === 'referrals' ? 'referrals' : p));
+                if (panel) panel.classList.add('active');
+
+                document.getElementById('page-name').textContent = p.charAt(0).toUpperCase() + p.slice(1);
+
+                const descMap = {
+                    dashboard: 'System overview and key metrics',
+                    users: 'Manage player accounts and balances',
+                    games: 'Audit recent game outcomes',
+                    referrals: 'Network growth and commission logs',
+                    settings: 'Configure platform parameters'
+                };
+                document.getElementById('page-desc').textContent = descMap[p] || '';
             });
         });
 
         async function loadAll() {
-            const msg = document.querySelector('.auth-msg');
-            msg.innerHTML = '<div style="color:var(--gold);font-weight:700">🔄 Авторизация...</div>';
-
+            const status = document.getElementById('auth-status');
             try {
-                const data = await api('/api/auth', 'POST');
-                if (!data.isAdmin) {
-                    msg.innerHTML = '<div style="color:var(--red);font-weight:900;font-size:18px">⛔️ В ДОСТУПЕ ОТКАЗАНО</div><p style="margin-top:10px">Ваш ID (' + (data.user ? data.user.telegramId : 'unknown') + ') не в списке администраторов.</p>';
+                const auth = await api('/api/auth', 'POST');
+                if (!auth.isAdmin) {
+                    status.innerHTML = '<div style="color:var(--red); font-weight:800; font-size:18px">ACCESS DENIED</div><div style="margin-top:8px">Account is not in the administrator list.</div>';
                     return;
                 }
 
-                document.getElementById('auth-box').classList.add('hidden');
-                document.getElementById('content').classList.remove('hidden');
+                document.getElementById('auth-overlay').style.display = 'none';
 
-                // Загружаем данные всех вкладок
                 await Promise.all([
                     loadStats(),
                     loadUsers(),
                     loadGames(),
-                    loadGifts(),
-                    loadPromos(),
                     loadRefs(),
                     loadSets()
                 ]);
             } catch (e) {
-                msg.innerHTML = '<div style="color:var(--red);font-weight:900;font-size:18px">🛑 ОШИБКА АВТОРИЗАЦИИ</div><p style="margin-top:10px">' + e.message + '</p><p style="font-size:10px;opacity:0.5;margin-top:5px">Убедитесь, что вы открыли админку через бота.</p>';
+                status.innerHTML = '<div style="color:var(--red); font-weight:800; font-size:18px">AUTH ERROR</div><div style="margin-top:8px">' + e.message + '</div>';
             }
         }
-
-        // Инициализация при загрузке
-        initTg();
-        loadAll();
-
 
         async function loadStats() {
             try {
@@ -750,293 +919,190 @@
                 document.getElementById('s-users').textContent = d.userCount || 0;
                 document.getElementById('s-games').textContent = d.overall?.total_games || 0;
                 document.getElementById('s-wager').textContent = (d.overall?.total_wagered || 0).toFixed(2);
-                document.getElementById('s-pay').textContent = (d.overall?.total_payouts || 0).toFixed(2);
                 document.getElementById('s-profit').textContent = (-(d.overall?.total_profit || 0)).toFixed(2);
-                document.getElementById('s-today').textContent = d.today?.total_games || 0;
+
+                const refs = d.totalReferrals || 0;
+                document.getElementById('s-refs').textContent = refs;
+                document.getElementById('s-refs-tab').textContent = refs;
+                document.getElementById('s-ref-earned').textContent = (d.totalRefEarned || 0).toFixed(2);
+
                 const bar = document.getElementById('maint-bar');
-                d.settings?.maintenance_mode === '1' ? bar.classList.add('show') : bar.classList.remove('show');
-                // Referral stats
-                if (d.totalReferrals !== undefined) {
-                    document.getElementById('s-refs').textContent = d.totalReferrals || 0;
-                    document.getElementById('s-ref-earned').textContent = (d.totalRefEarned || 0).toFixed(2);
-                }
+                d.settings?.maintenance_mode === '1' ? bar.classList.add('active') : bar.classList.remove('active');
             } catch (e) { console.error(e); }
         }
 
         async function loadUsers() {
             try {
                 const d = await api('/api/admin/users');
-                const t = document.getElementById('tbl-users');
-                if (!d.users?.length) { t.innerHTML = '<p style="text-align:center;color:var(--t4);padding:20px">Нет юзеров</p>'; return; }
-                t.innerHTML = d.users.map(u => `<div class="row">
-          <div class="cid">${u.telegram_id}</div>
-          <div class="cname">${u.username ? '@' + u.username : (u.first_name || '—')}</div>
-          <div class="cbal">${u.balance.toFixed(2)}</div>
-          <div class="cgames">${u.games_played}</div>
-          <div class="cst"><span class="badge ${u.is_banned ? 'badge-ban' : 'badge-ok'}">${u.is_banned ? 'BAN' : 'OK'}</span></div>
-          <div class="cact">
-            <button class="btn btn-sm btn-p" onclick="openModal(${u.telegram_id},'${(u.username || u.first_name || '—').replace(/'/g, "\\'")}',${u.balance})">💰</button>
-            <button class="btn btn-sm ${u.is_banned ? 'btn-s' : 'btn-d'}" onclick="${u.is_banned ? `unban(${u.telegram_id})` : `ban(${u.telegram_id})`}">${u.is_banned ? '✅' : '🚫'}</button>
-          </div>
-        </div>`).join('');
+                allUsers = d.users || [];
+                renderUsers(allUsers);
             } catch (e) { console.error(e); }
+        }
+
+        function renderUsers(users) {
+            const t = document.getElementById('tbl-users');
+            if (!users.length) { t.innerHTML = '<div style="padding:40px; text-align:center; color:var(--t4)">No users found</div>'; return; }
+            t.innerHTML = users.map(u => `
+                <div class="table-row">
+                    <div class="user-id">${u.telegram_id}</div>
+                    <div class="user-name">
+                        <div>${u.first_name || 'Guest'}</div>
+                        <div style="font-size:11px; color:var(--t4)">${u.username ? '@' + u.username : 'No username'}</div>
+                    </div>
+                    <div class="user-balance">${u.balance.toFixed(2)}</div>
+                    <div style="width:80px; text-align:center">
+                        <span class="badge ${u.is_banned ? 'badge-red' : 'badge-green'}">${u.is_banned ? 'BAN' : 'OK'}</span>
+                    </div>
+                    <div class="user-actions">
+                        <button class="action-btn blue" onclick="openModal('${u.telegram_id}', '${(u.username || u.first_name || '').replace(/'/g, "")}', ${u.balance})">💰</button>
+                        <button class="action-btn ${u.is_banned ? 'blue' : 'red'}" onclick="${u.is_banned ? `unban('${u.telegram_id}')` : `ban('${u.telegram_id}')`}">${u.is_banned ? '✅' : '🚫'}</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterUsers() {
+            const q = document.getElementById('user-search').value.toLowerCase();
+            const filtered = allUsers.filter(u =>
+                String(u.telegram_id).includes(q) ||
+                (u.username && u.username.toLowerCase().includes(q)) ||
+                (u.first_name && u.first_name.toLowerCase().includes(q))
+            );
+            renderUsers(filtered);
         }
 
         async function loadGames() {
             try {
                 const d = await api('/api/admin/games');
                 const t = document.getElementById('tbl-games');
-                if (!d.games?.length) { t.innerHTML = '<p style="text-align:center;color:var(--t4);padding:20px">Нет игр</p>'; return; }
+                if (!d.games?.length) { t.innerHTML = '<div style="padding:40px; text-align:center; color:var(--t4)">History is empty</div>'; return; }
                 t.innerHTML = d.games.map(g => {
-                    const w = g.won === 1;
-                    const tm = new Date(g.created_at).toLocaleString('ru-RU', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
-                    return `<div class="grow">
-            <div class="gu">${g.username ? '@' + g.username : (g.first_name || g.telegram_id)}</div>
-            <div class="gt">${g.player_choice}</div><div class="gd">${g.dice_result} (${g.dice_total})</div>
-            <div class="gb">${g.bet_amount.toFixed(2)}</div>
-            <div class="gr ${w ? 'w' : 'l'}">${w ? '+' + g.payout.toFixed(2) : '-' + g.bet_amount.toFixed(2)}</div>
-            <div class="gtime">${tm}</div>
-          </div>`;
+                    const win = g.won === 1;
+                    const date = new Date(g.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    return `
+                        <div class="table-row">
+                            <div style="flex:1">
+                                <div style="font-weight:600">${g.username ? '@' + g.username : (g.first_name || g.telegram_id)}</div>
+                                <div style="font-size:10px; color:var(--t4)">Type: ${g.game_type}</div>
+                            </div>
+                            <div style="width:80px; font-weight:700; color:var(--accent)">${g.player_choice || '—'}</div>
+                            <div style="width:80px; text-align:center; font-family:monospace">${g.dice_result || '—'}</div>
+                            <div style="width:80px; text-align:right">${g.bet_amount.toFixed(2)}</div>
+                            <div style="width:80px; text-align:right; font-weight:800; color:${win ? 'var(--green)' : 'var(--red)'}">
+                                ${win ? '+' + g.payout.toFixed(2) : '-' + g.bet_amount.toFixed(2)}
+                            </div>
+                            <div style="width:100px; text-align:right; font-size:11px; color:var(--t4)">${date}</div>
+                        </div>
+                    `;
                 }).join('');
             } catch (e) { console.error(e); }
-        }
-
-        async function loadGifts() {
-            try {
-                const d = await api('/api/gifts');
-                const t = document.getElementById('tbl-gifts');
-                if (!d.gifts?.length) { t.innerHTML = '<p style="text-align:center;color:var(--t4);padding:20px">Нет подарков</p>'; return; }
-                t.innerHTML = d.gifts.map(g => `<div class="row">
-          <div class="cid" style="width:40px">${g.id}</div>
-          <div class="cname">${g.title} — <span style="color:var(--gold)">${g.price} TON</span></div>
-          <div class="cact">
-            <button class="btn btn-sm btn-d" onclick="deleteGift(${g.id})">🗑️</button>
-          </div>
-        </div>`).join('');
-            } catch (e) { console.error(e); }
-        }
-
-        async function loadPromos() {
-            try {
-                const d = await api('/api/admin/promocodes');
-                const t = document.getElementById('tbl-promos');
-                if (!d.promocodes?.length) { t.innerHTML = '<p style="text-align:center;color:var(--t4);padding:20px">Нет промокодов</p>'; return; }
-                t.innerHTML = d.promocodes.map(p => `
-                    <div class="row ${p.is_active ? '' : 'hidden'}">
-                        <div class="cname"><strong>${p.code}</strong> — ${p.amount} TON</div>
-                        <div style="width:100px;font-size:11px;color:var(--t3)">${p.current_activations}/${p.max_activations}</div>
-                        <div class="cact">
-                            <button class="btn btn-sm btn-d" onclick="deletePromo(${p.id})">🗑️</button>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (e) { console.error(e); }
-        }
-
-        async function createPromo() {
-            const code = document.getElementById('promo-code').value;
-            const amount = document.getElementById('promo-amt').value;
-            const max = document.getElementById('promo-max').value;
-            if (!code || !amount || !max) return alert('Заполните всё');
-            try {
-                await api('/api/admin/promocodes', 'POST', { code, amount: parseFloat(amount), maxActivations: parseInt(max) });
-                alert('Промокод создан');
-                loadPromos();
-                document.getElementById('promo-code').value = '';
-                document.getElementById('promo-amt').value = '';
-                document.getElementById('promo-max').value = '';
-            } catch (e) { alert(e.message); }
-        }
-
-        async function deletePromo(id) {
-            if (!confirm('Удалить промокод?')) return;
-            try {
-                await api('/api/admin/promocodes/' + id, 'DELETE');
-                loadPromos();
-            } catch (e) { alert(e.message); }
         }
 
         async function loadRefs() {
             try {
                 const d = await api('/api/admin/referrals');
-                console.log('[Admin] Referral data received:', d);
                 const t = document.getElementById('tbl-refs');
-
-                // Update overview stats
-                document.getElementById('s-refs').textContent = d.totalReferrals || 0;
-                document.getElementById('s-ref-earned').textContent = (d.totalRefEarned || 0).toFixed(2);
-
-                if (!d.referrers?.length) {
-                    t.innerHTML = '<p style="text-align:center;color:var(--t4);padding:20px">Нет рефереров</p>';
-                    return;
-                }
-                t.innerHTML = d.referrers.map(r => `<div class="row" style="cursor:pointer" onclick="openRefDetail('${r.telegram_id}')">
-                    <div class="cid">${r.telegram_id}</div>
-                    <div class="cname">${r.username ? '@' + r.username : (r.first_name || '—')}</div>
-                    <div style="width:60px;text-align:center;font-weight:700;color:var(--gold)">${r.actual_refs} реф.</div>
-                    <div style="width:80px;text-align:right;font-size:11px;color:var(--green)">${(r.referral_earned || 0).toFixed(2)} TON</div>
-                    <div style="width:30px;text-align:center">${r.referral_bonus_claimed ? '✅' : ''}</div>
-                </div>`).join('');
+                if (!d.referrers?.length) { t.innerHTML = '<div style="padding:40px; text-align:center; color:var(--t4)">No active referrers</div>'; return; }
+                t.innerHTML = d.referrers.map(r => `
+                    <div class="table-row" style="cursor:pointer" onclick="openRefDetail('${r.telegram_id}')">
+                        <div class="user-id">${r.telegram_id}</div>
+                        <div class="user-name">${r.username ? '@' + r.username : (r.first_name || 'Anonymous')}</div>
+                        <div style="width:80px; text-align:center; font-weight:800; color:var(--accent)">${r.actual_refs}</div>
+                        <div style="width:100px; text-align:right; color:var(--green)">${(r.referral_earned || 0).toFixed(2)}</div>
+                    </div>
+                `).join('');
             } catch (e) { console.error(e); }
         }
 
         async function openRefDetail(id) {
             try {
                 const d = await api('/api/admin/referrals/' + id);
-                const r = d.referrer;
-                document.getElementById('rm-name').textContent = r.username ? '@' + r.username : (r.first_name || r.telegram_id);
-                document.getElementById('rm-count').textContent = d.referrals.length;
-                document.getElementById('rm-earned').textContent = (r.referral_earned || 0).toFixed(2);
-
+                document.getElementById('rm-name').textContent = d.referrer.username ? '@' + d.referrer.username : d.referrer.first_name;
                 const list = document.getElementById('rm-list');
-                if (!d.referrals.length) {
-                    list.innerHTML = '<p style="color:var(--t4);text-align:center;padding:16px">Нет рефералов</p>';
-                } else {
-                    list.innerHTML = d.referrals.map(ref => {
-                        const lost = ref.total_wagered - ref.total_won;
-                        const commission = ref.commissionGenerated || 0;
-                        return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:6px">
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                                <div>
-                                    <strong style="font-size:13px">${ref.username ? '@' + ref.username : (ref.first_name || '—')}</strong>
-                                    <span style="font-size:10px;color:var(--t4);margin-left:6px">ID: ${ref.telegram_id}</span>
-                                </div>
-                                <span style="font-size:11px;color:var(--gold);font-weight:700">${(ref.balance || 0).toFixed(2)} TON</span>
+                if (!d.referrals.length) { list.innerHTML = '<p style="text-align:center; padding:20px; color:var(--t4)">No data</p>'; }
+                else {
+                    list.innerHTML = d.referrals.map(r => `
+                        <div class="table-row" style="padding: 12px 0;">
+                            <div style="flex:1">
+                                <div style="font-weight:600">${r.username ? '@' + r.username : (r.first_name || r.telegram_id)}</div>
+                                <div style="font-size:10px; color:var(--t4)">Joined: ${new Date(r.created_at).toLocaleDateString()}</div>
                             </div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:10px">
-                                <div style="text-align:center;padding:6px;background:var(--card);border-radius:4px">
-                                    <div style="color:var(--t4)">ПОПОЛН.</div>
-                                    <div style="font-weight:700;color:var(--green);margin-top:2px">${(ref.total_deposits || 0).toFixed(2)}</div>
-                                </div>
-                                <div style="text-align:center;padding:6px;background:var(--card);border-radius:4px">
-                                    <div style="color:var(--t4)">ВЫВОД</div>
-                                    <div style="font-weight:700;color:var(--red);margin-top:2px">${Math.abs(ref.total_withdrawals || 0).toFixed(2)}</div>
-                                </div>
-                                <div style="text-align:center;padding:6px;background:var(--card);border-radius:4px">
-                                    <div style="color:var(--t4)">СТАВОК</div>
-                                    <div style="font-weight:700;margin-top:2px">${(ref.total_wagered || 0).toFixed(2)}</div>
-                                </div>
-                                <div style="text-align:center;padding:6px;background:var(--card);border-radius:4px">
-                                    <div style="color:var(--t4)">ВЫИГР.</div>
-                                    <div style="font-weight:700;color:var(--green);margin-top:2px">${(ref.total_won || 0).toFixed(2)}</div>
-                                </div>
-                                <div style="text-align:center;padding:6px;background:var(--card);border-radius:4px">
-                                    <div style="color:var(--t4)">ПРОИГР.</div>
-                                    <div style="font-weight:700;color:var(--red);margin-top:2px">${Math.max(0, lost).toFixed(2)}</div>
-                                </div>
-                                <div style="text-align:center;padding:6px;background:var(--card);border-radius:4px;border:1px solid rgba(0,136,204,.2)">
-                                    <div style="color:var(--t4)">КОМИССИЯ</div>
-                                    <div style="font-weight:700;color:var(--gold);margin-top:2px">${commission.toFixed(2)}</div>
-                                </div>
+                            <div style="text-align:right">
+                                <div style="font-weight:800; color:var(--gold)">${r.balance.toFixed(2)} T</div>
+                                <div style="font-size:10px; color:var(--t4)">Wagered: ${r.total_wagered.toFixed(1)}</div>
                             </div>
-                            <div style="font-size:9px;color:var(--t4);margin-top:6px;text-align:right">Игр: ${ref.games_played || 0} · ${ref.created_at ? new Date(ref.created_at).toLocaleDateString('ru') : '—'}</div>
-                        </div>`;
-                    }).join('');
+                        </div>
+                    `).join('');
                 }
-
-                document.getElementById('ref-modal').classList.add('show');
+                document.getElementById('ref-modal').style.display = 'flex';
             } catch (e) { alert(e.message); }
         }
 
-        function closeRefModal() { document.getElementById('ref-modal').classList.remove('show'); }
-        document.getElementById('ref-modal').addEventListener('click', e => { if (e.target.id === 'ref-modal') closeRefModal(); });
-
-        let parsedData = null;
-        async function parseLink() {
-            const url = document.getElementById('gift-link').value;
-            if (!url) return alert('Введите ссылку');
-
-            const btn = event.target;
-            btn.textContent = 'Парсим...';
-            btn.disabled = true;
-
-            try {
-                const res = await api('/api/admin/parse-gift', 'POST', { url });
-                parsedData = res;
-                document.getElementById('gift-preview-box').style.display = 'flex';
-                document.getElementById('gift-parsed-icon').style.background = parsedData.background;
-                document.getElementById('gift-parsed-icon').innerHTML = `<img src="${parsedData.model}" style="width:100%"><div style="position:absolute;bottom:0;right:0;font-size:10px">${parsedData.symbol}</div>`;
-                document.getElementById('gift-title').value = parsedData.title;
-                document.getElementById('btn-save-gift').style.display = 'block';
-            } catch (e) {
-                alert('Ошибка парсинга: ' + e.message);
-            } finally {
-                btn.textContent = 'Спарсить инфо';
-                btn.disabled = false;
-            }
-        }
-
-        async function saveGift() {
-            const title = document.getElementById('gift-title').value;
-            const price = document.getElementById('gift-price').value;
-            const link = document.getElementById('gift-link').value;
-            if (!title || !price || !parsedData) return alert('Заполните всё');
-            try {
-                await api('/api/admin/gifts', 'POST', {
-                    title, price: parseFloat(price), link,
-                    ...parsedData
-                });
-                alert('Сохранено');
-                loadGifts();
-            } catch (e) { alert(e.message); }
-        }
-
-        async function deleteGift(id) {
-            if (!confirm('Удалить?')) return;
-            try {
-                await api('/api/admin/gifts/' + id, 'DELETE');
-                loadGifts();
-            } catch (e) { alert(e.message); }
-        }
+        function closeRefModal() { document.getElementById('ref-modal').style.display = 'none'; }
 
         async function loadSets() {
             try {
                 const d = await api('/api/admin/stats');
-                const g = document.getElementById('sgrp');
                 const s = d.settings || {};
-                const n = {
-                    min_bet: 'Мин. ставка',
-                    max_bet: 'Макс. ставка',
-                    starting_balance: 'Старт баланс',
-                    house_edge: 'Хаус эдж (%)',
-                    maintenance_mode: 'Обслуживание (0/1)',
-                    ton_wallet: 'Кошелёк для TON (принимающий)',
-                    min_deposit: 'Мин. пополнение (TON)'
-                };
-
-                // Show all keys from 'n', not just what's in 's'
-                g.innerHTML = Object.keys(n).map(k => {
-                    const v = s[k] !== undefined ? s[k] : '';
-                    return `<div class="si"><span class="si-l">${n[k]}</span><input type="text" class="si-i" data-k="${k}" value="${v}"></div>`;
-                }).join('');
+                const g = document.getElementById('sgrp');
+                const keys = [
+                    { k: 'maintenance_mode', l: 'Maintenance (1/0)', type: 'number' },
+                    { k: 'min_deposit', l: 'Min Deposit (TON)', type: 'number' },
+                    { k: 'min_withdrawal', l: 'Min Withdrawal (TON)', type: 'number' },
+                    { k: 'referral_commission', l: 'Ref Commission (%)', type: 'number' },
+                    { k: 'house_edge', l: 'House Edge (%)', type: 'number' },
+                    { k: 'ton_price', l: 'Manual TON Price ($)', type: 'number' },
+                    { k: 'support_link', l: 'Support URL', type: 'text' }
+                ];
+                g.innerHTML = keys.map(i => `
+                    <div class="form-group">
+                        <label class="form-label">${i.l}</label>
+                        <input type="${i.type}" class="form-input" data-key="${i.k}" value="${s[i.k] || ''}">
+                    </div>
+                `).join('');
             } catch (e) { console.error(e); }
         }
 
         async function saveSets() {
-            for (const i of document.querySelectorAll('.si-i[data-k]')) { try { await api('/api/admin/settings', 'POST', { key: i.dataset.k, value: i.value }); } catch (e) { } }
-            alert('Сохранено ✅'); loadAll();
-        }
-
-        async function resetStats() {
-            if (!confirm('ВНИМАНИЕ! Вы собираетесь СБРОСИТЬ ВСЮ СТАТИСТИКУ игр.')) return;
-            if (!confirm('Это действие НЕОБРАТИМО. Все данные о ставках и играх будут удалены.')) return;
-            const p = prompt('Введите RESET для подтверждения:');
-            if (p !== 'RESET') return;
-
             try {
-                const res = await api('/api/admin/stats/reset', 'POST');
-                alert(res.message);
+                const inputs = document.querySelectorAll('#sgrp .form-input');
+                for (let i of inputs) {
+                    await api('/api/admin/settings', 'POST', { key: i.dataset.key, value: i.value });
+                }
+                alert('Settings updated successfully!');
                 loadAll();
             } catch (e) { alert(e.message); }
         }
 
-        let mUid = null;
-        function openModal(id, name, bal) { mUid = id; document.getElementById('m-name').textContent = name; document.getElementById('m-bal').value = bal; document.getElementById('bal-modal').classList.add('show'); }
-        function closeModal() { document.getElementById('bal-modal').classList.remove('show'); mUid = null; }
-        document.getElementById('m-save').addEventListener('click', async () => { if (!mUid) return; const b = parseFloat(document.getElementById('m-bal').value); if (isNaN(b)) return; try { await api(`/api/admin/user/${mUid}/balance`, 'POST', { balance: b }); closeModal(); loadUsers(); loadStats(); } catch (e) { alert(e.message); } });
-        async function ban(id) { if (!confirm('Забанить?')) return; try { await api(`/api/admin/user/${id}/ban`, 'POST'); loadUsers(); } catch (e) { alert(e.message); } }
-        async function unban(id) { try { await api(`/api/admin/user/${id}/unban`, 'POST'); loadUsers(); } catch (e) { alert(e.message); } }
-        document.getElementById('bal-modal').addEventListener('click', e => { if (e.target.id === 'bal-modal') closeModal(); });
+        // Action Functions
+        function openModal(id, name, bal) {
+            document.getElementById('m-name').textContent = name;
+            document.getElementById('m-bal').value = bal;
+            document.getElementById('m-save').onclick = async () => {
+                try {
+                    await api(`/api/admin/user/${id}/balance`, 'POST', { balance: document.getElementById('m-bal').value });
+                    closeModal();
+                    loadUsers();
+                } catch (e) { alert(e.message); }
+            };
+            document.getElementById('bal-modal').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('bal-modal').style.display = 'none'; }
+
+        async function ban(id) { if (confirm('Ban this user?')) { await api(`/api/admin/user/${id}/ban`, 'POST'); loadUsers(); } }
+        async function unban(id) { await api(`/api/admin/user/${id}/unban`, 'POST'); loadUsers(); }
+
+        async function resetStats() {
+            if (confirm('🚨 WARNING: THIS WILL PURGE ALL GAME HISTORY. PROCEED?')) {
+                await api('/api/admin/stats/reset', 'POST');
+                alert('History purged.');
+                loadAll();
+            }
+        }
+
+        initTg();
+        loadAll();
     </script>
 </body>
 
