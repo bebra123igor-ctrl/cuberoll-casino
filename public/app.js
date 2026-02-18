@@ -386,7 +386,7 @@ window.goToPayment = async function () {
             // Redirect to bot chat while keeping webapp active in background
             if (tg && tg.openTelegramLink) {
                 setTimeout(() => {
-                    tg.openTelegramLink('https://t.me/CubeRollBot');
+                    tg.openTelegramLink('https://t.me/cuberoll_robot');
                 }, 500);
             }
 
@@ -1818,9 +1818,9 @@ async function startDailySpin() {
         // Each segment is 30 degrees. res.index is 0..11.
         // Rotation is clockwise. Arrow is at top (0 deg).
         // To land on index I, we need to rotate -(I * 30 + 15) degrees.
-        const baseRotation = -(res.index * 30 + 15);
-        const fullSpins = 360 * 5; // 5 full spins
-        const finalRotation = fullSpins - baseRotation; // Subtract because we want to land at the calculated point
+        const baseRotation = (res.index * 30 + 15);
+        const fullSpins = 360 * 5;
+        const finalRotation = fullSpins - baseRotation;
 
         wheel.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
         wheel.style.transform = `rotate(${finalRotation}deg)`;
