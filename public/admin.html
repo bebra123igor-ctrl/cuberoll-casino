@@ -859,6 +859,7 @@
         async function loadRefs() {
             try {
                 const d = await api('/api/admin/referrals');
+                console.log('[Admin] Referral data received:', d);
                 const t = document.getElementById('tbl-refs');
 
                 // Update overview stats

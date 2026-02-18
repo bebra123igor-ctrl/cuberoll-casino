@@ -1313,6 +1313,7 @@ app.delete('/api/admin/promocodes/:id', auth, adminOnly, (req, res) => {
 // --- ADMIN: REFERRALS ---
 app.get('/api/admin/referrals', auth, adminOnly, (req, res) => {
     try {
+        // Build the list from the INVITEES (users.referred_by column)
         const referrers = db.prepare(`
             SELECT 
                 r.referred_by as telegram_id, 
@@ -1324,7 +1325,7 @@ app.get('/api/admin/referrals', auth, adminOnly, (req, res) => {
                 COALESCE(MAX(u.referral_bonus_claimed), 0) as referral_bonus_claimed,
                 COUNT(*) as actual_refs
             FROM users r
-            LEFT JOIN users u ON CAST(u.telegram_id AS TEXT) = CAST(r.referred_by AS TEXT)
+            LEFT JOIN users u ON (CAST(u.telegram_id AS TEXT) = CAST(r.referred_by AS TEXT) OR u.referral_code = r.referred_by)
             WHERE r.referred_by IS NOT NULL AND r.referred_by != '' AND r.referred_by != '0'
             GROUP BY r.referred_by
             ORDER BY actual_refs DESC
@@ -1343,9 +1344,12 @@ app.get('/api/admin/referrals', auth, adminOnly, (req, res) => {
 
 app.get('/api/admin/referrals/:id', auth, adminOnly, (req, res) => {
     try {
-        const referrerId = parseInt(req.params.id);
-        const referrer = userOps.get(referrerId);
-        if (!referrer) return res.status(404).secure({ error: 'User not found' });
+        const refIdStr = req.params.id; // Could be ID or Code
+        const referrer = db.prepare('SELECT * FROM users WHERE CAST(telegram_id AS TEXT) = CAST(? AS TEXT) OR referral_code = ?').get(refIdStr, refIdStr);
+
+        // We look for everyone whose referred_by matches this person's ID or their Code
+        const idToMatch = referrer ? referrer.telegram_id : refIdStr;
+        const codeToMatch = referrer ? referrer.referral_code : refIdStr;
 
         const referrals = db.prepare(`
             SELECT u.telegram_id, u.username, u.first_name, u.balance,
@@ -1355,8 +1359,9 @@ app.get('/api/admin/referrals/:id', auth, adminOnly, (req, res) => {
                    u.created_at
             FROM users u
             WHERE CAST(u.referred_by AS TEXT) = CAST(? AS TEXT)
+               OR (u.referred_by = ?)
             ORDER BY u.created_at DESC
-        `).all(referrerId);
+        `).all(idToMatch, codeToMatch);
 
         // Calculate net profit per referral (for the house)
         const detailedRefs = referrals.map(r => ({
