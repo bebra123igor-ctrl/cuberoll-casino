@@ -582,8 +582,34 @@
 
                 <button type="button" class="claim-btn-premium"
                   style="width: 100%; margin-top: 20px; border-radius: 18px;" id="start-deposit-btn"
-                  onclick="const v=document.getElementById('dep-amount').value; const amt=parseFloat(v); if(isNaN(amt)||amt<0.1){ if(window.toast) toast('Минимум 0.1 TON','error'); else alert('Минимум 0.1 TON'); return; } const addr=(window.appSettings&&window.appSettings.walletAddress)||'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7'; const link='ton://transfer/'+addr+'?amount='+(amt*1e9).toFixed(0)+'&text=deposit_'+Date.now(); if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.openLink){window.Telegram.WebApp.openLink(link)}else{window.location.href=link}">ПЕРЕЙТИ
-                  К ОПЛАТЕ</button>
+                  onclick="window.goToPayment()">ОПЛАТИТЬ</button>
+
+                <!-- Backup Manual Copy -->
+                <div
+                  style="margin-top: 15px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 14px; border: 1px solid var(--border);">
+                  <div style="font-size: 9px; opacity: 0.5; margin-bottom: 8px; text-align: center;">НЕ СРАБОТАЛА
+                    КНОПКА? СКОПИРУЙТЕ ДАННЫЕ:</div>
+                  <div style="margin-bottom: 8px;">
+                    <div
+                      style="display: flex; justify-content: space-between; font-size: 8px; opacity: 0.6; margin-bottom: 2px;">
+                      <span>АДРЕС ПОЛУЧАТЕЛЯ</span> <span
+                        onclick="navigator.clipboard.writeText(document.getElementById('manual-addr').textContent); toast('Скопировано')"
+                        style="color:var(--gold); cursor: pointer;">COPY</span></div>
+                    <div id="manual-addr"
+                      style="font-size: 9px; background: #000; padding: 8px; border-radius: 8px; word-break: break-all; border: 1px solid rgba(255,255,255,0.05);">
+                      UQCCy-dvxLvZ8f4_ifO0PqavqPMGJkuONSf6WZNvPU3M0eQf</div>
+                  </div>
+                  <div>
+                    <div
+                      style="display: flex; justify-content: space-between; font-size: 8px; opacity: 0.6; margin-bottom: 2px;">
+                      <span>КОММЕНТАРИЙ</span> <span
+                        onclick="navigator.clipboard.writeText(document.getElementById('manual-comm').textContent); toast('Скопировано')"
+                        style="color:var(--gold); cursor: pointer;">COPY</span></div>
+                    <div id="manual-comm"
+                      style="font-size: 9px; background: #000; padding: 8px; border-radius: 8px; color: var(--gold); border: 1px solid rgba(255,255,255,0.05);">
+                      ... (нажмите оплатить)</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

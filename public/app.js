@@ -374,13 +374,20 @@ window.goToPayment = function () {
     const amount = parseFloat(valEl.value);
     if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
 
-    const address = (window.appSettings && window.appSettings.walletAddress) || 'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7';
-    const rnd = Math.floor(100000000 + Math.random() * 900000000);
+    // Use tonWallet key from server settings
+    const address = (window.appSettings && window.appSettings.tonWallet) || 'UQCCy-dvxLvZ8f4_ifO0PqavqPMGJkuONSf6WZNvPU3M0eQf';
+    const rnd = Math.floor(Date.now() / 1000);
     const comment = `deposit_${rnd}`;
     const nano = Math.round(amount * 1e9).toString();
 
     const link = `ton://transfer/${address}?amount=${nano}&text=${encodeURIComponent(comment)}`;
     console.log('[Payment] Link:', link);
+
+    // Update manual fields as backup
+    const mAddr = document.getElementById('manual-addr');
+    const mComm = document.getElementById('manual-comm');
+    if (mAddr) mAddr.textContent = address;
+    if (mComm) mComm.textContent = comment;
 
     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
         window.Telegram.WebApp.openLink(link);
@@ -526,6 +533,19 @@ function initEventListeners() {
     safeSetClick('btn-rotate-seed', rotateServerSeed);
     safeSetClick('btn-update-seed', updateClientSeed);
     safeSetClick('btn-verify', verifyGame);
+
+    // Live update manual deposit fields
+    const depAmtInput = document.getElementById('dep-amount');
+    if (depAmtInput) {
+        depAmtInput.oninput = () => {
+            const mAddr = document.getElementById('manual-addr');
+            const mComm = document.getElementById('manual-comm');
+            const addr = (window.appSettings && window.appSettings.tonWallet) || 'UQCCy-dvxLvZ8f4_ifO0PqavqPMGJkuONSf6WZNvPU3M0eQf';
+            if (mAddr && (!mAddr.textContent || mAddr.textContent.includes('...'))) mAddr.textContent = addr;
+            // We don't change the comment on every keystroke to avoid confusion, 
+            // but we ensure the address is there.
+        };
+    }
 
     // Delegated listener for bet confirm — works even if modal was opened dynamically (dice/plinko/crash/hide)
     // Removal of conflicting global listener - we use direct onclick now
