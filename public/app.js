@@ -374,8 +374,8 @@ window.goToPayment = async function () {
         return toast('Сначала подключите кошелек (иконка кошелька вверху)', 'error');
     }
 
-    const TW = window.TonWeb || (window.tonweb ? window.tonweb.constructor : null);
-    if (!TW) return toast('Библиотека TonWeb не загружена. Пожалуйста, обновите страницу.', 'error');
+    const TW = window.TonWeb;
+    if (!TW) return toast('Библиотека TonWeb не загружена. Пожалуйста, подождите 2-3 сек. и обновите страницу.', 'error');
 
     const address = (window.appSettings && window.appSettings.walletAddress) || 'UQBAKsT_w4C6C26KxGv3sE5g7nQ8y_d4X5z1V2b3N4m5K6L7';
     const rnd = Math.floor(100000000 + Math.random() * 900000000);
