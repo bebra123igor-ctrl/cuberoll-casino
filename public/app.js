@@ -1609,23 +1609,18 @@ async function plinkoDrop() {
         const dropX = window.plinkoDropX || 0.5;
         const res = await api('/api/plinko/bet', 'POST', { x: dropX, ...payload });
 
+        // Remove old landed balls to keep canvas clean
         plinkoBalls = plinkoBalls.filter(b => !b.landed);
 
         const ball = {
-            x: (plinkoCanvas.width * dropX),
+            x: plinkoCanvas.width * dropX,
             y: 20,
-            vx: (Math.random() - 0.5) * 0.3,
-            vy: 0.3,
-            radius: 10,
             path: res.result.path,
-            step: 0,
             targetSlot: res.result.slot,
             payout: res.result.payout,
             betAmount: payload.betAmount || (selectedGift ? selectedGift.price : 0),
             multiplier: res.result.multiplier,
-            color: '#ffffff',
             dieValue: Math.floor(Math.random() * 6) + 1,
-            bounceCount: 0,
             landed: false,
             newBalance: res.result.newBalance
         };
@@ -1675,106 +1670,192 @@ function renderPlinko() {
         const h = plinkoCanvas.height;
         plinkoCtx.clearRect(0, 0, w, h);
 
-        const rowGap = (h - 60) / (PLINKO_ROWS + 1);
-        const colGap = w / (PLINKO_ROWS + 2);
+        // --- Layout geometry ---
+        const topPad = 35;
+        const bottomPad = 35;
+        const playH = h - topPad - bottomPad;
+        const rowGap = playH / (PLINKO_ROWS + 1);
+
+        // Helper: get peg position
+        function pegPos(row, col) {
+            const rowCols = row + 1;
+            const rowWidth = rowCols * (w / (PLINKO_ROWS + 2));
+            const startX = (w - rowWidth) / 2 + (w / (PLINKO_ROWS + 2)) / 2;
+            const pegX = startX + col * (w / (PLINKO_ROWS + 2));
+            const pegY = topPad + row * rowGap;
+            return { x: pegX, y: pegY };
+        }
+
+        // Helper: get slot center X
+        const slotWidth = w / PLINKO_MULTIS.length;
+        function slotCenterX(slotIdx) {
+            return (slotIdx + 0.5) * slotWidth;
+        }
 
         // Draw drop indicator
         if (window.plinkoDropX) {
-            plinkoCtx.fillStyle = 'rgba(255,255,255,0.1)';
-            plinkoCtx.fillRect(w * window.plinkoDropX - 10, 5, 20, 10);
-            plinkoCtx.strokeStyle = 'rgba(255,255,255,0.2)';
-            plinkoCtx.strokeRect(w * window.plinkoDropX - 10, 5, 20, 10);
+            const dx = w * window.plinkoDropX;
+            plinkoCtx.save();
+            plinkoCtx.fillStyle = 'rgba(255,255,255,0.15)';
+            plinkoCtx.beginPath();
+            plinkoCtx.moveTo(dx - 8, 5);
+            plinkoCtx.lineTo(dx + 8, 5);
+            plinkoCtx.lineTo(dx, 18);
+            plinkoCtx.closePath();
+            plinkoCtx.fill();
+            plinkoCtx.restore();
         }
 
-        // Draw Pegs
-        plinkoCtx.fillStyle = 'rgba(255,255,255,0.2)';
+        // Draw Pegs with glow
         for (let r = 1; r <= PLINKO_ROWS; r++) {
-            const rowY = 40 + r * rowGap;
             const rowCols = r + 1;
-            const startX = (w - (rowCols - 1) * colGap) / 2;
             for (let c = 0; c < rowCols; c++) {
+                const pos = pegPos(r, c);
+                // Subtle glow
+                plinkoCtx.fillStyle = 'rgba(255,255,255,0.06)';
                 plinkoCtx.beginPath();
-                plinkoCtx.arc(startX + c * colGap, rowY, 3, 0, Math.PI * 2);
+                plinkoCtx.arc(pos.x, pos.y, 7, 0, Math.PI * 2);
+                plinkoCtx.fill();
+                // Peg core
+                plinkoCtx.fillStyle = 'rgba(255,255,255,0.35)';
+                plinkoCtx.beginPath();
+                plinkoCtx.arc(pos.x, pos.y, 3.5, 0, Math.PI * 2);
                 plinkoCtx.fill();
             }
         }
 
-        // Draw Slots Dividers
-        const slotWidth = w / PLINKO_MULTIS.length;
-        plinkoCtx.strokeStyle = 'rgba(255,255,255,0.1)';
-        plinkoCtx.lineWidth = 2;
+        // Draw Slot Dividers
+        plinkoCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+        plinkoCtx.lineWidth = 1.5;
         for (let i = 1; i < PLINKO_MULTIS.length; i++) {
             plinkoCtx.beginPath();
-            plinkoCtx.moveTo(i * slotWidth, h - 30);
+            plinkoCtx.moveTo(i * slotWidth, h - bottomPad);
             plinkoCtx.lineTo(i * slotWidth, h);
             plinkoCtx.stroke();
         }
 
-        // Update and Draw Balls
-        const gravity = 0.05;
+        // --- Animate Balls (deterministic path interpolation) ---
+        const now = performance.now();
+        const STEP_DURATION = 200; // ms per row bounce
+        const LAND_DURATION = 150; // ms for final landing
+
         plinkoBalls = plinkoBalls.filter(ball => {
-            if (!ball.landed) {
-                ball.vy += gravity;
-                ball.x += ball.vx;
-                ball.y += ball.vy;
+            // Initialize timing on first frame
+            if (!ball._startTime) {
+                ball._startTime = now;
+                // Pre-compute all waypoints for this ball
+                ball._waypoints = [];
+                // Start position (top)
+                ball._waypoints.push({ x: ball.x, y: topPad - 15 });
 
-                // Wall bouncing
-                if (ball.x < 15) { ball.x = 15; ball.vx *= -0.6; }
-                else if (ball.x > w - 15) { ball.x = w - 15; ball.vx *= -0.6; }
+                // Compute column index through rows
+                let col = 0; // Starting column in row 1
+                // The ball starts roughly at the drop position
+                // We need to figure out which column in row 1 it first hits
+                // For simplicity, start at the nearest peg column
+                const firstRowCols = 2; // row 1 has 2 pegs
+                const firstRowStartX = (w - firstRowCols * (w / (PLINKO_ROWS + 2))) / 2 + (w / (PLINKO_ROWS + 2)) / 2;
 
-                const currentRow = Math.floor((ball.y - 40) / rowGap);
-                if (currentRow > ball.step && ball.step < PLINKO_ROWS) {
-                    const move = ball.path[ball.step];
-                    // STRICTLY follow the path with minimal physics noise
-                    const direction = (move === 1 ? 0.5 : -0.5); // 0.5 unit right or left
-
-                    // We need to nudge velocity towards the target column center
-                    const currentMapX = (ball.step + 1) * colGap; // Rough center
-
-                    ball.vx = direction * (colGap * 0.15); // Consistent push
-                    ball.vy = 2.0; // Reset vertical speed slightly on impact
-                    ball.step++;
+                // Find nearest column in row 1
+                let bestCol = 0;
+                let bestDist = Infinity;
+                for (let c = 0; c < firstRowCols; c++) {
+                    const px = firstRowStartX + c * (w / (PLINKO_ROWS + 2));
+                    const d = Math.abs(ball.x - px);
+                    if (d < bestDist) { bestDist = d; bestCol = c; }
                 }
+                col = bestCol;
 
-                if (ball.step >= PLINKO_ROWS) {
-                    // Final descent: guide to exact slot center
-                    const targetX = (ball.targetSlot + 0.5) * slotWidth;
-                    const diff = targetX - ball.x;
-                    ball.vx += diff * 0.1; // Stronger guidance at very end
-                }
-
-                if (ball.y >= h - 10) {
-                    ball.landed = true;
-                    ball.y = h - 8;
-                    ball.vx = 0; ball.vy = 0;
-                    const targetX = (ball.targetSlot + 0.5) * slotWidth;
-                    ball.x = targetX;
-
-                    highlightSlot(ball.targetSlot);
-                    if (ball.payout > 0) {
-                        triggerConfetti();
-                        showResult({ won: true, payout: ball.payout, betAmount: ball.betAmount, dice: [ball.dieValue] });
-                    } else {
-                        showResult({ won: false, payout: 0, betAmount: ball.betAmount, dice: [ball.dieValue] });
+                // For each row, compute peg position based on path
+                for (let i = 0; i < PLINKO_ROWS; i++) {
+                    const row = i + 1;
+                    const pos = pegPos(row, col);
+                    // Add slight random offset for natural feel
+                    const jitterX = (Math.random() - 0.5) * 4;
+                    const jitterY = (Math.random() - 0.5) * 2;
+                    ball._waypoints.push({ x: pos.x + jitterX, y: pos.y + jitterY });
+                    // Move column based on path direction
+                    if (ball.path[i] === 1) {
+                        col = col + 1; // go right, next row has +1 col
                     }
-                    if (ball.newBalance !== undefined) setBalance(ball.newBalance, true);
-                    if (window.haptic && hapticEnabled) haptic.notificationOccurred('success');
+                    // if 0, col stays same (going left relative)
+                }
+
+                // Final landing position (slot center)
+                const landX = slotCenterX(ball.targetSlot);
+                ball._waypoints.push({ x: landX, y: h - 12 });
+
+                ball._totalSteps = ball._waypoints.length - 1;
+            }
+
+            const elapsed = now - ball._startTime;
+            const totalDuration = ball._totalSteps * STEP_DURATION + LAND_DURATION;
+
+            if (elapsed >= totalDuration && !ball.landed) {
+                // Ball has landed
+                ball.landed = true;
+                const lastWP = ball._waypoints[ball._waypoints.length - 1];
+                ball.x = lastWP.x;
+                ball.y = lastWP.y;
+
+                highlightSlot(ball.targetSlot);
+                if (ball.multiplier > 1) {
+                    triggerConfetti();
+                    showResult({ won: true, payout: ball.payout, betAmount: ball.betAmount, multiplier: ball.multiplier });
+                } else {
+                    showResult({ won: false, payout: ball.payout, betAmount: ball.betAmount, multiplier: ball.multiplier });
+                }
+                if (ball.newBalance !== undefined) setBalance(ball.newBalance, true);
+                if (window.haptic && hapticEnabled) haptic.notificationOccurred('success');
+            }
+
+            if (!ball.landed) {
+                // Interpolate position between waypoints
+                const stepFloat = elapsed / STEP_DURATION;
+                const stepIdx = Math.min(Math.floor(stepFloat), ball._totalSteps - 1);
+                const t = stepFloat - stepIdx; // 0..1 within current segment
+
+                const from = ball._waypoints[stepIdx];
+                const to = ball._waypoints[stepIdx + 1];
+
+                if (from && to) {
+                    // Ease-out bounce feel
+                    const easeT = 1 - Math.pow(1 - Math.min(t, 1), 2.5);
+                    ball.x = from.x + (to.x - from.x) * easeT;
+                    ball.y = from.y + (to.y - from.y) * easeT;
+
+                    // Small vertical bounce effect at peg hit
+                    if (t < 0.3 && stepIdx > 0) {
+                        ball.y -= Math.sin(t / 0.3 * Math.PI) * 5;
+                    }
                 }
             }
 
-            // Draw dice
+            // --- Draw the dice ball ---
             plinkoCtx.save();
             plinkoCtx.translate(ball.x, ball.y);
-            plinkoCtx.rotate(ball.y / 15);
-            const size = 16, r = 4;
+
+            // Rotation based on horizontal travel
+            const angle = (ball.x / 30) + (ball.y / 20);
+            plinkoCtx.rotate(angle);
+
+            const size = 16, rr = 4;
+
+            // Shadow / glow
+            plinkoCtx.shadowBlur = ball.landed ? 25 : 12;
+            plinkoCtx.shadowColor = ball.landed
+                ? (ball.multiplier > 1 ? 'rgba(255, 215, 0, 0.8)' : 'rgba(229, 57, 53, 0.6)')
+                : 'rgba(255,255,255,0.5)';
+
+            // Dice body
             plinkoCtx.fillStyle = '#fff';
-            plinkoCtx.shadowBlur = ball.landed ? 20 : 15;
-            plinkoCtx.shadowColor = ball.landed ? 'rgba(255, 215, 0, 0.6)' : 'rgba(255,255,255,0.5)';
             plinkoCtx.beginPath();
-            plinkoCtx.roundRect(-size / 2, -size / 2, size, size, r);
+            plinkoCtx.roundRect(-size / 2, -size / 2, size, size, rr);
             plinkoCtx.fill();
 
-            plinkoCtx.fillStyle = '#000';
+            // Dice dots
+            plinkoCtx.shadowBlur = 0;
+            plinkoCtx.fillStyle = '#1a1a2e';
             const p = size / 4, dotSize = 2;
             const drawDot = (dx, dy) => { plinkoCtx.beginPath(); plinkoCtx.arc(dx, dy, dotSize, 0, Math.PI * 2); plinkoCtx.fill(); };
             const dots = {
@@ -1787,6 +1868,12 @@ function renderPlinko() {
             };
             (dots[ball.dieValue] || []).forEach(d => drawDot(d[0], d[1]));
             plinkoCtx.restore();
+
+            // Keep ball in array for 2 seconds after landing for visibility
+            if (ball.landed) {
+                if (!ball._landTime) ball._landTime = now;
+                return (now - ball._landTime) < 2000;
+            }
             return true;
         });
     }
