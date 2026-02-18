@@ -372,7 +372,7 @@ window.goToPayment = function () {
         return toast('Interface Error (dep-amount)', 'error');
     }
     const amount = parseFloat(valEl.value);
-    if (!amount || amount < 0.1) return toast('Минимум 0.1 TON', 'error');
+    if (!amount || amount < 0.01) return toast('Минимум 0.01 TON', 'error');
 
     // Use tonWallet key from server settings
     const address = (window.appSettings && window.appSettings.tonWallet) || 'UQCCy-dvxLvZ8f4_ifO0PqavqPMGJkuONSf6WZNvPU3M0eQf';
@@ -533,19 +533,6 @@ function initEventListeners() {
     safeSetClick('btn-rotate-seed', rotateServerSeed);
     safeSetClick('btn-update-seed', updateClientSeed);
     safeSetClick('btn-verify', verifyGame);
-
-    // Live update manual deposit fields
-    const depAmtInput = document.getElementById('dep-amount');
-    if (depAmtInput) {
-        depAmtInput.oninput = () => {
-            const mAddr = document.getElementById('manual-addr');
-            const mComm = document.getElementById('manual-comm');
-            const addr = (window.appSettings && window.appSettings.tonWallet) || 'UQCCy-dvxLvZ8f4_ifO0PqavqPMGJkuONSf6WZNvPU3M0eQf';
-            if (mAddr && (!mAddr.textContent || mAddr.textContent.includes('...'))) mAddr.textContent = addr;
-            // We don't change the comment on every keystroke to avoid confusion, 
-            // but we ensure the address is there.
-        };
-    }
 
     // Delegated listener for bet confirm — works even if modal was opened dynamically (dice/plinko/crash/hide)
     // Removal of conflicting global listener - we use direct onclick now
