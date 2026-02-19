@@ -2722,7 +2722,7 @@ function renderRaffleCards(raffles) {
 window.shareRaffle = function () {
     if (!_openRaffleId) return;
     const botUser = settings.botUsername || 'CubeRollBot';
-    const link = `https://t.me/${botUser}/play?startapp=raffle_${_openRaffleId}`;
+    const link = `https://t.me/${botUser}?start=raffle_${_openRaffleId}`;
 
     if (navigator.clipboard) {
         navigator.clipboard.writeText(link).then(() => {

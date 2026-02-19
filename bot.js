@@ -67,6 +67,20 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
         }
     } catch (e) { }
 
+    // Resolve raffle ID from start param
+    if (startParam && startParam.startsWith('raffle_')) {
+        const raffleId = startParam.split('_')[1];
+        const caption = `🎰 *Приглашение в розыгрыш!*\n\nТебя пригласили принять участие в розыгрыше призов в *CubeRoll Casino*.\n\nЖми кнопку ниже, чтобы увидеть детали и получить билеты!`;
+        return bot.sendMessage(chatId, caption, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: '🎁 ПОСМОТРЕТЬ РОЗЫГРЫШ', web_app: { url: `${WEBAPP}?startapp=raffle_${raffleId}` } }]
+                ]
+            }
+        });
+    }
+
     const caption = `👑 *CubeRoll Casino*\n\nПривет, ${u.first_name || 'игрок'}!\n\nИграй в кости и выигрывай TON. Самый честный софт на блокчейне.\n\nЖми кнопку ниже, чтобы начать!`;
     const markup = {
         inline_keyboard: [
