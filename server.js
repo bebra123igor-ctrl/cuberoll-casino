@@ -161,7 +161,11 @@ function getSeed(tgId) {
     }
     return seeds[tgId];
 }
-const { logMonitor, monitoringLogs } = require('./logger');
+let botUsername = 'CubeRollBot';
+bot.getMe().then(me => {
+    botUsername = me.username;
+    console.log(`[Bot] Identified as @${botUsername}`);
+}).catch(e => console.error('[Bot] Failed to get identity:', e.message));
 
 // --- роуты ---
 
@@ -206,6 +210,7 @@ app.post('/api/auth', auth, (req, res) => {
             referralCount: user.referral_count || 0,
             referralBonusClaimed: !!user.referral_bonus_claimed
         },
+        botUsername,
         seeds: s,
         settings: {
             minBet: parseFloat(settingsOps.get('min_bet') || '0.1'),

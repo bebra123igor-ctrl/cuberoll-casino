@@ -338,7 +338,22 @@ async function init() {
                         window._setInitialRaffleData(data.activeRaffles);
                     }
 
+                    if (data.botUsername) settings.botUsername = data.botUsername;
+
                     finishLoading();
+
+                    // Handle startapp raffle redirection
+                    if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+                        const sp = tg.initDataUnsafe.start_param;
+                        if (sp.startsWith('raffle_')) {
+                            const rId = sp.split('_')[1];
+                            setTimeout(() => {
+                                if (window.switchTab) window.switchTab('bonuses');
+                                if (window.openRaffleView) window.openRaffleView(rId);
+                            }, 1500);
+                        }
+                    }
+
                     resolve();
                 } catch (err) {
                     console.error('[Init] Fatal error:', err);
@@ -2683,24 +2698,48 @@ function renderRaffleCards(raffles) {
                     <div style="font-size: 10px; color: var(--t3); margin-top: 2px;">Приз: ${escapeHtml(r.prize)}</div>
                 </div>
             </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px;">
-                <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 8px 12px; flex: 1; text-align: center;">
-                    <div style="font-size: 8px; color: var(--t4); text-transform: uppercase; letter-spacing: 0.5px;">Мои билеты</div>
-                    <div style="font-size: 20px; font-weight: 900; color: #f3ba2f;">${r.myTickets || 0}</div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <div style="flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                    <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 6px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
+                        <div style="font-size: 7px; color: var(--t4); text-transform: uppercase;">Мои билеты</div>
+                        <div style="font-size: 16px; font-weight: 900; color: #f3ba2f;">${r.myTickets || 0}</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 6px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
+                        <div style="font-size: 7px; color: var(--t4); text-transform: uppercase;">Участников</div>
+                        <div style="font-size: 16px; font-weight: 900; color: var(--t1);">${r.participants || 0}</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 6px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
+                        <div style="font-size: 7px; color: var(--t4); text-transform: uppercase;">Таймер</div>
+                        <div style="font-size: 9px; font-weight: 800; color: ${cd.ended ? '#00ff88' : '#f3ba2f'}; font-family: monospace;">${cd.text}</div>
+                    </div>
                 </div>
-                <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 8px 12px; flex: 1; text-align: center;">
-                    <div style="font-size: 8px; color: var(--t4); text-transform: uppercase; letter-spacing: 0.5px;">Участников</div>
-                    <div style="font-size: 20px; font-weight: 900; color: var(--t1);">${r.participants || 0}</div>
-                </div>
-                <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 8px 12px; flex: 1; text-align: center;">
-                    <div style="font-size: 8px; color: var(--t4); text-transform: uppercase; letter-spacing: 0.5px;">Таймер</div>
-                    <div style="font-size: 11px; font-weight: 800; color: ${cd.ended ? '#00ff88' : '#f3ba2f'}; font-family: monospace;">${cd.text}</div>
-                </div>
+                <button class="claim-btn-premium" style="width: auto; padding: 0 12px; height: 44px; font-size: 11px; flex-shrink: 0; background: linear-gradient(135deg, rgba(243,186,47,0.2), rgba(243,186,47,0.08)); color: #f3ba2f; font-weight: 800; border: 1px solid rgba(243,186,47,0.3); pointer-events: none; margin: 0; display: flex; align-items: center; justify-content: center;">ПОДРОБНЕЕ →</button>
             </div>
-            <button class="claim-btn-premium" style="background: linear-gradient(135deg, rgba(243,186,47,0.2), rgba(243,186,47,0.08)); color: #f3ba2f; font-weight: 800; border: 1px solid rgba(243,186,47,0.3); pointer-events: none;">ПОДРОБНЕЕ →</button>
         </div>`;
     }).join('');
 }
+
+window.shareRaffle = function () {
+    if (!_openRaffleId) return;
+    const botUser = settings.botUsername || 'CubeRollBot';
+    const link = `https://t.me/${botUser}/play?startapp=raffle_${_openRaffleId}`;
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(link).then(() => {
+            if (window.showToast) showToast('Ссылка скопирована!');
+            else alert('Ссылка скопирована!');
+        });
+    } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = link;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try { document.execCommand('copy'); alert('Ссылка скопирована!'); } catch (err) { }
+        document.body.removeChild(textArea);
+    }
+
+    if (window.haptic) window.haptic.notificationOccurred('success');
+};
 
 function escapeHtml(str) {
     if (!str) return '';
