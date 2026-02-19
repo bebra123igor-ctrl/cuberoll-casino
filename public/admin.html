@@ -789,78 +789,9 @@
             <!-- Raffle Panel -->
             <div class="panel" id="p-raffle">
                 <div style="display: flex; gap: 12px; margin-bottom: 24px;">
-                    <button class="primary-btn" onclick="toggleRaffleCreate()" id="btn-raffle-create" style="flex: 1;">
+                    <button class="primary-btn" onclick="openRaffleCreateModal()" style="flex: 1;">
                         ✨ Создать розыгрыш
                     </button>
-                </div>
-
-                <!-- Create Form (hidden by default) -->
-                <div id="raffle-create-form" style="display: none; margin-bottom: 32px;">
-                    <div class="list-container" style="padding: 24px;">
-                        <h3 style="margin-bottom: 20px; color: var(--gold); font-size: 16px;">🎰 Новый розыгрыш</h3>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label class="form-label">Название *</label>
-                                <input type="text" class="form-input" id="rc-title" placeholder="NFT Розыгрыш CubeRoll">
-                            </div>
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label class="form-label">Приз (описание) *</label>
-                                <input type="text" class="form-input" id="rc-prize"
-                                    placeholder="Уникальный NFT от CubeRoll">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Ссылка на NFT</label>
-                                <input type="text" class="form-input" id="rc-nft"
-                                    placeholder="https://getgems.io/nft/...">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Ссылка на канал</label>
-                                <input type="text" class="form-input" id="rc-channel" placeholder="https://t.me/...">
-                            </div>
-                            <div class="form-group" style="grid-column: 1 / -1;">
-                                <label class="form-label">Описание / Условия</label>
-                                <textarea class="form-input" id="rc-desc" rows="3"
-                                    placeholder="Розыгрыш проходит среди всех участников...&#10;Победитель получает...&#10;Условия: ..."
-                                    style="resize: vertical; min-height: 80px;"></textarea>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Дата начала * (UTC)</label>
-                                <input type="datetime-local" class="form-input" id="rc-start">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Дата окончания (UTC)</label>
-                                <input type="datetime-local" class="form-input" id="rc-end">
-                            </div>
-
-                            <div
-                                style="grid-column: 1 / -1; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 8px;">
-                                <h4 style="color: var(--accent); font-size: 13px; margin-bottom: 12px;">🎫 Настройка
-                                    билетов</h4>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">TON за 1 билет (деп)</label>
-                                <input type="number" class="form-input" id="rc-dpt" value="0.1" step="0.01" min="0.01">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Билетов за первый деп реф.</label>
-                                <input type="number" class="form-input" id="rc-rfd" value="1" min="0">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">TON кумулятив реф. за билет</label>
-                                <input type="number" class="form-input" id="rc-rca" value="0.5" step="0.01" min="0">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Билетов за кумулятив реф.</label>
-                                <input type="number" class="form-input" id="rc-rct" value="1" min="0">
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 12px; margin-top: 24px;">
-                            <button class="primary-btn"
-                                style="background: var(--card); color: var(--t4); box-shadow: none; flex: 1;"
-                                onclick="toggleRaffleCreate()">Отмена</button>
-                            <button class="primary-btn" style="flex: 2;" onclick="createRaffle()">🚀 Создать</button>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Existing Raffles List -->
@@ -921,6 +852,150 @@
             <div style="max-height: 400px; overflow-y: auto;" id="rm-list"></div>
 
             <button class="primary-btn" style="margin-top: 32px;" onclick="closeRefModal()">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Fullscreen Raffle Create Modal -->
+    <div id="raffle-create-modal"
+        style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; background: var(--bg); overflow-y: auto;">
+        <!-- Sticky Header -->
+        <div
+            style="position: sticky; top: 0; z-index: 10; background: linear-gradient(180deg, var(--bg) 85%, transparent); padding: 20px 24px 28px; display: flex; align-items: center; gap: 16px;">
+            <button onclick="closeRaffleCreateModal()"
+                style="background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--t1); width: 40px; height: 40px; border-radius: 12px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <div>
+                <div style="font-weight: 900; font-size: 20px; color: var(--gold);">🎰 Новый розыгрыш</div>
+                <div style="font-size: 12px; color: var(--t4); margin-top: 2px;">Заполните все поля для создания</div>
+            </div>
+        </div>
+
+        <!-- Form Body -->
+        <div style="padding: 0 24px 40px; max-width: 600px;">
+            <!-- Section: Basic -->
+            <div style="margin-bottom: 28px;">
+                <div
+                    style="font-weight: 800; font-size: 13px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border);">
+                    📋 Основная информация</div>
+                <div style="margin-bottom: 16px;">
+                    <label
+                        style="display: block; font-size: 12px; color: var(--t3); font-weight: 600; margin-bottom: 8px;">Название
+                        розыгрыша <span style="color: var(--red);">*</span></label>
+                    <input type="text" class="form-input" id="rc-title" placeholder="NFT Розыгрыш CubeRoll"
+                        style="font-size: 15px; padding: 14px 18px;">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label
+                        style="display: block; font-size: 12px; color: var(--t3); font-weight: 600; margin-bottom: 8px;">Описание
+                        приза <span style="color: var(--red);">*</span></label>
+                    <input type="text" class="form-input" id="rc-prize" placeholder="Уникальный NFT коллекции..."
+                        style="font-size: 15px; padding: 14px 18px;">
+                </div>
+                <div>
+                    <label
+                        style="display: block; font-size: 12px; color: var(--t3); font-weight: 600; margin-bottom: 8px;">Описание
+                        / Правила</label>
+                    <textarea class="form-input" id="rc-desc" rows="4"
+                        placeholder="Розыгрыш проводится среди всех участников...&#10;Победитель определяется случайным образом...&#10;Условия участия: ..."
+                        style="font-size: 14px; padding: 14px 18px; resize: vertical; min-height: 100px; line-height: 1.5;"></textarea>
+                </div>
+            </div>
+
+            <!-- Section: Links -->
+            <div style="margin-bottom: 28px;">
+                <div
+                    style="font-weight: 800; font-size: 13px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border);">
+                    🔗 Ссылки</div>
+                <div style="margin-bottom: 16px;">
+                    <label
+                        style="display: block; font-size: 12px; color: var(--t3); font-weight: 600; margin-bottom: 8px;">Ссылка
+                        на NFT приз</label>
+                    <input type="text" class="form-input" id="rc-nft" placeholder="https://getgems.io/nft/..."
+                        style="font-size: 14px; padding: 14px 18px;">
+                </div>
+                <div>
+                    <label
+                        style="display: block; font-size: 12px; color: var(--t3); font-weight: 600; margin-bottom: 8px;">Ссылка
+                        на Telegram канал</label>
+                    <input type="text" class="form-input" id="rc-channel" placeholder="https://t.me/yourchannel"
+                        style="font-size: 14px; padding: 14px 18px;">
+                </div>
+            </div>
+
+            <!-- Section: Dates -->
+            <div style="margin-bottom: 28px;">
+                <div
+                    style="font-weight: 800; font-size: 13px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border);">
+                    📅 Даты проведения</div>
+                <div style="margin-bottom: 16px;">
+                    <label
+                        style="display: block; font-size: 12px; color: var(--t3); font-weight: 600; margin-bottom: 8px;">Дата
+                        розыгрыша <span style="color: var(--red);">*</span></label>
+                    <input type="datetime-local" class="form-input" id="rc-start"
+                        style="font-size: 15px; padding: 14px 18px;">
+                </div>
+                <div>
+                    <label
+                        style="display: block; font-size: 12px; color: var(--t3); font-weight: 600; margin-bottom: 8px;">Дата
+                        окончания (необязательно)</label>
+                    <input type="datetime-local" class="form-input" id="rc-end"
+                        style="font-size: 15px; padding: 14px 18px;">
+                </div>
+            </div>
+
+            <!-- Section: Ticket Config -->
+            <div style="margin-bottom: 36px;">
+                <div
+                    style="font-weight: 800; font-size: 13px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border);">
+                    🎫 Настройка билетов</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <div>
+                        <label
+                            style="display: block; font-size: 11px; color: var(--t3); font-weight: 600; margin-bottom: 8px;">TON
+                            за 1 билет</label>
+                        <input type="number" class="form-input" id="rc-dpt" value="0.1" step="0.01" min="0.01"
+                            style="font-size: 16px; padding: 14px 18px; text-align: center; font-weight: 800;">
+                    </div>
+                    <div>
+                        <label
+                            style="display: block; font-size: 11px; color: var(--t3); font-weight: 600; margin-bottom: 8px;">Билетов
+                            за 1й деп реф.</label>
+                        <input type="number" class="form-input" id="rc-rfd" value="1" min="0"
+                            style="font-size: 16px; padding: 14px 18px; text-align: center; font-weight: 800;">
+                    </div>
+                    <div>
+                        <label
+                            style="display: block; font-size: 11px; color: var(--t3); font-weight: 600; margin-bottom: 8px;">TON
+                            кумулятив реф.</label>
+                        <input type="number" class="form-input" id="rc-rca" value="0.5" step="0.01" min="0"
+                            style="font-size: 16px; padding: 14px 18px; text-align: center; font-weight: 800;">
+                    </div>
+                    <div>
+                        <label
+                            style="display: block; font-size: 11px; color: var(--t3); font-weight: 600; margin-bottom: 8px;">Билетов
+                            за кумулятив</label>
+                        <input type="number" class="form-input" id="rc-rct" value="1" min="0"
+                            style="font-size: 16px; padding: 14px 18px; text-align: center; font-weight: 800;">
+                    </div>
+                </div>
+                <div
+                    style="margin-top: 12px; padding: 12px 16px; background: rgba(0,136,204,0.06); border-radius: 12px; border: 1px solid rgba(0,136,204,0.15); font-size: 11px; color: var(--t3); line-height: 1.6;">
+                    💡 <b style="color: var(--t2);">Пример:</b> при настройке 0.1 TON/билет — депозит 1 TON = 10
+                    билетов. Реферальные билеты начисляются рефереру.
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 12px;">
+                <button class="primary-btn" onclick="closeRaffleCreateModal()"
+                    style="flex: 1; background: var(--card); color: var(--t3); box-shadow: none; border: 1px solid var(--border); font-size: 15px; padding: 16px;">Отмена</button>
+                <button class="primary-btn" onclick="createRaffle()"
+                    style="flex: 2; font-size: 15px; padding: 16px; background: linear-gradient(135deg, var(--gold), #e0a500); color: #000; box-shadow: 0 4px 20px var(--gold-glow);">🚀
+                    Создать розыгрыш</button>
+            </div>
         </div>
     </div>
 
@@ -1152,9 +1227,13 @@
 
         function closeRefModal() { document.getElementById('ref-modal').style.display = 'none'; }
 
-        function toggleRaffleCreate() {
-            const form = document.getElementById('raffle-create-form');
-            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        function openRaffleCreateModal() {
+            document.getElementById('raffle-create-modal').style.display = 'block';
+            document.getElementById('raffle-create-modal').scrollTop = 0;
+        }
+
+        function closeRaffleCreateModal() {
+            document.getElementById('raffle-create-modal').style.display = 'none';
         }
 
         async function createRaffle() {
@@ -1183,7 +1262,7 @@
 
             try {
                 await api('/api/admin/raffles', 'POST', body);
-                document.getElementById('raffle-create-form').style.display = 'none';
+                closeRaffleCreateModal();
                 // Reset form
                 ['rc-title', 'rc-prize', 'rc-nft', 'rc-channel', 'rc-desc', 'rc-start', 'rc-end'].forEach(id => document.getElementById(id).value = '');
                 document.getElementById('rc-dpt').value = '0.1';
