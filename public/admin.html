@@ -1284,17 +1284,24 @@
                     return;
                 }
                 list.innerHTML = d.raffles.map(r => {
-                    const active = r.is_active ? '🟢 Активен' : '🔴 Неактивен';
-                    const activeColor = r.is_active ? 'var(--green)' : 'var(--red)';
+                    let statusText = r.is_active ? '🟢 Активен' : '⏸ Пауза';
+                    let statusColor = r.is_active ? 'var(--green)' : 'var(--blue)';
+                    if (r.is_finished) {
+                        statusText = '🏆 Завершен';
+                        statusColor = 'var(--gold)';
+                    }
+
                     const startD = new Date(r.start_date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
                     const endD = r.end_date ? new Date(r.end_date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
-                    return `<div class="list-container" style="padding: 20px; margin-bottom: 16px; border-left: 3px solid ${activeColor};">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+
+                    return `<div class="list-container" style="padding: 20px; margin-bottom: 16px; border-left: 4px solid ${statusColor}; ${r.is_finished ? 'opacity: 0.9;' : ''}">
+                        <div style="display: flex; align-items: start; justify-content: space-between; margin-bottom: 14px;">
                             <div>
-                                <div style="font-weight: 800; font-size: 15px; color: var(--gold);">${r.title}</div>
-                                <div style="font-size: 11px; color: var(--t3); margin-top: 2px;">Приз: ${r.prize}</div>
+                                <div style="font-weight: 900; font-size: 16px; color: var(--gold);">${r.title}</div>
+                                <div style="font-size: 11px; color: var(--t3); margin-top: 2px;">🎁 Приз: <b>${r.prize}</b></div>
+                                ${r.is_finished ? `<div style="font-size: 11px; color: var(--green); margin-top: 4px; font-weight: 800;">👑 Победитель ID: ${r.winner_id}</div>` : ''}
                             </div>
-                            <div style="font-size: 11px; font-weight: 700; color: ${activeColor};">${active}</div>
+                            <div style="font-size: 11px; font-weight: 800; color: ${statusColor}; background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 8px;">${statusText}</div>
                         </div>
                         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px;">
                             <div style="background: var(--card); border-radius: 10px; padding: 10px; text-align: center;">
@@ -1306,23 +1313,22 @@
                                 <div style="font-size: 18px; font-weight: 900; color: var(--accent);">${r.participants || 0}</div>
                             </div>
                             <div style="background: var(--card); border-radius: 10px; padding: 10px; text-align: center;">
-                                <div style="font-size: 9px; color: var(--t4); text-transform: uppercase;">Начало</div>
+                                <div style="font-size: 9px; color: var(--t4); text-transform: uppercase;">Дата розыгрыша</div>
                                 <div style="font-size: 10px; font-weight: 700; color: var(--t2);">${startD}</div>
                             </div>
                             <div style="background: var(--card); border-radius: 10px; padding: 10px; text-align: center;">
-                                <div style="font-size: 9px; color: var(--t4); text-transform: uppercase;">Конец</div>
+                                <div style="font-size: 9px; color: var(--t4); text-transform: uppercase;">Дедлайн</div>
                                 <div style="font-size: 10px; font-weight: 700; color: var(--t2);">${endD}</div>
                             </div>
                         </div>
                         <div style="font-size: 10px; color: var(--t4); margin-bottom: 14px;">
-                            Деп/билет: <b style="color:var(--t2)">${r.deposit_per_ticket} TON</b> · Реф 1й деп: <b style="color:var(--t2)">+${r.ref_first_dep_tickets}</b> · Кумулятив: <b style="color:var(--t2)">${r.ref_cumul_amount} TON → +${r.ref_cumul_tickets}</b>
-                            ${r.nft_link ? ' · <a href="' + r.nft_link + '" target="_blank" style="color:var(--accent)">NFT ↗</a>' : ''}
-                            ${r.channel_link ? ' · <a href="' + r.channel_link + '" target="_blank" style="color:var(--accent)">Канал ↗</a>' : ''}
+                            ${r.deposit_per_ticket} T/билет · Реф 1й деп: +${r.ref_first_dep_tickets} · Кумулятив: ${r.ref_cumul_amount} T → +${r.ref_cumul_tickets}
+                            ${r.nft_link ? ' · <a href="' + r.nft_link + '" target="_blank" style="color:var(--accent)">Подарок ↗</a>' : ''}
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            <button class="primary-btn" onclick="viewRaffleDetails(${r.id})" style="flex: 2; font-size: 12px; padding: 8px;">📊 Участники</button>
-                            <button class="primary-btn" onclick="toggleRaffleActive(${r.id})" style="flex: 1; font-size: 12px; padding: 8px; background: ${r.is_active ? 'rgba(255,71,87,0.1)' : 'rgba(0,242,161,0.1)'}; color: ${r.is_active ? 'var(--red)' : 'var(--green)'}; box-shadow: none;">${r.is_active ? '⏸ Выкл' : '▶ Вкл'}</button>
-                            <button class="primary-btn" onclick="deleteRaffle(${r.id})" style="flex: 1; font-size: 12px; padding: 8px; background: rgba(255,71,87,0.08); color: var(--red); box-shadow: none;">🗑 Удалить</button>
+                            <button class="primary-btn" onclick="viewRaffleDetails(${r.id})" style="flex: 2; font-size: 12px; padding: 10px;">📊 Статистика</button>
+                            ${!r.is_finished ? `<button class="primary-btn" onclick="toggleRaffleActive(${r.id})" style="flex: 1; font-size: 12px; padding: 10px; background: ${r.is_active ? 'rgba(255,71,87,0.1)' : 'rgba(0,242,161,0.1)'}; color: ${r.is_active ? 'var(--red)' : 'var(--green)'}; box-shadow: none;">${r.is_active ? '⏸ Пауза' : '▶ Запуск'}</button>` : ''}
+                            <button class="primary-btn" onclick="deleteRaffle(${r.id})" style="flex: 1; font-size: 12px; padding: 10px; background: rgba(255,71,87,0.08); color: var(--red); box-shadow: none;">🗑 Удалить</button>
                         </div>
                     </div>`;
                 }).join('');

@@ -2689,31 +2689,44 @@ function renderRaffleCards(raffles) {
     }
     container.innerHTML = raffles.map(r => {
         const cd = formatCountdown(r.start_date);
-        return `<div class="daily-bonus glass-card" style="border-color: #f3ba2f; margin-bottom: 16px; background: linear-gradient(135deg, rgba(243,186,47,0.08), rgba(0,136,204,0.04)); position: relative; overflow: hidden; cursor: pointer;" onclick="openRaffleView(${r.id})">
-            <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: radial-gradient(circle, rgba(243,186,47,0.12), transparent); pointer-events: none;"></div>
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                <div style="font-size: 36px; filter: drop-shadow(0 0 8px rgba(243,186,47,0.4));">🎰</div>
+        return `<div class="daily-bonus glass-card" style="border: 1px solid rgba(243,186,47,0.25); border-radius: 20px; margin-bottom: 20px; background: linear-gradient(135deg, rgba(20,20,30,0.6), rgba(0,0,0,0.4)); position: relative; overflow: hidden; padding: 20px; cursor: pointer; transition: transform 0.2s;" onclick="openRaffleView(${r.id})">
+            <!-- Background Glow -->
+            <div style="position: absolute; top: -40px; right: -40px; width: 120px; height: 120px; background: radial-gradient(circle, rgba(243,186,47,0.1), transparent); pointer-events: none;"></div>
+            
+            <!-- Header -->
+            <div style="display: flex; align-items: start; gap: 14px; margin-bottom: 18px;">
+                <div style="width: 54px; height: 54px; background: rgba(243,186,47,0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0; box-shadow: inset 0 0 15px rgba(243,186,47,0.15);">🎰</div>
                 <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: 900; font-size: 14px; color: #f3ba2f; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(r.title)}</div>
-                    <div style="font-size: 10px; color: var(--t3); margin-top: 2px;">Приз: ${escapeHtml(r.prize)}</div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+                        <span style="font-size: 9px; font-weight: 800; color: #f3ba2f; text-transform: uppercase; background: rgba(243,186,47,0.15); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px;">ACTIVE</span>
+                        <div style="font-size: 11px; color: var(--t4); font-weight: 600;">#${r.id}</div>
+                    </div>
+                    <div style="font-weight: 900; font-size: 16px; color: var(--t1); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px;">${escapeHtml(r.title)}</div>
+                    <div style="font-size: 11px; color: var(--t3); display: flex; align-items: center; gap: 4px;">
+                        <span style="color: #f3ba2f;">🎁</span> ${escapeHtml(r.prize)}
+                    </div>
                 </div>
             </div>
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                <div style="flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-                    <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 6px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
-                        <div style="font-size: 7px; color: var(--t4); text-transform: uppercase;">Мои билеты</div>
-                        <div style="font-size: 16px; font-weight: 900; color: #f3ba2f;">${r.myTickets || 0}</div>
-                    </div>
-                    <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 6px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
-                        <div style="font-size: 7px; color: var(--t4); text-transform: uppercase;">Участников</div>
-                        <div style="font-size: 16px; font-weight: 900; color: var(--t1);">${r.participants || 0}</div>
-                    </div>
-                    <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 6px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
-                        <div style="font-size: 7px; color: var(--t4); text-transform: uppercase;">Таймер</div>
-                        <div style="font-size: 9px; font-weight: 800; color: ${cd.ended ? '#00ff88' : '#f3ba2f'}; font-family: monospace;">${cd.text}</div>
-                    </div>
+
+            <!-- Stats Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 10px; text-align: center;">
+                    <div style="font-size: 8px; color: var(--t4); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Мои билеты</div>
+                    <div style="font-size: 22px; font-weight: 900; color: #f3ba2f; text-shadow: 0 0 10px rgba(243,186,47,0.3);">${r.myTickets || 0}</div>
                 </div>
-                <button class="claim-btn-premium" style="width: auto; padding: 0 12px; height: 44px; font-size: 11px; flex-shrink: 0; background: linear-gradient(135deg, rgba(243,186,47,0.2), rgba(243,186,47,0.08)); color: #f3ba2f; font-weight: 800; border: 1px solid rgba(243,186,47,0.3); pointer-events: none; margin: 0; display: flex; align-items: center; justify-content: center;">ПОДРОБНЕЕ →</button>
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 10px; text-align: center;">
+                    <div style="font-size: 8px; color: var(--t4); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Участников</div>
+                    <div style="font-size: 22px; font-weight: 900; color: var(--t1);">${r.participants || 0}</div>
+                </div>
+            </div>
+
+            <!-- Footer / Timer -->
+            <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06);">
+                <div style="display: flex; flex-direction: column;">
+                    <span style="font-size: 8px; color: var(--t4); text-transform: uppercase; margin-bottom: 2px;">До розыгрыша</span>
+                    <span style="font-size: 14px; font-weight: 900; color: ${cd.ended ? '#00ff88' : '#f3ba2f'}; font-family: monospace; letter-spacing: 1px;">${cd.text}</span>
+                </div>
+                <button style="background: linear-gradient(135deg, #f3ba2f, #e0a500); color: #000; border: none; border-radius: 10px; padding: 8px 16px; font-size: 11px; font-weight: 900; letter-spacing: 0.5px; cursor: pointer; box-shadow: 0 4px 15px rgba(243,186,47,0.25);">УЧАСТВОВАТЬ →</button>
             </div>
         </div>`;
     }).join('');

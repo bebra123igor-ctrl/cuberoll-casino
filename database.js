@@ -706,8 +706,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_raffle_tgid ON raffle_tickets(telegram_id);
 `);
 
-// Add raffle_id column if missing (migration from old schema)
-try { db.exec('ALTER TABLE raffle_tickets ADD COLUMN raffle_id INTEGER DEFAULT NULL'); } catch (e) { }
+// Migration: Add columns if missing
+try { db.exec('ALTER TABLE raffles ADD COLUMN is_finished INTEGER DEFAULT 0'); } catch (e) { }
+try { db.exec('ALTER TABLE raffles ADD COLUMN winner_id INTEGER DEFAULT NULL'); } catch (e) { }
 
 // Track cumulative referral deposits for ticket awarding
 try {
@@ -751,23 +752,49 @@ const raffleOps = {
   getTicketDetails(raffleId, tgId) {
     return db.prepare('SELECT * FROM raffle_tickets WHERE raffle_id = ? AND telegram_id = ? ORDER BY created_at DESC').all(raffleId, tgId);
   },
-  getLeaderboard(raffleId) {
+  getLeaderboard(raffleId, limit = 50) {
     return db.prepare(`
-      SELECT r.telegram_id, u.username, u.first_name, SUM(r.amount) as total_tickets
-      FROM raffle_tickets r
-      LEFT JOIN users u ON r.telegram_id = u.telegram_id
-      WHERE r.raffle_id = ?
-      GROUP BY r.telegram_id
-      ORDER BY total_tickets DESC
-    `).all(raffleId);
+      SELECT t.telegram_id, u.username, u.first_name, SUM(t.amount) as tickets
+      FROM raffle_tickets t
+      JOIN users u ON t.telegram_id = u.telegram_id
+      WHERE t.raffle_id = ?
+      GROUP BY t.telegram_id
+      ORDER BY tickets DESC
+      LIMIT ?
+    `).all(raffleId, limit);
   },
   getTotalTickets(raffleId) {
     const row = db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM raffle_tickets WHERE raffle_id = ?').get(raffleId);
     return row ? row.total : 0;
   },
   getParticipantCount(raffleId) {
-    const row = db.prepare('SELECT COUNT(DISTINCT telegram_id) as c FROM raffle_tickets WHERE raffle_id = ?').get(raffleId);
-    return row ? row.c : 0;
+    const row = db.prepare('SELECT COUNT(DISTINCT telegram_id) as count FROM raffle_tickets WHERE raffle_id = ?').get(raffleId);
+    return row ? row.count : 0;
+  },
+  drawWinner(id) {
+    const raffle = this.getById(id);
+    if (!raffle || raffle.is_finished) return null;
+
+    const tickets = db.prepare('SELECT telegram_id, amount FROM raffle_tickets WHERE raffle_id = ?').all(id);
+    if (tickets.length === 0) {
+      db.prepare('UPDATE raffles SET is_finished = 1, is_active = 0 WHERE id = ?').run(id);
+      return null;
+    }
+
+    const pool = [];
+    tickets.forEach(t => {
+      for (let i = 0; i < t.amount; i++) {
+        pool.push(t.telegram_id);
+      }
+    });
+
+    const winnerId = pool[Math.floor(Math.random() * pool.length)];
+    db.prepare('UPDATE raffles SET is_finished = 1, winner_id = ?, is_active = 0 WHERE id = ?').run(winnerId, id);
+
+    return {
+      winnerId,
+      raffle
+    };
   }
 };
 

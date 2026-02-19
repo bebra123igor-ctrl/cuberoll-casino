@@ -1573,6 +1573,43 @@ app.listen(PORT, '0.0.0.0', async () => {
     // Background Backup (5 min)
     setInterval(syncOps.pushToCloud, 300000);
 
+    // Raffle Automated Draw (Every 1 min)
+    setInterval(async () => {
+        try {
+            const active = raffleOps.getActive();
+            const now = new Date();
+            for (const r of active) {
+                const target = new Date(r.start_date);
+                if (target <= now) {
+                    console.log(`[Raffle] Drawing winner for raffle #${r.id}: ${r.title}`);
+                    const result = raffleOps.drawWinner(r.id);
+                    if (result && result.winnerId) {
+                        const { winnerId, raffle } = result;
+                        const winner = userOps.get(winnerId);
+
+                        // Notify winner
+                        const winMsg = `🎉 *ПОЗДРАВЛЯЕМ!*\n\nТы стал победителем в розыгрыше: *${raffle.title}*!\n\n🎁 Твой приз: *${raffle.prize}*\n\n🔗 *Забери свой подарок по ссылке ниже:*\n${raffle.nft_link || 'Обратитесь к администратору'}\n\n_Спасибо за игру в CubeRoll Casino!_`;
+
+                        try {
+                            await bot.sendMessage(winnerId, winMsg, { parse_mode: 'Markdown' });
+                            console.log(`[Raffle] Winner ${winnerId} notified.`);
+                        } catch (err) {
+                            console.error(`[Raffle] Failed to notify winner ${winnerId}:`, err.message);
+                        }
+
+                        // Log to log channel if set
+                        const logChannelId = settingsOps.get('log_channel_id');
+                        if (logChannelId) {
+                            const adminLogs = `🏆 *РОЗЫГРЫШ ЗАВЕРШЕН*\n\n📋 *Конкурс:* ${raffle.title}\n👤 *Победитель:* ${winner.username ? '@' + winner.username : winnerId} (${winner.first_name})\n🎁 *Приз:* ${raffle.prize}\n🎟 *Всего билетов:* ${raffleOps.getTotalTickets(raffle.id)}`;
+                            bot.sendMessage(logChannelId, adminLogs, { parse_mode: 'Markdown' }).catch(() => { });
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('[Raffle Monitor] Error:', e.message);
+        }
+    }, 60000);
     startGiftManager();
 });
 
