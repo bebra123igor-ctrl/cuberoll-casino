@@ -671,56 +671,102 @@ const marketplaceOps = {
   }
 };
 
-// --- RAFFLE SYSTEM ---
+// --- RAFFLE SYSTEM (Dynamic) ---
+db.exec(`
+  CREATE TABLE IF NOT EXISTS raffles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    prize TEXT NOT NULL,
+    nft_link TEXT,
+    channel_link TEXT,
+    description TEXT,
+    start_date TEXT NOT NULL,
+    end_date TEXT,
+    deposit_per_ticket REAL DEFAULT 0.1,
+    ref_first_dep_tickets INTEGER DEFAULT 1,
+    ref_cumul_amount REAL DEFAULT 0.5,
+    ref_cumul_tickets INTEGER DEFAULT 1,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+`);
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS raffle_tickets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    raffle_id INTEGER,
     telegram_id INTEGER,
     amount INTEGER DEFAULT 1,
     reason TEXT,
     source_deposit_hash TEXT,
     created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (raffle_id) REFERENCES raffles(id),
     FOREIGN KEY (telegram_id) REFERENCES users(telegram_id)
   );
   CREATE INDEX IF NOT EXISTS idx_raffle_tgid ON raffle_tickets(telegram_id);
 `);
+
+// Add raffle_id column if missing (migration from old schema)
+try { db.exec('ALTER TABLE raffle_tickets ADD COLUMN raffle_id INTEGER DEFAULT NULL'); } catch (e) { }
 
 // Track cumulative referral deposits for ticket awarding
 try {
   db.exec('ALTER TABLE users ADD COLUMN raffle_ref_deposit_tracked REAL DEFAULT 0');
 } catch (e) { }
 
-const RAFFLE_START = '2026-02-26T09:00:00Z'; // 12:00 MSK = 09:00 UTC
-
 const raffleOps = {
-  addTickets(tgId, amount, reason, depositHash = null) {
-    if (amount <= 0) return;
-    return db.prepare('INSERT INTO raffle_tickets (telegram_id, amount, reason, source_deposit_hash) VALUES (?, ?, ?, ?)')
-      .run(tgId, amount, reason, depositHash);
+  // --- Raffle CRUD ---
+  create(data) {
+    return db.prepare(`INSERT INTO raffles (title, prize, nft_link, channel_link, description, start_date, end_date, deposit_per_ticket, ref_first_dep_tickets, ref_cumul_amount, ref_cumul_tickets) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(data.title, data.prize, data.nft_link || null, data.channel_link || null, data.description || null, data.start_date, data.end_date || null, data.deposit_per_ticket || 0.1, data.ref_first_dep_tickets || 1, data.ref_cumul_amount || 0.5, data.ref_cumul_tickets || 1);
   },
-  getTickets(tgId) {
-    const row = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM raffle_tickets WHERE telegram_id = ? AND created_at >= ?`).get(tgId, RAFFLE_START);
+  getAll() {
+    return db.prepare('SELECT * FROM raffles ORDER BY created_at DESC').all();
+  },
+  getActive() {
+    return db.prepare("SELECT * FROM raffles WHERE is_active = 1 ORDER BY created_at DESC").all();
+  },
+  getById(id) {
+    return db.prepare('SELECT * FROM raffles WHERE id = ?').get(id);
+  },
+  toggle(id) {
+    const r = db.prepare('SELECT is_active FROM raffles WHERE id = ?').get(id);
+    if (r) db.prepare('UPDATE raffles SET is_active = ? WHERE id = ?').run(r.is_active ? 0 : 1, id);
+  },
+  delete(id) {
+    db.prepare('DELETE FROM raffle_tickets WHERE raffle_id = ?').run(id);
+    db.prepare('DELETE FROM raffles WHERE id = ?').run(id);
+  },
+
+  // --- Tickets ---
+  addTickets(raffleId, tgId, amount, reason, depositHash = null) {
+    if (amount <= 0) return;
+    return db.prepare('INSERT INTO raffle_tickets (raffle_id, telegram_id, amount, reason, source_deposit_hash) VALUES (?, ?, ?, ?, ?)')
+      .run(raffleId, tgId, amount, reason, depositHash);
+  },
+  getTickets(raffleId, tgId) {
+    const row = db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM raffle_tickets WHERE raffle_id = ? AND telegram_id = ?').get(raffleId, tgId);
     return row ? row.total : 0;
   },
-  getTicketDetails(tgId) {
-    return db.prepare('SELECT * FROM raffle_tickets WHERE telegram_id = ? AND created_at >= ? ORDER BY created_at DESC').all(tgId, RAFFLE_START);
+  getTicketDetails(raffleId, tgId) {
+    return db.prepare('SELECT * FROM raffle_tickets WHERE raffle_id = ? AND telegram_id = ? ORDER BY created_at DESC').all(raffleId, tgId);
   },
-  getLeaderboard() {
+  getLeaderboard(raffleId) {
     return db.prepare(`
       SELECT r.telegram_id, u.username, u.first_name, SUM(r.amount) as total_tickets
       FROM raffle_tickets r
       LEFT JOIN users u ON r.telegram_id = u.telegram_id
-      WHERE r.created_at >= ?
+      WHERE r.raffle_id = ?
       GROUP BY r.telegram_id
       ORDER BY total_tickets DESC
-    `).all(RAFFLE_START);
+    `).all(raffleId);
   },
-  getTotalTickets() {
-    const row = db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM raffle_tickets WHERE created_at >= ?').get(RAFFLE_START);
+  getTotalTickets(raffleId) {
+    const row = db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM raffle_tickets WHERE raffle_id = ?').get(raffleId);
     return row ? row.total : 0;
   },
-  getParticipantCount() {
-    const row = db.prepare('SELECT COUNT(DISTINCT telegram_id) as c FROM raffle_tickets WHERE created_at >= ?').get(RAFFLE_START);
+  getParticipantCount(raffleId) {
+    const row = db.prepare('SELECT COUNT(DISTINCT telegram_id) as c FROM raffle_tickets WHERE raffle_id = ?').get(raffleId);
     return row ? row.c : 0;
   }
 };

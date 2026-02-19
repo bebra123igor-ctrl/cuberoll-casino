@@ -5,7 +5,7 @@ const FIREBASE_URL = 'https://shout-messenger-default-rtdb.europe-west1.firebase
 
 const TABLES = [
     'users', 'games', 'settings', 'promocodes', 'promocode_activations',
-    'deposits', 'gifts', 'transfers', 'transactions', 'raffle_tickets'
+    'deposits', 'gifts', 'transfers', 'transactions', 'raffles', 'raffle_tickets'
 ];
 
 async function firebaseRequest(path, method, data = null) {

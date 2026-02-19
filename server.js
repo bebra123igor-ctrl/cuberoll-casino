@@ -219,11 +219,14 @@ app.post('/api/auth', auth, (req, res) => {
             bonus: 3,
             requiredReferrals: 10
         },
-        raffle: {
-            myTickets: raffleOps.getTickets(u.id),
-            totalTickets: raffleOps.getTotalTickets(),
-            participants: raffleOps.getParticipantCount()
-        },
+        activeRaffles: raffleOps.getActive().map(r => ({
+            id: r.id, title: r.title, prize: r.prize, nft_link: r.nft_link,
+            channel_link: r.channel_link, description: r.description,
+            start_date: r.start_date, end_date: r.end_date,
+            myTickets: raffleOps.getTickets(r.id, u.id),
+            totalTickets: raffleOps.getTotalTickets(r.id),
+            participants: raffleOps.getParticipantCount(r.id)
+        })),
         isAdmin: ADMIN_IDS.includes(u.id)
     });
 });
@@ -1039,52 +1042,50 @@ function processSuccessDeposit(tgId, amount, memo, txHash) {
     userOps.updateBalance(tgId, amount, 'deposit', `TON Deposit (${memo})`);
     depositOps.markCompleted(memo, txHash);
 
-    // --- RAFFLE TICKET LOGIC ---
+    // --- RAFFLE TICKET LOGIC (Dynamic per active raffle) ---
     try {
-        // 1. Award tickets to depositor: 1 ticket per 0.1 TON
-        const selfTickets = Math.floor(amount / 0.1);
-        if (selfTickets > 0) {
-            raffleOps.addTickets(tgId, selfTickets, `deposit_${amount.toFixed(2)}TON`, txHash);
-            console.log(`[Raffle] ${tgId} got ${selfTickets} tickets for depositing ${amount.toFixed(2)} TON`);
-        }
+        const activeRaffles = raffleOps.getActive();
+        for (const raffle of activeRaffles) {
+            // 1. Award tickets to depositor based on raffle config
+            const dpt = raffle.deposit_per_ticket || 0.1;
+            const selfTickets = Math.floor(amount / dpt);
+            if (selfTickets > 0) {
+                raffleOps.addTickets(raffle.id, tgId, selfTickets, `deposit_${amount.toFixed(2)}TON`, txHash);
+                console.log(`[Raffle#${raffle.id}] ${tgId} got ${selfTickets} tickets for ${amount.toFixed(2)} TON`);
+            }
 
-        // 2. Award tickets to referrer
-        const depositor = userOps.get(tgId);
-        if (depositor && depositor.referred_by) {
-            const referrerId = depositor.referred_by;
-            const referrerUser = db.prepare('SELECT * FROM users WHERE CAST(telegram_id AS TEXT) = CAST(? AS TEXT) OR referral_code = ? OR username = ?').get(
-                String(referrerId), String(referrerId), String(referrerId)
-            );
-            if (referrerUser) {
-                const refTgId = referrerUser.telegram_id;
+            // 2. Award tickets to referrer
+            const depositor = userOps.get(tgId);
+            if (depositor && depositor.referred_by) {
+                const referrerId = depositor.referred_by;
+                const referrerUser = db.prepare('SELECT * FROM users WHERE CAST(telegram_id AS TEXT) = CAST(? AS TEXT) OR referral_code = ? OR username = ?').get(
+                    String(referrerId), String(referrerId), String(referrerId)
+                );
+                if (referrerUser) {
+                    const refTgId = referrerUser.telegram_id;
 
-                // Check if this is the depositor's FIRST ever deposit
-                const depositCount = db.prepare("SELECT COUNT(*) as c FROM deposits WHERE telegram_id = ? AND status = 'completed'").get(tgId);
-                if (depositCount && depositCount.c <= 1) {
-                    // First deposit by referral: +1 ticket to referrer
-                    raffleOps.addTickets(refTgId, 1, `ref_first_dep_${tgId}`, txHash);
-                    console.log(`[Raffle] Referrer ${refTgId} got +1 ticket for ${tgId}'s first deposit`);
+                    // First deposit bonus
+                    const depositCount = db.prepare("SELECT COUNT(*) as c FROM deposits WHERE telegram_id = ? AND status = 'completed'").get(tgId);
+                    if (depositCount && depositCount.c <= 1 && raffle.ref_first_dep_tickets > 0) {
+                        raffleOps.addTickets(raffle.id, refTgId, raffle.ref_first_dep_tickets, `ref_first_dep_${tgId}`, txHash);
+                        console.log(`[Raffle#${raffle.id}] Referrer ${refTgId} got +${raffle.ref_first_dep_tickets} ticket(s) for ${tgId}'s first deposit`);
+                    }
+
+                    // Cumulative deposit tracking
+                    if (raffle.ref_cumul_amount > 0 && raffle.ref_cumul_tickets > 0) {
+                        const prevTracked = depositor.raffle_ref_deposit_tracked || 0;
+                        const totalDeps = db.prepare("SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE telegram_id = ? AND type = 'deposit'").get(tgId);
+                        const totalDeposited = totalDeps ? totalDeps.s : 0;
+                        const newMilestones = Math.floor(totalDeposited / raffle.ref_cumul_amount);
+                        const oldMilestones = Math.floor(prevTracked / raffle.ref_cumul_amount);
+                        const newTickets = (newMilestones - oldMilestones) * raffle.ref_cumul_tickets;
+                        if (newTickets > 0) {
+                            raffleOps.addTickets(raffle.id, refTgId, newTickets, `ref_cumul_${tgId}_${totalDeposited.toFixed(2)}TON`, txHash);
+                            console.log(`[Raffle#${raffle.id}] Referrer ${refTgId} got +${newTickets} tickets for cumulative deps`);
+                        }
+                        db.prepare('UPDATE users SET raffle_ref_deposit_tracked = ? WHERE telegram_id = ?').run(totalDeposited, tgId);
+                    }
                 }
-
-                // Cumulative 0.5 TON tracking: for every 0.5 TON this referral deposits total, +1 ticket to referrer
-                const prevTracked = depositor.raffle_ref_deposit_tracked || 0;
-                // Get total deposits by this referral
-                const totalDeps = db.prepare("SELECT COALESCE(SUM(amount), 0) as s FROM transactions WHERE telegram_id = ? AND type = 'deposit'").get(tgId);
-                const totalDeposited = totalDeps ? totalDeps.s : 0;
-
-                // Calculate how many 0.5 TON milestones were reached
-                const newMilestones = Math.floor(totalDeposited / 0.5);
-                const oldMilestones = Math.floor(prevTracked / 0.5);
-                const newTickets = newMilestones - oldMilestones;
-
-                if (newTickets > 0) {
-                    raffleOps.addTickets(refTgId, newTickets, `ref_cumul_${tgId}_${totalDeposited.toFixed(2)}TON`, txHash);
-                    console.log(`[Raffle] Referrer ${refTgId} got +${newTickets} tickets for ${tgId}'s cumulative deposits (${totalDeposited.toFixed(2)} TON)`);
-                }
-
-                // Update tracked amount for this referrer (use the referral's total deposits)
-                // We track per-referral, so we store on the REFERRAL user, not the referrer
-                db.prepare('UPDATE users SET raffle_ref_deposit_tracked = ? WHERE telegram_id = ?').run(totalDeposited, tgId);
             }
         }
     } catch (e) {
@@ -1297,39 +1298,88 @@ app.get('/api/admin/monitor-logs', auth, adminOnly, (req, res) => {
 });
 
 // --- RAFFLE API ---
-app.get('/api/raffle', auth, (req, res) => {
+app.get('/api/raffle/:id', auth, (req, res) => {
     try {
+        const raffleId = parseInt(req.params.id);
+        const raffle = raffleOps.getById(raffleId);
+        if (!raffle || !raffle.is_active) return res.status(404).secure({ error: 'Raffle not found' });
         const tgId = req.tgUser.id;
-        const myTickets = raffleOps.getTickets(tgId);
-        const myDetails = raffleOps.getTicketDetails(tgId);
-        const totalTickets = raffleOps.getTotalTickets();
-        const participants = raffleOps.getParticipantCount();
-        const leaderboard = raffleOps.getLeaderboard().slice(0, 20);
-
+        const myTickets = raffleOps.getTickets(raffleId, tgId);
+        const totalTickets = raffleOps.getTotalTickets(raffleId);
+        const participants = raffleOps.getParticipantCount(raffleId);
+        const leaderboard = raffleOps.getLeaderboard(raffleId).slice(0, 20);
         const winChance = totalTickets > 0 ? ((myTickets / totalTickets) * 100).toFixed(2) : '0.00';
-
-        res.secure({
-            myTickets,
-            myDetails,
-            totalTickets,
-            participants,
-            leaderboard,
-            winChance,
-            raffleStart: '2026-02-26T09:00:00Z',
-            prize: 'NFT от CubeRoll',
-            channel: 'https://t.me/cubewilltaketheworld'
-        });
+        res.secure({ raffle, myTickets, totalTickets, participants, leaderboard, winChance });
     } catch (e) {
         res.status(500).secure({ error: e.message });
     }
 });
 
-app.get('/api/admin/raffle', auth, adminOnly, (req, res) => {
+app.get('/api/raffles', auth, (req, res) => {
     try {
-        const leaderboard = raffleOps.getLeaderboard();
-        const totalTickets = raffleOps.getTotalTickets();
-        const participants = raffleOps.getParticipantCount();
-        res.secure({ leaderboard, totalTickets, participants });
+        const tgId = req.tgUser.id;
+        const raffles = raffleOps.getActive().map(r => ({
+            ...r,
+            myTickets: raffleOps.getTickets(r.id, tgId),
+            totalTickets: raffleOps.getTotalTickets(r.id),
+            participants: raffleOps.getParticipantCount(r.id)
+        }));
+        res.secure({ raffles });
+    } catch (e) {
+        res.status(500).secure({ error: e.message });
+    }
+});
+
+// --- ADMIN RAFFLE ---
+app.get('/api/admin/raffles', auth, adminOnly, (req, res) => {
+    try {
+        const raffles = raffleOps.getAll().map(r => ({
+            ...r,
+            totalTickets: raffleOps.getTotalTickets(r.id),
+            participants: raffleOps.getParticipantCount(r.id)
+        }));
+        res.secure({ raffles });
+    } catch (e) {
+        res.status(500).secure({ error: e.message });
+    }
+});
+
+app.post('/api/admin/raffles', auth, adminOnly, (req, res) => {
+    try {
+        const result = raffleOps.create(req.body);
+        res.secure({ success: true, id: result.lastInsertRowid });
+    } catch (e) {
+        res.status(500).secure({ error: e.message });
+    }
+});
+
+app.post('/api/admin/raffles/:id/toggle', auth, adminOnly, (req, res) => {
+    try {
+        raffleOps.toggle(parseInt(req.params.id));
+        res.secure({ success: true });
+    } catch (e) {
+        res.status(500).secure({ error: e.message });
+    }
+});
+
+app.delete('/api/admin/raffles/:id', auth, adminOnly, (req, res) => {
+    try {
+        raffleOps.delete(parseInt(req.params.id));
+        res.secure({ success: true });
+    } catch (e) {
+        res.status(500).secure({ error: e.message });
+    }
+});
+
+app.get('/api/admin/raffles/:id', auth, adminOnly, (req, res) => {
+    try {
+        const raffleId = parseInt(req.params.id);
+        const raffle = raffleOps.getById(raffleId);
+        if (!raffle) return res.status(404).secure({ error: 'Not found' });
+        const leaderboard = raffleOps.getLeaderboard(raffleId);
+        const totalTickets = raffleOps.getTotalTickets(raffleId);
+        const participants = raffleOps.getParticipantCount(raffleId);
+        res.secure({ raffle, leaderboard, totalTickets, participants });
     } catch (e) {
         res.status(500).secure({ error: e.message });
     }

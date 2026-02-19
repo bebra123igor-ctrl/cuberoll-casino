@@ -334,8 +334,8 @@ async function init() {
                     try { initWheelLabels(); } catch (e) { }
 
                     // Set initial raffle data
-                    if (data.raffle && window._setInitialRaffleData) {
-                        window._setInitialRaffleData(data.raffle);
+                    if (data.activeRaffles && window._setInitialRaffleData) {
+                        window._setInitialRaffleData(data.activeRaffles);
                     }
 
                     finishLoading();
@@ -2648,85 +2648,207 @@ function drawHouse(hx, hy, id, active, hit) {
 }
 
 
-// --- RAFFLE SYSTEM ---
-const RAFFLE_TARGET_DATE = new Date('2026-02-26T09:00:00Z'); // 12:00 MSK
 
-function updateRaffleCountdown() {
-    const el = document.getElementById('raffle-countdown');
-    if (!el) return;
+// --- RAFFLE SYSTEM (Dynamic) ---
+let _openRaffleId = null;
+let _raffleCountdownInterval = null;
 
+function formatCountdown(targetDateStr) {
+    const target = new Date(targetDateStr);
     const now = new Date();
-    const diff = RAFFLE_TARGET_DATE - now;
-
-    if (diff <= 0) {
-        el.textContent = '🔥 РОЗЫГРЫШ НАЧАЛСЯ!';
-        el.style.color = '#00ff88';
-        return;
-    }
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const secs = Math.floor((diff % (1000 * 60)) / 1000);
-
-    el.textContent = `${days}д ${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    const diff = target - now;
+    if (diff <= 0) return { text: '🔥 РОЗЫГРЫШ НАЧАЛСЯ!', ended: true };
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    return { text: `${d}д ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`, ended: false };
 }
 
-setInterval(updateRaffleCountdown, 1000);
-updateRaffleCountdown();
+function renderRaffleCards(raffles) {
+    const container = document.getElementById('raffles-container');
+    if (!container) return;
+    if (!raffles || raffles.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    container.innerHTML = raffles.map(r => {
+        const cd = formatCountdown(r.start_date);
+        return `<div class="daily-bonus glass-card" style="border-color: #f3ba2f; margin-bottom: 16px; background: linear-gradient(135deg, rgba(243,186,47,0.08), rgba(0,136,204,0.04)); position: relative; overflow: hidden; cursor: pointer;" onclick="openRaffleView(${r.id})">
+            <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: radial-gradient(circle, rgba(243,186,47,0.12), transparent); pointer-events: none;"></div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <div style="font-size: 36px; filter: drop-shadow(0 0 8px rgba(243,186,47,0.4));">🎰</div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 900; font-size: 14px; color: #f3ba2f; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(r.title)}</div>
+                    <div style="font-size: 10px; color: var(--t3); margin-top: 2px;">Приз: ${escapeHtml(r.prize)}</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px;">
+                <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 8px 12px; flex: 1; text-align: center;">
+                    <div style="font-size: 8px; color: var(--t4); text-transform: uppercase; letter-spacing: 0.5px;">Мои билеты</div>
+                    <div style="font-size: 20px; font-weight: 900; color: #f3ba2f;">${r.myTickets || 0}</div>
+                </div>
+                <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 8px 12px; flex: 1; text-align: center;">
+                    <div style="font-size: 8px; color: var(--t4); text-transform: uppercase; letter-spacing: 0.5px;">Участников</div>
+                    <div style="font-size: 20px; font-weight: 900; color: var(--t1);">${r.participants || 0}</div>
+                </div>
+                <div style="background: rgba(0,0,0,0.3); border-radius: 10px; padding: 8px 12px; flex: 1; text-align: center;">
+                    <div style="font-size: 8px; color: var(--t4); text-transform: uppercase; letter-spacing: 0.5px;">Таймер</div>
+                    <div style="font-size: 11px; font-weight: 800; color: ${cd.ended ? '#00ff88' : '#f3ba2f'}; font-family: monospace;">${cd.text}</div>
+                </div>
+            </div>
+            <button class="claim-btn-premium" style="background: linear-gradient(135deg, rgba(243,186,47,0.2), rgba(243,186,47,0.08)); color: #f3ba2f; font-weight: 800; border: 1px solid rgba(243,186,47,0.3); pointer-events: none;">ПОДРОБНЕЕ →</button>
+        </div>`;
+    }).join('');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 async function loadRaffleData() {
     try {
-        const data = await api('/api/raffle');
-        if (!data) return;
-
-        const myTicketsEl = document.getElementById('raffle-my-tickets');
-        const winChanceEl = document.getElementById('raffle-win-chance');
-        const totalTicketsEl = document.getElementById('raffle-total-tickets');
-        const participantsEl = document.getElementById('raffle-participants');
-        const lbEl = document.getElementById('raffle-leaderboard');
-
-        if (myTicketsEl) myTicketsEl.textContent = data.myTickets || 0;
-        if (winChanceEl) winChanceEl.textContent = (data.winChance || '0.00') + '%';
-        if (totalTicketsEl) totalTicketsEl.textContent = data.totalTickets || 0;
-        if (participantsEl) participantsEl.textContent = data.participants || 0;
-
-        // Render leaderboard
-        if (lbEl && data.leaderboard && data.leaderboard.length > 0) {
-            lbEl.innerHTML = data.leaderboard.map((p, i) => {
-                const medals = ['🥇', '🥈', '🥉'];
-                const medal = i < 3 ? medals[i] : `${i + 1}.`;
-                const name = p.username ? `@${p.username}` : (p.first_name || 'Аноним');
-                const pct = data.totalTickets > 0 ? ((p.total_tickets / data.totalTickets) * 100).toFixed(1) : '0';
-                return `<div style="display: flex; align-items: center; padding: 6px 10px; border-radius: 8px; margin-bottom: 4px; background: ${i < 3 ? 'rgba(243, 186, 47, 0.06)' : 'rgba(255,255,255,0.02)'}; font-size: 12px;">
-                    <span style="width: 28px; text-align: center; flex-shrink: 0;">${medal}</span>
-                    <span style="flex: 1; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${name}</span>
-                    <span style="font-weight: 800; color: #f3ba2f; margin-left: 8px;">${p.total_tickets}🎫</span>
-                    <span style="font-size: 10px; color: var(--t4); width: 40px; text-align: right;">${pct}%</span>
-                </div>`;
-            }).join('');
-        } else if (lbEl) {
-            lbEl.innerHTML = '<div style="text-align: center; color: var(--t4); padding: 20px; font-size: 12px;">Пока нет участников. Будь первым!</div>';
+        const data = await api('/api/raffles');
+        if (data && data.raffles) {
+            renderRaffleCards(data.raffles);
         }
     } catch (e) {
         console.error('[Raffle] Load error:', e);
     }
 }
 
-// Set initial raffle data from auth response
-window._setInitialRaffleData = function (raffle) {
-    if (!raffle) return;
-    const el = document.getElementById('raffle-my-tickets');
-    if (el) el.textContent = raffle.myTickets || 0;
-    const totalEl = document.getElementById('raffle-total-tickets');
-    if (totalEl) totalEl.textContent = raffle.totalTickets || 0;
-    const partEl = document.getElementById('raffle-participants');
-    if (partEl) partEl.textContent = raffle.participants || 0;
-    // Win chance
-    const chanceEl = document.getElementById('raffle-win-chance');
-    if (chanceEl && raffle.totalTickets > 0) {
-        chanceEl.textContent = ((raffle.myTickets / raffle.totalTickets) * 100).toFixed(2) + '%';
+async function openRaffleView(raffleId) {
+    _openRaffleId = raffleId;
+    const el = document.getElementById('raffle-fullscreen');
+    if (!el) return;
+    el.classList.remove('hidden');
+    el.style.display = 'flex';
+
+    // Reset
+    document.getElementById('rf-title').textContent = 'Загрузка...';
+    document.getElementById('rf-prize').textContent = '';
+    document.getElementById('rf-leaderboard').innerHTML = '<div style="text-align:center; color:var(--t4); padding:30px; font-size:12px;">Загрузка...</div>';
+
+    try {
+        const data = await api('/api/raffle/' + raffleId);
+        if (!data) return;
+        const r = data.raffle;
+
+        document.getElementById('rf-title').textContent = r.title;
+        document.getElementById('rf-prize').textContent = 'Приз: ' + r.prize;
+
+        // NFT link
+        const nftWrap = document.getElementById('rf-nft-wrap');
+        if (r.nft_link) {
+            nftWrap.style.display = 'block';
+            document.getElementById('rf-nft-link').href = r.nft_link;
+            document.getElementById('rf-nft-url').textContent = r.nft_link;
+        } else {
+            nftWrap.style.display = 'none';
+        }
+
+        // Countdown
+        const dateEl = document.getElementById('rf-date');
+        const startD = new Date(r.start_date);
+        dateEl.textContent = startD.toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        // Start countdown ticker
+        if (_raffleCountdownInterval) clearInterval(_raffleCountdownInterval);
+        const updateCD = () => {
+            const cd = formatCountdown(r.start_date);
+            const cdEl = document.getElementById('rf-countdown');
+            if (cdEl) {
+                cdEl.textContent = cd.text;
+                cdEl.style.color = cd.ended ? '#00ff88' : '#f3ba2f';
+            }
+        };
+        updateCD();
+        _raffleCountdownInterval = setInterval(updateCD, 1000);
+
+        // Tickets
+        document.getElementById('rf-my-tickets').textContent = data.myTickets || 0;
+        document.getElementById('rf-chance').textContent = (data.winChance || '0.00') + '%';
+        document.getElementById('rf-total-tickets').textContent = data.totalTickets || 0;
+        document.getElementById('rf-participants').textContent = data.participants || 0;
+
+        // Description
+        const descWrap = document.getElementById('rf-description-wrap');
+        if (r.description) {
+            descWrap.style.display = 'block';
+            document.getElementById('rf-description').innerHTML = escapeHtml(r.description).replace(/\n/g, '<br>');
+        } else {
+            descWrap.style.display = 'none';
+        }
+
+        // Dynamic rules
+        const rulesEl = document.getElementById('rf-rules');
+        let rulesHtml = '';
+        const dpt = r.deposit_per_ticket || 0.1;
+        rulesHtml += `<div>💎 Каждые <b style="color: #f3ba2f;">${dpt} TON</b> пополнения = <b style="color: #fff;">1 билет</b></div>`;
+        if (r.ref_first_dep_tickets > 0) {
+            rulesHtml += `<div>👥 Первый деп реферала = <b style="color: #fff;">+${r.ref_first_dep_tickets} билет(ов)</b> вам</div>`;
+        }
+        if (r.ref_cumul_amount > 0 && r.ref_cumul_tickets > 0) {
+            rulesHtml += `<div>🔥 Каждые <b style="color: #f3ba2f;">${r.ref_cumul_amount} TON</b> депов реферала = <b style="color: #fff;">+${r.ref_cumul_tickets} билет(ов)</b> вам</div>`;
+        }
+        // Example
+        const exTickets = Math.floor(1 / dpt);
+        rulesHtml += `<div style="margin-top: 8px; color: var(--t4); font-size: 10px;">Пример: вы закинули 1 TON = ${exTickets} билет(ов)</div>`;
+        rulesEl.innerHTML = rulesHtml;
+
+        // Channel
+        const chWrap = document.getElementById('rf-channel-wrap');
+        if (r.channel_link) {
+            chWrap.style.display = 'block';
+            document.getElementById('rf-channel-link').href = r.channel_link;
+        } else {
+            chWrap.style.display = 'none';
+        }
+
+        // Leaderboard
+        const lbEl = document.getElementById('rf-leaderboard');
+        if (data.leaderboard && data.leaderboard.length > 0) {
+            lbEl.innerHTML = data.leaderboard.map((p, i) => {
+                const medals = ['🥇', '🥈', '🥉'];
+                const medal = i < 3 ? medals[i] : `${i + 1}.`;
+                const name = p.username ? `@${p.username}` : (p.first_name || 'Аноним');
+                const pct = data.totalTickets > 0 ? ((p.total_tickets / data.totalTickets) * 100).toFixed(1) : '0';
+                return `<div style="display: flex; align-items: center; padding: 8px 12px; border-radius: 10px; margin-bottom: 4px; background: ${i < 3 ? 'rgba(243,186,47,0.06)' : 'rgba(255,255,255,0.02)'}; font-size: 13px;">
+                    <span style="width: 30px; text-align: center; flex-shrink: 0;">${medal}</span>
+                    <span style="flex: 1; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(name)}</span>
+                    <span style="font-weight: 800; color: #f3ba2f; margin-left: 8px;">${p.total_tickets} 🎫</span>
+                    <span style="font-size: 10px; color: var(--t4); width: 44px; text-align: right;">${pct}%</span>
+                </div>`;
+            }).join('');
+        } else {
+            lbEl.innerHTML = '<div style="text-align: center; color: var(--t4); padding: 30px; font-size: 12px;">Пока нет участников. Будь первым!</div>';
+        }
+    } catch (e) {
+        console.error('[Raffle] View error:', e);
     }
+}
+
+window.openRaffleView = openRaffleView;
+
+function closeRaffleView() {
+    const el = document.getElementById('raffle-fullscreen');
+    if (el) {
+        el.classList.add('hidden');
+        el.style.display = 'none';
+    }
+    if (_raffleCountdownInterval) {
+        clearInterval(_raffleCountdownInterval);
+        _raffleCountdownInterval = null;
+    }
+    _openRaffleId = null;
+}
+window.closeRaffleView = closeRaffleView;
+
+// Set initial raffle data from auth response
+window._setInitialRaffleData = function (raffles) {
+    if (!raffles || !Array.isArray(raffles)) return;
+    renderRaffleCards(raffles);
 };
 
 // Start the app

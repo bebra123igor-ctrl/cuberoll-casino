@@ -424,91 +424,8 @@
       <div class="tab-scrollable">
         <h3 class="section-title">Центр Бонусов</h3>
 
-        <!-- RAFFLE / GIVEAWAY -->
-        <div class="daily-bonus glass-card" id="raffle-section"
-          style="border-color: #f3ba2f; margin-bottom: 25px; background: linear-gradient(135deg, rgba(243, 186, 47, 0.08) 0%, rgba(0, 136, 204, 0.05) 100%); position: relative; overflow: hidden;">
-          <div
-            style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: radial-gradient(circle, rgba(243, 186, 47, 0.15), transparent); pointer-events: none;">
-          </div>
-          <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
-            <div style="font-size: 40px; filter: drop-shadow(0 0 10px rgba(243, 186, 47, 0.5));">🎰</div>
-            <div style="flex: 1;">
-              <div style="font-weight: 900; font-size: 16px; color: #f3ba2f; letter-spacing: 1px;">NFT РОЗЫГРЫШ</div>
-              <div style="font-size: 11px; color: var(--t3); margin-top: 2px;">Приз: NFT от <a
-                  href="https://t.me/cubewilltaketheworld" style="color: #0088cc; text-decoration: none;">CubeRoll</a>
-              </div>
-            </div>
-          </div>
-
-          <!-- Countdown -->
-          <div
-            style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 12px; text-align: center; margin-bottom: 14px;">
-            <div
-              style="font-size: 10px; color: var(--t4); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
-              Старт раздачи</div>
-            <div id="raffle-countdown"
-              style="font-size: 20px; font-weight: 900; color: #f3ba2f; font-family: monospace; letter-spacing: 2px;">
-              --:--:--:--</div>
-            <div style="font-size: 10px; color: var(--t4); margin-top: 4px;">26 февраля 2026, 12:00 МСК</div>
-          </div>
-
-          <!-- User's Tickets -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;">
-            <div
-              style="background: rgba(243, 186, 47, 0.1); border: 1px solid rgba(243, 186, 47, 0.3); border-radius: 12px; padding: 12px; text-align: center;">
-              <div style="font-size: 10px; color: var(--t4); text-transform: uppercase; letter-spacing: 0.5px;">Мои
-                билеты</div>
-              <div id="raffle-my-tickets"
-                style="font-size: 28px; font-weight: 900; color: #f3ba2f; text-shadow: 0 0 15px rgba(243, 186, 47, 0.4);">
-                0</div>
-            </div>
-            <div
-              style="background: rgba(0, 136, 204, 0.1); border: 1px solid rgba(0, 136, 204, 0.3); border-radius: 12px; padding: 12px; text-align: center;">
-              <div style="font-size: 10px; color: var(--t4); text-transform: uppercase; letter-spacing: 0.5px;">Шанс
-                победы</div>
-              <div id="raffle-win-chance" style="font-size: 28px; font-weight: 900; color: #0088cc;">0%</div>
-            </div>
-          </div>
-
-          <!-- Stats -->
-          <div
-            style="display: flex; justify-content: space-around; margin-bottom: 16px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 10px;">
-            <div style="text-align: center;">
-              <div style="font-size: 16px; font-weight: 800;" id="raffle-total-tickets">0</div>
-              <div style="font-size: 9px; color: var(--t4); text-transform: uppercase;">Всего билетов</div>
-            </div>
-            <div style="text-align: center;">
-              <div style="font-size: 16px; font-weight: 800;" id="raffle-participants">0</div>
-              <div style="font-size: 9px; color: var(--t4); text-transform: uppercase;">Участников</div>
-            </div>
-          </div>
-
-          <!-- Rules -->
-          <div
-            style="background: rgba(0,0,0,0.25); border-radius: 10px; padding: 14px; font-size: 11px; color: var(--t3); line-height: 1.7;">
-            <div style="font-weight: 800; color: var(--t1); margin-bottom: 6px; font-size: 12px;">📋 Как получить
-              билеты:</div>
-            <div>💎 Каждые <b style="color: #f3ba2f;">0.1 TON</b> пополнения = <b style="color: #fff;">1 билет</b></div>
-            <div>👥 Приглашенный друг задепал 0.1 TON = <b style="color: #fff;">+1 билет</b> вам</div>
-            <div>🔥 Каждые <b style="color: #f3ba2f;">0.5 TON</b> депов реферала = <b style="color: #fff;">+1 билет</b>
-              вам</div>
-            <div style="margin-top: 8px; color: var(--t4); font-size: 10px;">Пример: вы закинули 1 TON = 10 билетов.
-              Друг задепал 1 TON = ещё 3 билета вам (1 за первый деп + 2 за суммарный 1 TON)</div>
-          </div>
-
-          <!-- Leaderboard -->
-          <div style="margin-top: 16px;">
-            <div style="font-weight: 800; font-size: 12px; color: var(--t1); margin-bottom: 8px;">🏆 ТОП участников
-            </div>
-            <div id="raffle-leaderboard" style="max-height: 200px; overflow-y: auto;">
-              <div style="text-align: center; color: var(--t4); padding: 20px; font-size: 12px;">Загрузка...</div>
-            </div>
-          </div>
-
-          <button class="claim-btn-premium" onclick="window.open('https://t.me/cubewilltaketheworld', '_blank')"
-            style="margin-top: 16px; background: linear-gradient(135deg, #f3ba2f, #e0a500); color: #000; font-weight: 900;">📢
-            КАНАЛ РОЗЫГРЫША</button>
-        </div>
+        <!-- RAFFLES (Dynamic) -->
+        <div id="raffles-container"></div>
 
         <!-- Wheel of Fortune Integration -->
         <div class="daily-bonus glass-card" style="border-color: var(--gold-dim); margin-bottom: 25px;">
@@ -798,17 +715,6 @@
                   <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </span>
-            </div>
-
-            <div class="settings-item">
-              <div class="settings-info">
-                <span class="settings-name">Вибрация (Haptic)</span>
-                <span class="settings-desc">Отклик устройства во время игры</span>
-              </div>
-              <label class="toggle">
-                <input type="checkbox" id="settings-haptic" checked onchange="toggleHaptic()">
-                <span class="toggle-slider"></span>
-              </label>
             </div>
 
             <a href="https://t.me/cuberoll_support" target="_blank" class="settings-item clickable">
@@ -1255,6 +1161,114 @@
       </button>
     </nav>
   </div>
+
+  <!-- Fullscreen Raffle View -->
+  <div id="raffle-fullscreen" class="hidden"
+    style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; background: var(--bg); overflow-y: auto; display: none; flex-direction: column;">
+    <div
+      style="position: sticky; top: 0; z-index: 10; background: linear-gradient(180deg, var(--bg) 80%, transparent); padding: 16px 20px 24px; display: flex; align-items: center; gap: 12px;">
+      <button onclick="closeRaffleView()"
+        style="background: rgba(255,255,255,0.08); border: none; color: var(--t1); width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;"><svg
+          viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg></button>
+      <div style="flex: 1;">
+        <div id="rf-title" style="font-weight: 900; font-size: 18px; color: #f3ba2f;"></div>
+        <div id="rf-prize" style="font-size: 11px; color: var(--t3);"></div>
+      </div>
+    </div>
+    <div style="padding: 0 20px 100px; flex: 1;" id="rf-body">
+      <!-- NFT Link -->
+      <div id="rf-nft-wrap" style="margin-bottom: 20px; display: none;">
+        <a id="rf-nft-link" href="#" target="_blank"
+          style="display: block; background: linear-gradient(135deg, rgba(243,186,47,0.12), rgba(0,136,204,0.08)); border: 1px solid rgba(243,186,47,0.3); border-radius: 16px; padding: 16px; text-decoration: none; text-align: center;">
+          <div style="font-size: 32px; margin-bottom: 6px;">🎁</div>
+          <div style="font-weight: 800; color: #f3ba2f; font-size: 14px;">Посмотреть NFT приз</div>
+          <div id="rf-nft-url" style="font-size: 10px; color: var(--t4); margin-top: 4px; word-break: break-all;"></div>
+        </a>
+      </div>
+
+      <!-- Countdown -->
+      <div
+        style="background: rgba(0,0,0,0.4); border-radius: 16px; padding: 18px; text-align: center; margin-bottom: 20px; border: 1px solid rgba(243,186,47,0.15);">
+        <div
+          style="font-size: 10px; color: var(--t4); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px;">
+          До начала розыгрыша</div>
+        <div id="rf-countdown"
+          style="font-size: 28px; font-weight: 900; color: #f3ba2f; font-family: monospace; letter-spacing: 3px;">
+          --:--:--</div>
+        <div id="rf-date" style="font-size: 10px; color: var(--t4); margin-top: 6px;"></div>
+      </div>
+
+      <!-- Tickets grid -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+        <div
+          style="background: linear-gradient(135deg, rgba(243,186,47,0.1), rgba(243,186,47,0.02)); border: 1px solid rgba(243,186,47,0.25); border-radius: 16px; padding: 18px; text-align: center;">
+          <div style="font-size: 9px; color: var(--t4); text-transform: uppercase; letter-spacing: 1px;">Мои билеты
+          </div>
+          <div id="rf-my-tickets"
+            style="font-size: 36px; font-weight: 900; color: #f3ba2f; text-shadow: 0 0 20px rgba(243,186,47,0.35); margin: 6px 0;">
+            0</div>
+        </div>
+        <div
+          style="background: linear-gradient(135deg, rgba(0,136,204,0.1), rgba(0,136,204,0.02)); border: 1px solid rgba(0,136,204,0.25); border-radius: 16px; padding: 18px; text-align: center;">
+          <div style="font-size: 9px; color: var(--t4); text-transform: uppercase; letter-spacing: 1px;">Шанс победы
+          </div>
+          <div id="rf-chance" style="font-size: 36px; font-weight: 900; color: #0088cc; margin: 6px 0;">0%</div>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <div
+          style="flex: 1; background: rgba(255,255,255,0.04); border-radius: 14px; padding: 14px; text-align: center;">
+          <div id="rf-total-tickets" style="font-size: 20px; font-weight: 900;">0</div>
+          <div style="font-size: 9px; color: var(--t4); text-transform: uppercase;">Всего билетов</div>
+        </div>
+        <div
+          style="flex: 1; background: rgba(255,255,255,0.04); border-radius: 14px; padding: 14px; text-align: center;">
+          <div id="rf-participants" style="font-size: 20px; font-weight: 900;">0</div>
+          <div style="font-size: 9px; color: var(--t4); text-transform: uppercase;">Участников</div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div id="rf-description-wrap" style="display: none; margin-bottom: 20px;">
+        <div
+          style="background: rgba(0,0,0,0.3); border-radius: 14px; padding: 16px; font-size: 12px; color: var(--t2); line-height: 1.8;">
+          <div style="font-weight: 800; color: var(--t1); margin-bottom: 8px; font-size: 13px;">📋 Условия розыгрыша
+          </div>
+          <div id="rf-description"></div>
+        </div>
+      </div>
+
+      <!-- Rules (dynamic) -->
+      <div
+        style="background: rgba(0,0,0,0.3); border-radius: 14px; padding: 16px; font-size: 12px; color: var(--t3); line-height: 1.8; margin-bottom: 20px;">
+        <div style="font-weight: 800; color: var(--t1); margin-bottom: 8px; font-size: 13px;">🎫 Как получить билеты
+        </div>
+        <div id="rf-rules"></div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div style="margin-bottom: 20px;">
+        <div style="font-weight: 800; font-size: 14px; color: var(--t1); margin-bottom: 10px;">🏆 ТОП участников</div>
+        <div id="rf-leaderboard"
+          style="background: rgba(0,0,0,0.2); border-radius: 14px; padding: 10px; max-height: 320px; overflow-y: auto;">
+          <div style="text-align: center; color: var(--t4); padding: 30px; font-size: 12px;">Загрузка...</div>
+        </div>
+      </div>
+
+      <!-- Channel button -->
+      <div id="rf-channel-wrap" style="display: none;">
+        <a id="rf-channel-link" href="#" target="_blank"
+          style="display: block; text-decoration: none; background: linear-gradient(135deg, #f3ba2f, #e0a500); color: #000; font-weight: 900; font-size: 14px; padding: 16px; border-radius: 14px; text-align: center; letter-spacing: 0.5px;">
+          📢 КАНАЛ РОЗЫГРЫША
+        </a>
+      </div>
+    </div>
+  </div>
+
 </body>
 
 </html>

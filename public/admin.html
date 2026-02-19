@@ -509,7 +509,18 @@
             padding: 12px 16px;
             color: var(--t1);
             font-family: var(--font);
+            font-size: 13px;
             outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        textarea.form-input {
+            line-height: 1.5;
         }
 
         .primary-btn {
@@ -777,25 +788,84 @@
 
             <!-- Raffle Panel -->
             <div class="panel" id="p-raffle">
-                <div class="stats-grid">
-                    <div class="stat-card gold">
-                        <div class="stat-label">Всего билетов</div>
-                        <div class="stat-value" id="s-raffle-tickets">0</div>
-                    </div>
-                    <div class="stat-card blue">
-                        <div class="stat-label">Участников</div>
-                        <div class="stat-value" id="s-raffle-participants">0</div>
+                <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+                    <button class="primary-btn" onclick="toggleRaffleCreate()" id="btn-raffle-create" style="flex: 1;">
+                        ✨ Создать розыгрыш
+                    </button>
+                </div>
+
+                <!-- Create Form (hidden by default) -->
+                <div id="raffle-create-form" style="display: none; margin-bottom: 32px;">
+                    <div class="list-container" style="padding: 24px;">
+                        <h3 style="margin-bottom: 20px; color: var(--gold); font-size: 16px;">🎰 Новый розыгрыш</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label class="form-label">Название *</label>
+                                <input type="text" class="form-input" id="rc-title" placeholder="NFT Розыгрыш CubeRoll">
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label class="form-label">Приз (описание) *</label>
+                                <input type="text" class="form-input" id="rc-prize"
+                                    placeholder="Уникальный NFT от CubeRoll">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Ссылка на NFT</label>
+                                <input type="text" class="form-input" id="rc-nft"
+                                    placeholder="https://getgems.io/nft/...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Ссылка на канал</label>
+                                <input type="text" class="form-input" id="rc-channel" placeholder="https://t.me/...">
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label class="form-label">Описание / Условия</label>
+                                <textarea class="form-input" id="rc-desc" rows="3"
+                                    placeholder="Розыгрыш проходит среди всех участников...&#10;Победитель получает...&#10;Условия: ..."
+                                    style="resize: vertical; min-height: 80px;"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Дата начала * (UTC)</label>
+                                <input type="datetime-local" class="form-input" id="rc-start">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Дата окончания (UTC)</label>
+                                <input type="datetime-local" class="form-input" id="rc-end">
+                            </div>
+
+                            <div
+                                style="grid-column: 1 / -1; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 8px;">
+                                <h4 style="color: var(--accent); font-size: 13px; margin-bottom: 12px;">🎫 Настройка
+                                    билетов</h4>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">TON за 1 билет (деп)</label>
+                                <input type="number" class="form-input" id="rc-dpt" value="0.1" step="0.01" min="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Билетов за первый деп реф.</label>
+                                <input type="number" class="form-input" id="rc-rfd" value="1" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">TON кумулятив реф. за билет</label>
+                                <input type="number" class="form-input" id="rc-rca" value="0.5" step="0.01" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Билетов за кумулятив реф.</label>
+                                <input type="number" class="form-input" id="rc-rct" value="1" min="0">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 12px; margin-top: 24px;">
+                            <button class="primary-btn"
+                                style="background: var(--card); color: var(--t4); box-shadow: none; flex: 1;"
+                                onclick="toggleRaffleCreate()">Отмена</button>
+                            <button class="primary-btn" style="flex: 2;" onclick="createRaffle()">🚀 Создать</button>
+                        </div>
                     </div>
                 </div>
-                <div class="list-container">
-                    <div class="table-header">
-                        <div style="width: 40px;">#</div>
-                        <div style="width: 120px;">ID</div>
-                        <div style="flex: 1;">Игрок</div>
-                        <div style="width: 100px; text-align: right;">Билетов</div>
-                        <div style="width: 80px; text-align: right;">Шанс</div>
-                    </div>
-                    <div id="tbl-raffle"></div>
+
+                <!-- Existing Raffles List -->
+                <div id="raffles-list">
+                    <div style="padding: 40px; text-align: center; color: var(--t4);">Загрузка...</div>
                 </div>
             </div>
 
@@ -1082,32 +1152,151 @@
 
         function closeRefModal() { document.getElementById('ref-modal').style.display = 'none'; }
 
+        function toggleRaffleCreate() {
+            const form = document.getElementById('raffle-create-form');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function createRaffle() {
+            const title = document.getElementById('rc-title').value.trim();
+            const prize = document.getElementById('rc-prize').value.trim();
+            const start = document.getElementById('rc-start').value;
+
+            if (!title || !prize || !start) {
+                alert('Заполните обязательные поля: Название, Приз, Дата начала');
+                return;
+            }
+
+            const body = {
+                title,
+                prize,
+                nft_link: document.getElementById('rc-nft').value.trim() || null,
+                channel_link: document.getElementById('rc-channel').value.trim() || null,
+                description: document.getElementById('rc-desc').value.trim() || null,
+                start_date: new Date(start).toISOString(),
+                end_date: document.getElementById('rc-end').value ? new Date(document.getElementById('rc-end').value).toISOString() : null,
+                deposit_per_ticket: parseFloat(document.getElementById('rc-dpt').value) || 0.1,
+                ref_first_dep_tickets: parseInt(document.getElementById('rc-rfd').value) || 1,
+                ref_cumul_amount: parseFloat(document.getElementById('rc-rca').value) || 0.5,
+                ref_cumul_tickets: parseInt(document.getElementById('rc-rct').value) || 1
+            };
+
+            try {
+                await api('/api/admin/raffles', 'POST', body);
+                document.getElementById('raffle-create-form').style.display = 'none';
+                // Reset form
+                ['rc-title', 'rc-prize', 'rc-nft', 'rc-channel', 'rc-desc', 'rc-start', 'rc-end'].forEach(id => document.getElementById(id).value = '');
+                document.getElementById('rc-dpt').value = '0.1';
+                document.getElementById('rc-rfd').value = '1';
+                document.getElementById('rc-rca').value = '0.5';
+                document.getElementById('rc-rct').value = '1';
+                await loadRaffle();
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
         async function loadRaffle() {
             try {
-                const d = await api('/api/admin/raffle');
-                document.getElementById('s-raffle-tickets').textContent = d.totalTickets || 0;
-                document.getElementById('s-raffle-participants').textContent = d.participants || 0;
-                const t = document.getElementById('tbl-raffle');
-                if (!d.leaderboard?.length) {
-                    t.innerHTML = '<div style="padding:40px; text-align:center; color:var(--t4)">Нет участников розыгрыша</div>';
+                const d = await api('/api/admin/raffles');
+                const list = document.getElementById('raffles-list');
+                if (!d.raffles || d.raffles.length === 0) {
+                    list.innerHTML = '<div style="padding: 60px; text-align: center; color: var(--t4);"><div style="font-size: 40px; margin-bottom: 12px;">🎰</div><div style="font-size: 14px;">Нет созданных розыгрышей</div><div style="font-size: 12px; margin-top: 4px;">Нажмите «Создать розыгрыш» чтобы начать</div></div>';
                     return;
                 }
-                t.innerHTML = d.leaderboard.map((r, i) => {
-                    const medals = ['🥇', '🥈', '🥉'];
-                    const rank = i < 3 ? medals[i] : (i + 1);
-                    const name = r.username ? '@' + r.username : (r.first_name || 'Аноним');
-                    const chance = d.totalTickets > 0 ? ((r.total_tickets / d.totalTickets) * 100).toFixed(1) : '0';
-                    return `
-                        <div class="table-row">
-                            <div style="width:40px; text-align:center; font-weight:800">${rank}</div>
-                            <div class="user-id">${r.telegram_id}</div>
-                            <div class="user-name">${name}</div>
-                            <div style="width:100px; text-align:right; font-weight:800; color:var(--gold)">${r.total_tickets} 🎫</div>
-                            <div style="width:80px; text-align:right; color:var(--t3)">${chance}%</div>
+                list.innerHTML = d.raffles.map(r => {
+                    const active = r.is_active ? '🟢 Активен' : '🔴 Неактивен';
+                    const activeColor = r.is_active ? 'var(--green)' : 'var(--red)';
+                    const startD = new Date(r.start_date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+                    const endD = r.end_date ? new Date(r.end_date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+                    return `<div class="list-container" style="padding: 20px; margin-bottom: 16px; border-left: 3px solid ${activeColor};">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+                            <div>
+                                <div style="font-weight: 800; font-size: 15px; color: var(--gold);">${r.title}</div>
+                                <div style="font-size: 11px; color: var(--t3); margin-top: 2px;">Приз: ${r.prize}</div>
+                            </div>
+                            <div style="font-size: 11px; font-weight: 700; color: ${activeColor};">${active}</div>
                         </div>
-                    `;
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px;">
+                            <div style="background: var(--card); border-radius: 10px; padding: 10px; text-align: center;">
+                                <div style="font-size: 9px; color: var(--t4); text-transform: uppercase;">Билетов</div>
+                                <div style="font-size: 18px; font-weight: 900; color: var(--gold);">${r.totalTickets || 0}</div>
+                            </div>
+                            <div style="background: var(--card); border-radius: 10px; padding: 10px; text-align: center;">
+                                <div style="font-size: 9px; color: var(--t4); text-transform: uppercase;">Участников</div>
+                                <div style="font-size: 18px; font-weight: 900; color: var(--accent);">${r.participants || 0}</div>
+                            </div>
+                            <div style="background: var(--card); border-radius: 10px; padding: 10px; text-align: center;">
+                                <div style="font-size: 9px; color: var(--t4); text-transform: uppercase;">Начало</div>
+                                <div style="font-size: 10px; font-weight: 700; color: var(--t2);">${startD}</div>
+                            </div>
+                            <div style="background: var(--card); border-radius: 10px; padding: 10px; text-align: center;">
+                                <div style="font-size: 9px; color: var(--t4); text-transform: uppercase;">Конец</div>
+                                <div style="font-size: 10px; font-weight: 700; color: var(--t2);">${endD}</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 10px; color: var(--t4); margin-bottom: 14px;">
+                            Деп/билет: <b style="color:var(--t2)">${r.deposit_per_ticket} TON</b> · Реф 1й деп: <b style="color:var(--t2)">+${r.ref_first_dep_tickets}</b> · Кумулятив: <b style="color:var(--t2)">${r.ref_cumul_amount} TON → +${r.ref_cumul_tickets}</b>
+                            ${r.nft_link ? ' · <a href="' + r.nft_link + '" target="_blank" style="color:var(--accent)">NFT ↗</a>' : ''}
+                            ${r.channel_link ? ' · <a href="' + r.channel_link + '" target="_blank" style="color:var(--accent)">Канал ↗</a>' : ''}
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="primary-btn" onclick="viewRaffleDetails(${r.id})" style="flex: 2; font-size: 12px; padding: 8px;">📊 Участники</button>
+                            <button class="primary-btn" onclick="toggleRaffleActive(${r.id})" style="flex: 1; font-size: 12px; padding: 8px; background: ${r.is_active ? 'rgba(255,71,87,0.1)' : 'rgba(0,242,161,0.1)'}; color: ${r.is_active ? 'var(--red)' : 'var(--green)'}; box-shadow: none;">${r.is_active ? '⏸ Выкл' : '▶ Вкл'}</button>
+                            <button class="primary-btn" onclick="deleteRaffle(${r.id})" style="flex: 1; font-size: 12px; padding: 8px; background: rgba(255,71,87,0.08); color: var(--red); box-shadow: none;">🗑 Удалить</button>
+                        </div>
+                    </div>`;
                 }).join('');
             } catch (e) { console.error('[Raffle]', e); }
+        }
+
+        async function toggleRaffleActive(id) {
+            try {
+                await api('/api/admin/raffles/' + id + '/toggle', 'POST');
+                await loadRaffle();
+            } catch (e) { alert(e.message); }
+        }
+
+        async function deleteRaffle(id) {
+            if (!confirm('Удалить розыгрыш? Все билеты будут удалены!')) return;
+            try {
+                await api('/api/admin/raffles/' + id, 'DELETE');
+                await loadRaffle();
+            } catch (e) { alert(e.message); }
+        }
+
+        async function viewRaffleDetails(id) {
+            try {
+                const d = await api('/api/admin/raffles/' + id);
+                const r = d.raffle;
+                let html = `<h2 style="margin-bottom:8px;color:var(--gold)">${r.title}</h2>
+                    <div style="color:var(--t3);margin-bottom:24px;font-size:13px">Билетов: <b>${d.totalTickets}</b> · Участников: <b>${d.participants}</b></div>`;
+
+                if (d.leaderboard && d.leaderboard.length > 0) {
+                    html += '<div style="max-height:400px;overflow-y:auto;">';
+                    html += d.leaderboard.map((p, i) => {
+                        const medals = ['🥇', '🥈', '🥉'];
+                        const rank = i < 3 ? medals[i] : (i + 1);
+                        const name = p.username ? '@' + p.username : (p.first_name || 'Аноним');
+                        const chance = d.totalTickets > 0 ? ((p.total_tickets / d.totalTickets) * 100).toFixed(1) : '0';
+                        return `<div class="table-row" style="padding:10px 0;">
+                            <div style="width:40px;text-align:center;font-weight:800">${rank}</div>
+                            <div style="width:100px;font-size:11px;color:var(--t4)">${p.telegram_id}</div>
+                            <div style="flex:1;font-weight:600">${name}</div>
+                            <div style="width:80px;text-align:right;font-weight:800;color:var(--gold)">${p.total_tickets} 🎫</div>
+                            <div style="width:60px;text-align:right;color:var(--t3)">${chance}%</div>
+                        </div>`;
+                    }).join('');
+                    html += '</div>';
+                } else {
+                    html += '<div style="padding:40px;text-align:center;color:var(--t4)">Нет участников</div>';
+                }
+                html += '<button class="primary-btn" style="margin-top:24px;width:100%" onclick="closeModal()">Закрыть</button>';
+
+                const modal = document.getElementById('bal-modal');
+                modal.querySelector('.modal-card').innerHTML = html;
+                modal.style.display = 'flex';
+            } catch (e) { alert(e.message); }
         }
 
         async function loadSets() {
