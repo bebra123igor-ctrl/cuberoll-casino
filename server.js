@@ -1586,11 +1586,11 @@ app.listen(PORT, '0.0.0.0', async () => {
                 console.log(`[Raffle Monitor] Checking ${active.length} active raffles. Server time: ${now.toISOString()}`);
 
                 for (const r of active) {
-                    const target = new Date(r.start_date);
-                    console.log(`[Raffle #${r.id}] Target: ${r.start_date} | Now: ${now.toISOString()} | Diff: ${target - now}ms`);
+                    if (!r.end_date) continue;
+                    const target = new Date(r.end_date);
 
                     if (target <= now) {
-                        console.log(`[Raffle] Drawing winner for raffle #${r.id}: ${r.title}`);
+                        console.log(`[Raffle] Drawing winner for raffle #${r.id} (Finished at ${r.end_date})`);
                         const result = raffleOps.drawWinner(r.id);
                         if (result && result.winnerId) {
                             const { winnerId, raffle } = result;

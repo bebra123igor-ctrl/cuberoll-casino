@@ -2688,7 +2688,7 @@ function renderRaffleCards(raffles) {
         return;
     }
     container.innerHTML = raffles.map(r => {
-        const cd = formatCountdown(r.start_date);
+        const cd = formatCountdown(r.end_date || r.start_date);
         return `<div class="glass-card" style="margin-bottom: 12px; padding: 16px; border-radius: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02);" onclick="openRaffleView(${r.id})">
             <div style="width: 44px; height: 44px; background: rgba(243,186,47,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">🎰</div>
             <div style="flex: 1; min-width: 0;">
@@ -2779,7 +2779,7 @@ async function openRaffleView(raffleId) {
         // Start countdown ticker
         if (_raffleCountdownInterval) clearInterval(_raffleCountdownInterval);
         const updateCD = () => {
-            const cd = formatCountdown(r.start_date);
+            const cd = formatCountdown(r.end_date || r.start_date);
             const cdEl = document.getElementById('rf-countdown');
             if (cdEl) {
                 cdEl.textContent = cd.text;
