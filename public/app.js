@@ -2684,7 +2684,7 @@ function renderRaffleCards(raffles) {
     const container = document.getElementById('raffles-container');
     if (!container) return;
     if (!raffles || raffles.length === 0) {
-        container.innerHTML = '';
+        container.innerHTML = '<div style="padding: 60px 20px; text-align: center; color: var(--t4);"><div style="font-size: 40px; margin-bottom: 12px;">🎰</div><div style="font-size: 15px; font-weight: 600;">Пока нет активных розыгрышей...</div><div style="font-size: 12px; margin-top: 5px; opacity: 0.7;">Загляните позже, скоро будет жарко! 🔥</div></div>';
         return;
     }
     container.innerHTML = raffles.map(r => {

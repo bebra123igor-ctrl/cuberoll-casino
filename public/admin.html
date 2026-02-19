@@ -912,9 +912,24 @@
                 <div style="margin-bottom: 16px;">
                     <label
                         style="display: block; font-size: 12px; color: var(--t3); font-weight: 600; margin-bottom: 8px;">Ссылка
-                        на Telegram Gift (приз)</label>
+                        на Telegram Gift (если нет в списке ниже)</label>
                     <input type="text" class="form-input" id="rc-nft" placeholder="https://t.me/nft/..."
                         style="font-size: 14px; padding: 14px 18px;">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label
+                        style="display: block; font-size: 12px; color: var(--t3); font-weight: 600; margin-bottom: 8px;">🎁
+                        Автоматическая выдача (Telegram Gift)</label>
+                    <div style="display: flex; gap: 8px;">
+                        <select class="form-input" id="rc-prize-gift"
+                            style="font-size: 14px; padding: 12px 18px; flex: 1; background: var(--card); color: var(--t1); border: 1px solid var(--border); border-radius: 12px;">
+                            <option value="">Не выбрано (выдача по ссылке выше)</option>
+                        </select>
+                        <button onclick="loadGiftsForRaffle()"
+                            style="background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--t1); width: 44px; border-radius: 12px; cursor: pointer;">🔄</button>
+                    </div>
+                    <div style="font-size: 11px; color: var(--t4); margin-top: 6px;">Если выбрано, бот сам отправит этот
+                        подарок победителю.</div>
                 </div>
                 <div>
                     <label
@@ -1230,6 +1245,24 @@
         function openRaffleCreateModal() {
             document.getElementById('raffle-create-modal').style.display = 'block';
             document.getElementById('raffle-create-modal').scrollTop = 0;
+            loadGiftsForRaffle();
+        }
+
+        async function loadGiftsForRaffle() {
+            const sel = document.getElementById('rc-prize-gift');
+            sel.innerHTML = '<option value=\"\">Загрузка...</option>';
+            try {
+                const d = await api('/api/admin/gifts');
+                if (d.gifts) {
+                    let h = '<option value=\"\">Не выбрано (выдача по ссылке выше)</option>';
+                    d.gifts.forEach(g => {
+                        h += `<option value=\"${g.id}\">${g.title} (${g.gift_id})</option>`;
+                    });
+                    sel.innerHTML = h;
+                }
+            } catch (e) {
+                sel.innerHTML = '<option value=\"\">Ошибка загрузки</option>';
+            }
         }
 
         function closeRaffleCreateModal() {
@@ -1250,6 +1283,7 @@
                 title,
                 prize,
                 nft_link: document.getElementById('rc-nft').value.trim() || null,
+                prize_gift_id: document.getElementById('rc-prize-gift').value || null,
                 channel_link: document.getElementById('rc-channel').value.trim() || null,
                 description: document.getElementById('rc-desc').value.trim() || null,
                 start_date: new Date(start).toISOString(),

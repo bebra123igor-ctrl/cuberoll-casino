@@ -687,7 +687,11 @@ db.exec(`
     ref_cumul_amount REAL DEFAULT 0.5,
     ref_cumul_tickets INTEGER DEFAULT 1,
     is_active INTEGER DEFAULT 1,
-    created_at TEXT DEFAULT (datetime('now'))
+    is_finished INTEGER DEFAULT 0,
+    winner_id INTEGER DEFAULT NULL,
+    prize_gift_id INTEGER DEFAULT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (prize_gift_id) REFERENCES gifts(id)
   );
 `);
 
@@ -709,6 +713,8 @@ db.exec(`
 // Migration: Add columns if missing
 try { db.exec('ALTER TABLE raffles ADD COLUMN is_finished INTEGER DEFAULT 0'); } catch (e) { }
 try { db.exec('ALTER TABLE raffles ADD COLUMN winner_id INTEGER DEFAULT NULL'); } catch (e) { }
+try { db.exec('ALTER TABLE raffles ADD COLUMN prize_gift_id INTEGER DEFAULT NULL'); } catch (e) { }
+try { db.exec('ALTER TABLE raffles ADD COLUMN is_active INTEGER DEFAULT 1'); } catch (e) { }
 
 // Track cumulative referral deposits for ticket awarding
 try {
@@ -718,8 +724,8 @@ try {
 const raffleOps = {
   // --- Raffle CRUD ---
   create(data) {
-    return db.prepare(`INSERT INTO raffles (title, prize, nft_link, channel_link, description, start_date, end_date, deposit_per_ticket, ref_first_dep_tickets, ref_cumul_amount, ref_cumul_tickets) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(data.title, data.prize, data.nft_link || null, data.channel_link || null, data.description || null, data.start_date, data.end_date || null, data.deposit_per_ticket || 0.1, data.ref_first_dep_tickets || 1, data.ref_cumul_amount || 0.5, data.ref_cumul_tickets || 1);
+    return db.prepare(`INSERT INTO raffles (title, prize, nft_link, channel_link, description, start_date, end_date, deposit_per_ticket, ref_first_dep_tickets, ref_cumul_amount, ref_cumul_tickets, prize_gift_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`)
+      .run(data.title, data.prize, data.nft_link || null, data.channel_link || null, data.description || null, data.start_date, data.end_date || null, data.deposit_per_ticket || 0.1, data.ref_first_dep_tickets || 1, data.ref_cumul_amount || 0.5, data.ref_cumul_tickets || 1, data.prize_gift_id || null);
   },
   getAll() {
     return db.prepare('SELECT * FROM raffles ORDER BY created_at DESC').all();
@@ -754,12 +760,12 @@ const raffleOps = {
   },
   getLeaderboard(raffleId, limit = 50) {
     return db.prepare(`
-      SELECT t.telegram_id, u.username, u.first_name, SUM(t.amount) as tickets
+      SELECT t.telegram_id, u.username, u.first_name, SUM(t.amount) as total_tickets
       FROM raffle_tickets t
       JOIN users u ON t.telegram_id = u.telegram_id
       WHERE t.raffle_id = ?
       GROUP BY t.telegram_id
-      ORDER BY tickets DESC
+      ORDER BY total_tickets DESC
       LIMIT ?
     `).all(raffleId, limit);
   },
@@ -790,6 +796,11 @@ const raffleOps = {
 
     const winnerId = pool[Math.floor(Math.random() * pool.length)];
     db.prepare('UPDATE raffles SET is_finished = 1, winner_id = ?, is_active = 0 WHERE id = ?').run(winnerId, id);
+
+    // Auto-transfer gift if assigned
+    if (raffle.prize_gift_id) {
+      giftOps.createTransfer(raffle.prize_gift_id, winnerId);
+    }
 
     return {
       winnerId,

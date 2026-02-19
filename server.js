@@ -1435,6 +1435,10 @@ app.post('/api/admin/settings', auth, adminOnly, (req, res) => {
     res.secure({ success: true });
 });
 
+app.get('/api/admin/gifts', auth, adminOnly, (req, res) => {
+    res.secure({ gifts: giftOps.getAll() });
+});
+
 app.post('/api/admin/gifts', auth, adminOnly, (req, res) => {
     giftOps.create(req.body);
     res.secure({ success: true });
@@ -1588,7 +1592,11 @@ app.listen(PORT, '0.0.0.0', async () => {
                         const winner = userOps.get(winnerId);
 
                         // Notify winner
-                        const winMsg = `🎉 *ПОЗДРАВЛЯЕМ!*\n\nТы стал победителем в розыгрыше: *${raffle.title}*!\n\n🎁 Твой приз: *${raffle.prize}*\n\n🔗 *Забери свой подарок по ссылке ниже:*\n${raffle.nft_link || 'Обратитесь к администратору'}\n\n_Спасибо за игру в CubeRoll Casino!_`;
+                        let prizeNote = raffle.prize_gift_id
+                            ? `📦 *Твой подарок будет отправлен в течение пары минут!*`
+                            : `🔗 *Забери свой подарок по ссылке ниже:*\n${raffle.nft_link || 'Обратитесь к администратору'}`;
+
+                        const winMsg = `🎉 *ПОЗДРАВЛЯЕМ!*\n\nТы стал победителем в розыгрыше: *${raffle.title}*!\n\n🎁 Твой приз: *${raffle.prize}*\n\n${prizeNote}\n\n_Спасибо за игру в CubeRoll Casino!_`;
 
                         try {
                             await bot.sendMessage(winnerId, winMsg, { parse_mode: 'Markdown' });
