@@ -1581,35 +1581,41 @@ app.listen(PORT, '0.0.0.0', async () => {
     setInterval(async () => {
         try {
             const active = raffleOps.getActive();
-            const now = new Date();
-            for (const r of active) {
-                const target = new Date(r.start_date);
-                if (target <= now) {
-                    console.log(`[Raffle] Drawing winner for raffle #${r.id}: ${r.title}`);
-                    const result = raffleOps.drawWinner(r.id);
-                    if (result && result.winnerId) {
-                        const { winnerId, raffle } = result;
-                        const winner = userOps.get(winnerId);
+            if (active.length > 0) {
+                const now = new Date();
+                console.log(`[Raffle Monitor] Checking ${active.length} active raffles. Server time: ${now.toISOString()}`);
 
-                        // Notify winner
-                        let prizeNote = raffle.prize_gift_id
-                            ? `📦 *Твой подарок будет отправлен в течение пары минут!*`
-                            : `🔗 *Забери свой подарок по ссылке ниже:*\n${raffle.nft_link || 'Обратитесь к администратору'}`;
+                for (const r of active) {
+                    const target = new Date(r.start_date);
+                    console.log(`[Raffle #${r.id}] Target: ${r.start_date} | Now: ${now.toISOString()} | Diff: ${target - now}ms`);
 
-                        const winMsg = `🎉 *ПОЗДРАВЛЯЕМ!*\n\nТы стал победителем в розыгрыше: *${raffle.title}*!\n\n🎁 Твой приз: *${raffle.prize}*\n\n${prizeNote}\n\n_Спасибо за игру в CubeRoll Casino!_`;
+                    if (target <= now) {
+                        console.log(`[Raffle] Drawing winner for raffle #${r.id}: ${r.title}`);
+                        const result = raffleOps.drawWinner(r.id);
+                        if (result && result.winnerId) {
+                            const { winnerId, raffle } = result;
+                            const winner = userOps.get(winnerId);
 
-                        try {
-                            await bot.sendMessage(winnerId, winMsg, { parse_mode: 'Markdown' });
-                            console.log(`[Raffle] Winner ${winnerId} notified.`);
-                        } catch (err) {
-                            console.error(`[Raffle] Failed to notify winner ${winnerId}:`, err.message);
-                        }
+                            // Notify winner
+                            let prizeNote = raffle.prize_gift_id
+                                ? `📦 *Твой подарок будет отправлен в течение пары минут!*`
+                                : `🔗 *Забери свой подарок по ссылке ниже:*\n${raffle.nft_link || 'Обратитесь к администратору'}`;
 
-                        // Log to log channel if set
-                        const logChannelId = settingsOps.get('log_channel_id');
-                        if (logChannelId) {
-                            const adminLogs = `🏆 *РОЗЫГРЫШ ЗАВЕРШЕН*\n\n📋 *Конкурс:* ${raffle.title}\n👤 *Победитель:* ${winner.username ? '@' + winner.username : winnerId} (${winner.first_name})\n🎁 *Приз:* ${raffle.prize}\n🎟 *Всего билетов:* ${raffleOps.getTotalTickets(raffle.id)}`;
-                            bot.sendMessage(logChannelId, adminLogs, { parse_mode: 'Markdown' }).catch(() => { });
+                            const winMsg = `🎉 *ПОЗДРАВЛЯЕМ!*\n\nТы стал победителем в розыгрыше: *${raffle.title}*!\n\n🎁 Твой приз: *${raffle.prize}*\n\n${prizeNote}\n\n_Спасибо за игру в CubeRoll Casino!_`;
+
+                            try {
+                                await bot.sendMessage(winnerId, winMsg, { parse_mode: 'Markdown' });
+                                console.log(`[Raffle] Winner ${winnerId} notified.`);
+                            } catch (err) {
+                                console.error(`[Raffle] Failed to notify winner ${winnerId}:`, err.message);
+                            }
+
+                            // Log to log channel if set
+                            const logChannelId = settingsOps.get('log_channel_id');
+                            if (logChannelId) {
+                                const adminLogs = `🏆 *РОЗЫГРЫШ ЗАВЕРШЕН*\n\n📋 *Конкурс:* ${raffle.title}\n👤 *Победитель:* ${winner.username ? '@' + winner.username : winnerId} (${winner.first_name})\n🎁 *Приз:* ${raffle.prize}\n🎟 *Всего билетов:* ${raffleOps.getTotalTickets(raffle.id)}`;
+                                bot.sendMessage(logChannelId, adminLogs, { parse_mode: 'Markdown' }).catch(() => { });
+                            }
                         }
                     }
                 }

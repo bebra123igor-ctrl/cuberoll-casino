@@ -2684,52 +2684,21 @@ function renderRaffleCards(raffles) {
     const container = document.getElementById('raffles-container');
     if (!container) return;
     if (!raffles || raffles.length === 0) {
-        container.innerHTML = '<div style="padding: 60px 20px; text-align: center; color: var(--t4);"><div style="font-size: 40px; margin-bottom: 12px;">🎰</div><div style="font-size: 15px; font-weight: 600;">Пока нет активных розыгрышей...</div><div style="font-size: 12px; margin-top: 5px; opacity: 0.7;">Загляните позже, скоро будет жарко! 🔥</div></div>';
+        container.innerHTML = '<div style="padding: 40px 20px; text-align: center; color: var(--t4); opacity: 0.6;"><div style="font-size: 32px; margin-bottom: 10px;">🎰</div><div style="font-size: 13px;">Активных розыгрышей нет</div></div>';
         return;
     }
     container.innerHTML = raffles.map(r => {
         const cd = formatCountdown(r.start_date);
-        return `<div class="daily-bonus glass-card" style="border: 1px solid rgba(243,186,47,0.2); border-radius: 20px; margin-bottom: 20px; background: linear-gradient(135deg, rgba(30,30,45,0.8), rgba(15,15,20,0.9)); position: relative; overflow: hidden; padding: 20px; transition: all 0.3s;" onclick="openRaffleView(${r.id})">
-            <!-- Header: Status & ID -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 10px; font-weight: 900; color: #000; background: #f3ba2f; padding: 3px 8px; border-radius: 6px; text-transform: uppercase;">ACTIVE</span>
-                    <span style="font-size: 11px; color: var(--t4); font-weight: 700;">#${r.id}</span>
-                </div>
-                ${r.prize_gift_id ? '<span style="font-size: 10px; color: #00ff88; font-weight: 800; background: rgba(0,255,136,0.1); padding: 3px 8px; border-radius: 6px;">AUTO-GIFT ⚡</span>' : ''}
-            </div>
-
-            <!-- Main Info -->
-            <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-                <div style="width: 64px; height: 64px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 36px; flex-shrink: 0; box-shadow: 0 5px 15px rgba(0,0,0,0.2);">🎰</div>
-                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
-                    <div style="font-weight: 900; font-size: 18px; color: #fff; line-height: 1.2; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(r.title)}</div>
-                    <div style="font-size: 13px; color: var(--t3); display: flex; align-items: center; gap: 5px;">
-                        <span style="color: #f3ba2f;">🏆</span> ${escapeHtml(r.prize)}
-                    </div>
+        return `<div class="glass-card" style="margin-bottom: 12px; padding: 16px; border-radius: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02);" onclick="openRaffleView(${r.id})">
+            <div style="width: 44px; height: 44px; background: rgba(243,186,47,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">🎰</div>
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-weight: 800; font-size: 15px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(r.title)}</div>
+                <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                    <span style="font-size: 9px; color: var(--t4); text-transform: uppercase;">До конца:</span>
+                    <span style="font-size: 13px; font-weight: 900; color: #f3ba2f; font-family: 'JetBrains Mono', monospace;">${cd.text}</span>
                 </div>
             </div>
-
-            <!-- Stats Grid -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
-                <div style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 14px; padding: 12px; text-align: center;">
-                    <div style="font-size: 9px; color: var(--t4); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Мои билеты</div>
-                    <div style="font-size: 24px; font-weight: 900; color: #f3ba2f;">${r.myTickets || 0}</div>
-                </div>
-                <div style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 14px; padding: 12px; text-align: center;">
-                    <div style="font-size: 9px; color: var(--t4); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Участников</div>
-                    <div style="font-size: 24px; font-weight: 900; color: #fff;">${r.participants || 0}</div>
-                </div>
-            </div>
-
-            <!-- Footer: Timer & Action -->
-            <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05);">
-                <div style="display: flex; flex-direction: column;">
-                    <span style="font-size: 9px; color: var(--t4); text-transform: uppercase; margin-bottom: 3px;">До завершения:</span>
-                    <span style="font-size: 14px; font-weight: 900; color: ${cd.ended ? '#00ff88' : '#f3ba2f'}; font-family: 'JetBrains Mono', monospace; letter-spacing: 1px;">${cd.text}</span>
-                </div>
-                <button style="background: linear-gradient(135deg, #f3ba2f, #e0a500); color: #000; border: none; border-radius: 12px; padding: 10px 20px; font-size: 12px; font-weight: 900; letter-spacing: 0.5px; cursor: pointer; box-shadow: 0 4px 15px rgba(243,186,47,0.25);">ОТКРЫТЬ →</button>
-            </div>
+            <button style="background: rgba(243,186,47,0.1); color: #f3ba2f; border: none; border-radius: 10px; padding: 8px 14px; font-size: 11px; font-weight: 900; letter-spacing: 0.5px;">ОТКРЫТЬ</button>
         </div>`;
     }).join('');
 }

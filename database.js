@@ -731,7 +731,7 @@ const raffleOps = {
     return db.prepare('SELECT * FROM raffles ORDER BY created_at DESC').all();
   },
   getActive() {
-    return db.prepare("SELECT * FROM raffles WHERE is_active = 1 ORDER BY created_at DESC").all();
+    return db.prepare("SELECT * FROM raffles WHERE is_active = 1 AND is_finished = 0 ORDER BY created_at DESC").all();
   },
   getById(id) {
     return db.prepare('SELECT * FROM raffles WHERE id = ?').get(id);
