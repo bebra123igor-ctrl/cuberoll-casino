@@ -4,6 +4,7 @@ const path = require('path');
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'cuberoll.db');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
+db.pragma('busy_timeout = 10000'); // Wait up to 10s if DB is locked
 
 // Hook for sync
 let onChange = () => { };
@@ -140,6 +141,10 @@ try {
 } catch (e) { }
 
 try {
+  db.exec('ALTER TABLE gifts ADD COLUMN slug TEXT DEFAULT NULL');
+} catch (e) { }
+
+try {
   db.exec('ALTER TABLE users ADD COLUMN auto_cashout REAL DEFAULT NULL');
 } catch (e) { }
 
@@ -272,7 +277,9 @@ const userOps = {
       return u;
     } catch (err) {
       console.error(`[DB Error] getOrCreate failed for user ${tgId}:`, err.message);
-      return db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
+      const resumed = db.prepare('SELECT * FROM users WHERE telegram_id = ?').get(tgId);
+      if (resumed) return resumed;
+      throw err; // Re-throw if we still can't get the user so the server knows something is seriously wrong
     }
   },
 
@@ -476,7 +483,7 @@ const settingsOps = {
 const defs = {
   min_bet: '0.1', max_bet: '100', house_edge: '5', starting_balance: '0',
   maintenance_mode: '0', min_deposit: '0.01',
-  ton_wallet: 'UQBy7B0yPz6g5J0Fv9R8H7G6F5E4D3C2B1A0Z9Y8X7W6V5'
+  ton_wallet: 'UQCCy-dvxLvZ8f4_ifO0PqavqPMGJkuONSf6WZNvPU3M0eQf'
 };
 Object.entries(defs).forEach(([k, v]) => {
   if (!settingsOps.get(k)) settingsOps.set(k, v);
@@ -490,8 +497,13 @@ const giftOps = {
     return db.prepare('SELECT * FROM gifts WHERE id = ?').get(id);
   },
   create(data) {
-    return db.prepare('INSERT INTO gifts (title, price, link, model, background, symbol) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(data.title, data.price, data.link, data.model, data.background, data.symbol);
+    // If it has a gift_id, we should use OR REPLACE to avoid duplicate errors
+    if (data.gift_id) {
+      return db.prepare('INSERT OR REPLACE INTO gifts (title, price, link, model, background, symbol, slug, gift_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)')
+        .run(data.title, data.price, data.link, data.model, data.background, data.symbol, data.slug || null, data.gift_id);
+    }
+    return db.prepare('INSERT INTO gifts (title, price, link, model, background, symbol, slug, gift_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(data.title, data.price, data.link, data.model, data.background, data.symbol, data.slug || null, data.gift_id || null);
   },
   delete(id) {
     db.prepare('UPDATE gifts SET is_active = 0 WHERE id = ?').run(id);
@@ -530,29 +542,19 @@ const depositOps = {
   markCompleted(comment, hash) {
     const dep = this.getByComment(comment);
     if (!dep) return null;
-    // Можно завершить если статус pending ИЛИ optimistic
-    if (dep.status !== 'pending' && dep.status !== 'optimistic') return null;
+    if (dep.status !== 'pending' && dep.status !== 'optimistic') return dep; // Already completed or canceled
     db.prepare("UPDATE deposits SET status = 'completed', tx_hash = ? WHERE comment = ?").run(hash, comment);
     return dep;
   },
-  markOptimistic(comment) {
-    db.prepare("UPDATE deposits SET status = 'optimistic', created_at = datetime('now') WHERE comment = ?").run(comment);
-  },
-  getPendingByUser(tgId) {
-    return db.prepare("SELECT * FROM deposits WHERE telegram_id = ? AND status = 'pending'").all(tgId);
-  },
-  getOptimisticByUser(tgId) {
-    return db.prepare("SELECT * FROM deposits WHERE telegram_id = ? AND status = 'optimistic'").all(tgId);
-  },
-  getExpiredOptimistic(minutes = 5) {
-    return db.prepare("SELECT * FROM deposits WHERE status = 'optimistic' AND datetime(created_at, '+' || ? || ' minutes') < datetime('now')").all(minutes);
+  createCompleted(tgId, amount, comment, hash) {
+    // Check if hash exists first (paranoia check)
+    if (this.isHashUsed(hash)) return;
+    return db.prepare("INSERT INTO deposits (telegram_id, amount, comment, status, tx_hash) VALUES (?, ?, ?, 'completed', ?)")
+      .run(tgId, amount, comment, hash);
   },
   isHashUsed(hash) {
-    if (!hash) return false;
-    const exists = db.prepare("SELECT id FROM deposits WHERE tx_hash = ?").get(hash);
-    if (exists) return true;
-    const existsInTrans = db.prepare("SELECT id FROM transactions WHERE description LIKE ?").get(`%${hash}%`);
-    return !!existsInTrans;
+    const row = db.prepare('SELECT 1 FROM deposits WHERE tx_hash = ?').get(hash);
+    return !!row;
   }
 };
 

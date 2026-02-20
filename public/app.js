@@ -11,34 +11,34 @@ function getTonWeb() {
 }
 window.getTonWeb = getTonWeb;
 
-const API = '';
-let tg = null, initData = '';
+var API = '';
+var tg = null, initData = '';
 var user = null;
-let settings = {}, curSeeds = {};
-let betType = 'high';
-let exactNum = 7;
-let rangeMin = 2, rangeMax = 6;
-let rolling = false;
-let streak = 0;
-let dailyClaimed = false;
-let tonConnectUI = null;
-let isInitializing = true;
-let hapticEnabled = localStorage.getItem('settings_haptic') !== 'false';
-let plinkoCanvas = null;
-let plinkoCtx = null;
-let plinkoBalls = [];
-let activeTab = 'game';
-let currentGame = 'dice';
-let userWalletAddress = null;
+var settings = {}, curSeeds = {};
+var betType = 'high';
+var exactNum = 7;
+var rangeMin = 2, rangeMax = 6;
+var rolling = false;
+var streak = 0;
+var dailyClaimed = false;
+var tonConnectUI = null;
+var isInitializing = true;
+var hapticEnabled = localStorage.getItem('settings_haptic') !== 'false';
+var plinkoCanvas = null;
+var plinkoCtx = null;
+var plinkoBalls = [];
+var activeTab = 'game';
+var currentGame = 'dice';
+var userWalletAddress = null;
 
 // Глобальные UI функции должны быть доступны СРАЗУ
-window.closeModal = (id) => {
-    const m = document.getElementById(id);
+window.closeModal = function (id) {
+    var m = document.getElementById(id);
     if (m) m.classList.add('hidden');
 };
 
 window.confirmBetAction = null;
-window.openStats = () => window.switchTab('invite');
+window.openStats = function () { window.switchTab('invite'); };
 
 window.switchTab = function (tab) {
     activeTab = tab;
@@ -46,13 +46,16 @@ window.switchTab = function (tab) {
     if (tab === 'leaderboard') { openLeaderboard(); return; }
     if (tab === 'history') { openHistory(); return; }
 
-    const content = document.getElementById('content-' + tab);
-    const navBtn = document.querySelector(`[data-tab="${tab}"]`);
+    var content = document.getElementById('content-' + tab);
+    var navBtn = document.querySelector('[data-tab="' + tab + '"]');
 
     if (!content) return;
 
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+    var tabs = document.querySelectorAll('.tab-content');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+
+    var navs = document.querySelectorAll('.nav-tab');
+    for (var j = 0; j < navs.length; j++) navs[j].classList.remove('active');
 
     content.classList.add('active');
     if (navBtn) navBtn.classList.add('active');
@@ -60,7 +63,7 @@ window.switchTab = function (tab) {
     if (tab === 'shop') loadGifts();
     if (tab === 'bonuses') loadRaffleData();
     if (tab === 'settings') {
-        const toggle = document.getElementById('settings-haptic');
+        var toggle = document.getElementById('settings-haptic');
         if (toggle) toggle.checked = hapticEnabled;
     }
 };
@@ -78,18 +81,26 @@ window.openHistory = function () {
 // Game selection logic is consolidated below in the logic sections
 
 // "Шифрование" для "обычных смертных"
-const _SEC_KEY = 'cuberoll';
-const _0x_dec = (s) => {
+var _SEC_KEY = 'cuberoll';
+var _0x_dec = function (s) {
     if (!s || typeof s !== 'string') return s;
     try {
         // Simple check if it's base64-ish
         if (!/^[A-Za-z0-9+/=]+$/.test(s)) return JSON.parse(s);
-        const raw = atob(s);
-        const bytes = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) {
-            bytes[i] = raw.charCodeAt(i) ^ _SEC_KEY.charCodeAt(i % _SEC_KEY.length);
+        var raw = atob(s);
+        var bytes = new Uint8Array(raw.length);
+        var resultStr = '';
+        for (var i = 0; i < raw.length; i++) {
+            var charCode = raw.charCodeAt(i) ^ _SEC_KEY.charCodeAt(i % _SEC_KEY.length);
+            resultStr += String.fromCharCode(charCode);
         }
-        return JSON.parse(new TextDecoder().decode(bytes));
+        // Use a more compatible way to decode UTF-8 if needed, 
+        // but for ASCII-based JSON this is enough and very safe.
+        try {
+            return JSON.parse(decodeURIComponent(escape(resultStr)));
+        } catch (e) {
+            return JSON.parse(resultStr);
+        }
     } catch (e) {
         try { return JSON.parse(s); } catch (e2) { return { error: s }; }
     }
@@ -202,29 +213,43 @@ async function init() {
             initTg();
 
             const hasBridge = !!(window.Telegram && window.Telegram.WebApp);
-            const hasData = !!(initData || window.Telegram?.WebApp?.initDataUnsafe?.user);
             const isDev = window.location.hostname === 'localhost' ||
                 window.location.hostname === '127.0.0.1' ||
                 window.location.hostname.includes('.local');
 
-            updateDebug(`Bridge: ${hasBridge ? 'OK' : 'No'} | Data: ${hasData ? 'OK' : 'No'} | Atmt: ${attempts}`);
-
             if (hasBridge || isDev) {
                 clearInterval(checkInterval);
-                console.log('[Init] Environment verified. Opening app...');
-                document.getElementById('tg-lock')?.remove();
+                console.log('[Init] Environment verified. Proceeding with Auth...');
+
+                // Ensure lock is hidden
+                const lock = document.getElementById('tg-lock');
+                if (lock) lock.style.display = 'none';
+
+                // Show app container IMMEDIATELY as a fallback
+                const app = document.getElementById('app');
+                if (app) {
+                    app.classList.remove('hidden');
+                    app.style.display = 'block';
+                }
 
                 // Continue with actual loading
                 try {
                     const loader = document.getElementById('loading-screen');
-                    if (loader) loader.classList.remove('hidden');
+                    if (loader) {
+                        loader.classList.remove('hidden');
+                        loader.style.display = 'flex';
+                    }
 
                     buildExactPicker();
 
                     tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
                         manifestUrl: window.location.origin + '/tonconnect-manifest.json',
-                        buttonRootId: null
+                        buttonRootId: null,
+                        uiPreferences: {
+                            twaReturnUrl: 'https://t.me/cuberoll_robot/cuberoll'
+                        }
                     });
+                    window.tonConnectUI = tonConnectUI;
 
                     // Initialize TonWeb IMMEDIATELY global scope
                     if (window.TonWeb && !window.tonweb) {
@@ -253,8 +278,12 @@ async function init() {
                     });
 
                     console.log('[Init] Authenticating...');
-                    const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+                    let startParam = null;
+                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
+                        startParam = window.Telegram.WebApp.initDataUnsafe.start_param;
+                    }
                     const data = await api('/api/auth', 'POST', { start_param: startParam });
+                    if (!data || !data.user) throw new Error('Некорректный ответ сервера (пустой профиль)');
                     window.user = data.user;
                     user = data.user;
                     curSeeds = data.seeds;
@@ -270,7 +299,10 @@ async function init() {
                     document.getElementById('user-id').textContent = 'ID: ' + user.telegramId;
 
                     // Load user avatar from Telegram
-                    const photoUrl = window.Telegram?.WebApp?.initDataUnsafe?.user?.photo_url;
+                    let photoUrl = null;
+                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) {
+                        photoUrl = window.Telegram.WebApp.initDataUnsafe.user.photo_url;
+                    }
                     if (photoUrl) {
                         const avatarImg = document.getElementById('user-avatar-img');
                         const avatarFallback = document.getElementById('user-avatar-fallback');
@@ -357,11 +389,34 @@ async function init() {
                     resolve();
                 } catch (err) {
                     console.error('[Init] Fatal error:', err);
-                    if (err.message !== 'Banned') toast('Error: ' + err.message, 'error');
+                    const loader = document.getElementById('loading-screen');
+                    if (loader) {
+                        loader.classList.add('hidden');
+                        loader.style.display = 'none';
+                    }
+
+                    if (err.message === 'Banned') {
+                        showBanScreen();
+                    } else {
+                        // If it's a 401/500, we should show a better error state than just a toast
+                        document.getElementById('app').classList.add('hidden');
+                        const lock = document.createElement('div');
+                        lock.id = 'tg-lock-error';
+                        lock.style = "position:fixed; inset:0; background:#0d0d15; z-index:10001; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; text-align:center; color:white;";
+                        lock.innerHTML = `
+                            <div style="font-size:50px; margin-bottom:20px;">⚠️</div>
+                            <h2 style="margin-bottom:10px;">ОШИБКА ЗАГРУЗКИ</h2>
+                            <p style="opacity:0.6; font-size:14px; margin-bottom:30px;">${err.message || 'Не удалось подключиться к серверу'}</p>
+                            <button onclick="location.reload()" style="background:var(--gold-g); border:none; padding:15px 30px; border-radius:12px; font-weight:900; cursor:pointer;">ПОПРОБОВАТЬ СНОВА</button>
+                        `;
+                        document.body.appendChild(lock);
+                    }
                 }
             } else if (attempts >= maxAttempts) {
                 clearInterval(checkInterval);
-                updateDebug('Telegram bridge not detected. Please open from the official bot.');
+                const ldr = document.getElementById('loading-screen');
+                if (ldr) ldr.style.display = 'none';
+                updateDebug('Не удалось получить данные Telegram. Попробуйте перезапустить бота.');
                 console.error('[Init] Timeout waiting for Telegram bridge.');
             }
         }, 200);
@@ -371,16 +426,25 @@ async function init() {
 function finishLoading() {
     setTimeout(() => {
         const ldr = document.getElementById('loading-screen');
+        const app = document.getElementById('app');
         if (ldr) {
             ldr.classList.add('fade-out');
             setTimeout(() => {
                 ldr.style.display = 'none';
-                document.getElementById('app').classList.remove('hidden');
+                if (app) {
+                    app.classList.remove('hidden');
+                    app.style.display = 'block';
+                }
                 if (!localStorage.getItem('onboarding_shown')) {
-                    document.getElementById('onboarding-modal').classList.remove('hidden');
+                    const onboarding = document.getElementById('onboarding-modal');
+                    if (onboarding) onboarding.classList.remove('hidden');
                     localStorage.setItem('onboarding_shown', 'true');
                 }
             }, 800);
+        } else if (app) {
+            // Fallback if loader is missing
+            app.classList.remove('hidden');
+            app.style.display = 'block';
         }
     }, 1200);
 
@@ -440,44 +504,91 @@ window.connectWallet = async function () {
     } catch (e) { console.error('Wallet error:', e); }
 };
 
+// --- PAYMENTS ---
+// Using modern @ton/core for reliable payload generation (USER REQUESTED PATTERN)
+
+// Синхронный генератор комментария (BOC) для TonConnect
+function buildCommentBoc(comment) {
+    if (typeof TextEncoder === 'undefined') return '';
+    const commentBytes = new TextEncoder().encode(comment);
+    const dataLen = 4 + commentBytes.length;
+    const cellBytes = new Uint8Array(2 + dataLen);
+    cellBytes[0] = 1; cellBytes[1] = (dataLen - 1) & 0xff;
+    cellBytes[2] = 0; cellBytes[3] = 0; cellBytes[4] = 0; cellBytes[5] = 0;
+    cellBytes.set(commentBytes, 6);
+    const cellLen = cellBytes.length;
+    const boc = new Uint8Array(4 + 8 + 1 + cellLen);
+    boc[0] = 0xb5; boc[1] = 0xee; boc[2] = 0x9c; boc[3] = 0x72;
+    boc[4] = 0xa1; boc[5] = 0x01; boc[6] = 0x01; boc[7] = 0x01;
+    boc[8] = 0x00; boc[9] = cellLen; boc[10] = 0x00; boc[11] = 0x00;
+    boc.set(cellBytes, 12);
+    let binary = '';
+    for (let i = 0; i < boc.length; i++) binary += String.fromCharCode(boc[i]);
+    return btoa(binary);
+}
+
 window.goToPayment = async function () {
-    const valEl = document.getElementById('dep-amount');
-    if (!valEl) return;
-    const amount = parseFloat(valEl.value);
-    const min = (settings && settings.minDeposit) || 0.001;
-    if (isNaN(amount) || amount < min) return toast(`Минимум ${min} TON`, 'error');
-
     try {
+        const valEl = document.getElementById('dep-amount');
+        if (!valEl) return;
+        const amount = parseFloat(valEl.value);
+        const min = 0.001;
+        if (isNaN(amount) || amount < min) return alert('Минимум ' + min + ' TON');
+
+        if (!window.tonConnectUI || !window.tonConnectUI.connected) {
+            alert('Сначала подключите кошелек!');
+            window.tonConnectUI?.openModal();
+            return;
+        }
+
         const btn = document.getElementById('deposit-link');
-        if (btn) {
-            btn.innerText = 'ПРОВЕРКА...';
-            btn.style.pointerEvents = 'none';
-        }
+        const openWalletBtn = document.getElementById('open-wallet-btn');
+        if (btn) { btn.innerText = 'ПОДГОТОВКА...'; btn.style.pointerEvents = 'none'; }
 
-        const res = await api('/api/deposit/request', 'POST', { amount });
+        // Используем глобальную функцию api()
+        const res = await api('/api/deposit/request', 'POST', { amount: amount });
 
-        if (res.link) {
-            // Using window.location.href to avoid WEBAPP_TG_URL_INVALID with ton:// protocol
-            window.location.href = res.link;
+        const addr = res.address;
+        const memo = res.comment;
 
-            // Redirect to bot chat while keeping webapp active in background
-            if (tg && tg.openTelegramLink) {
-                setTimeout(() => {
-                    tg.openTelegramLink('https://t.me/cuberoll_robot');
-                }, 500);
-            }
+        // Синхронная генерация BOC (решает проблему таймаутов на iOS/Safari)
+        const payload = buildCommentBoc(memo);
 
-            toast('Открываем кошелек...', 'info');
-        } else {
-            toast('Заявка создана. Проверьте сообщения в боте.', 'success');
-        }
+        const tx = {
+            validUntil: Math.floor(Date.now() / 1000) + 3600, // 1 час
+            messages: [{
+                address: addr.trim(),
+                amount: (amount * 1000000000).toFixed(0),
+                payload: payload
+            }]
+        };
+
+        if (openWalletBtn) openWalletBtn.style.display = 'block';
+        if (btn) btn.innerText = 'ОЖИДАНИЕ ОПЛАТЫ...';
+
+        console.log('[Deposit] Sending TX:', tx);
+        const result = await window.tonConnectUI.sendTransaction(tx);
+        if (result) alert('Транзакция отправлена!');
+
     } catch (e) {
-        toast(e.message, 'error');
-        const btn = document.getElementById('deposit-link');
-        if (btn) {
-            btn.innerText = 'ОПЛАТИТЬ';
-            btn.style.pointerEvents = 'auto';
+        console.error(e);
+        const msg = (e.message || '').toLowerCase();
+        // Скрываем ошибки отмены транзакции пользователем 
+        const isCancel = msg.includes('rejected') ||
+            msg.includes('declined') ||
+            msg.includes('canceled') ||
+            msg.includes('not sent') ||
+            msg.includes('notsent') ||
+            msg.includes('user rejects');
+
+        if (isCancel) {
+            console.log('[Deposit] User cancelled or ignored transaction');
+            return;
         }
+        alert(e.message || 'Ошибка транзакции');
+    } finally {
+        const btn = document.getElementById('deposit-link');
+        if (btn) { btn.innerText = 'ОПЛАТИТЬ'; btn.style.pointerEvents = 'auto'; }
     }
 };
 
@@ -519,7 +630,7 @@ window.getBetType = (t) => {
     }
 
     updatePayoutUI();
-    if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
+    if (window.haptic && hapticEnabled) window.haptic.impactOccurred('light');
 };
 
 function updatePayoutUI() {
@@ -533,6 +644,23 @@ function updatePayoutUI() {
     }
     const amt = parseFloat(document.getElementById('bet-amount').value) || 0;
     document.getElementById('potential-amount').textContent = (amt * mult).toFixed(2);
+
+    // Update dice "sums" (buttons)
+    document.querySelectorAll('.bet-type-btn').forEach(btn => {
+        const type = btn.getAttribute('data-bet');
+        const span = btn.querySelector('.bet-mult');
+        if (span) {
+            let m = 0;
+            if (type === 'high' || type === 'low' || type === 'even' || type === 'odd') m = 1.95;
+            if (type === 'seven') m = 5.0;
+            if (m > 0) {
+                span.textContent = (amt * m).toFixed(2);
+            } else if (type === 'exact') {
+                const exactMults = { 2: 32, 3: 15, 4: 10, 5: 7.7, 6: 6.3, 7: 5.2, 8: 6.3, 9: 7.7, 10: 10, 11: 15, 12: 32 };
+                span.textContent = (amt * (exactMults[exactNum] || 0)).toFixed(2);
+            }
+        }
+    });
 }
 
 window.onBetInput = updatePayoutUI;
@@ -714,7 +842,7 @@ window.roll = async function () {
             }
             const payout = won ? amt * mult : 0;
 
-            if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
+            if (window.haptic && hapticEnabled) window.haptic.notificationOccurred('success');
             animateDice([d1, d2]);
 
             setTimeout(() => {
@@ -737,7 +865,7 @@ window.roll = async function () {
         }
 
         const res = await api('/api/bet', 'POST', payload);
-        if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
+        if (window.haptic && hapticEnabled) window.haptic.impactOccurred('light');
         animateDice(res.result.dice);
 
         // Update balance immediately to prevent 'insufficient balance' on rapid bets
@@ -791,8 +919,11 @@ function setDiceFace(el, val) {
 
 
 function getGiftImg(model) {
-    if (!model) return 'https://i.imgur.com/8YvYyZp.png';
+    if (!model || model === 'undefined') return 'https://i.imgur.com/8YvYyZp.png';
     if (model.startsWith('http')) return model;
+
+    // Fallback logic: if it's just a name, assume it might be a local path, 
+    // but we add a check to see if we can use a placeholder if local file is missing
     return `models/${model}/photo.png`;
 }
 
@@ -806,8 +937,10 @@ function getGiftLink(id, slug, fullLink) {
 
 // --- SHOP TAB LOGIC ---
 function switchShopTab(tab) {
-    document.querySelectorAll('.shop-tab-btn').forEach(b => b.classList.remove('active'));
-    if (event) event.target.classList.add('active');
+    var btns = document.querySelectorAll('.shop-tab-btn');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+
+    if (window.event && window.event.target) window.event.target.classList.add('active');
 
     if (tab === 'official') {
         document.getElementById('shop-official-section').classList.remove('hidden');
@@ -891,9 +1024,9 @@ async function openInventory() {
                 <div class="shop-item-info" style="margin-bottom: 5px;">
                     <div class="shop-item-title">${item.title}</div>
                 </div>
-                <div class="item-actions" style="display: flex; gap: 5px; width: 100%;">
-                    <button class="buy-btn" onclick="openListSale(${item.instance_id})" style="flex: 1; padding: 6px 0; font-size: 10px;">ПРОДАТЬ</button>
-                    <button class="buy-btn" onclick="withdrawGift(${item.instance_id})" style="flex: 1; padding: 6px 0; font-size: 10px; background: rgba(0,136,204,0.2); border-color: #0088cc; color: #0088cc;">ВЫВЕСТИ</button>
+                <div class="item-actions" style="display: flex !important; flex-direction: column !important; gap: 8px !important; width: 100% !important; margin-top: 10px !important;">
+                    <button class="buy-btn" onclick="openListSale(${item.instance_id})" style="width: 100% !important; padding: 10px 0 !important; font-size: 11px !important; display: block !important;">ПРОДАТЬ</button>
+                    <button class="buy-btn" onclick="withdrawGift(${item.instance_id})" style="width: 100% !important; padding: 10px 0 !important; font-size: 11px !important; background: rgba(0,136,204,0.2) !important; border-color: #0088cc !important; color: #0088cc !important; display: block !important;">ВЫВЕСТИ</button>
                 </div>
             </div>`).join('');
 
@@ -967,78 +1100,94 @@ function getGiftEmoji(model) {
 }
 
 // Auto Cashout Persist
-document.getElementById('crash-auto-cashout')?.addEventListener('change', async (e) => {
-    const val = parseFloat(e.target.value) || 0;
-    try {
-        await api('/api/user/auto-cashout', 'POST', { multiplier: val });
-        toast('Авто-вывод сохранен', 'success');
-    } catch (e) { }
-});
+const autoCashoutEl = document.getElementById('crash-auto-cashout');
+if (autoCashoutEl) {
+    autoCashoutEl.addEventListener('change', async (e) => {
+        const val = parseFloat(e.target.value) || 0;
+        try {
+            await api('/api/user/auto-cashout', 'POST', { multiplier: val });
+            toast('Авто-вывод сохранен', 'success');
+        } catch (err) { }
+    });
+}
 
 function showResult(res) {
-    const ov = document.getElementById('result-overlay');
-    const title = document.getElementById('result-title');
-    const amt = document.getElementById('result-amount');
-    const diceDisp = document.getElementById('result-dice-display');
+    var ov = document.getElementById('result-overlay');
+    var title = document.getElementById('result-title');
+    var amt = document.getElementById('result-amount');
+    var diceDisp = document.getElementById('result-dice-display');
 
-    ov.classList.remove('hidden');
-    title.textContent = res.won ? 'ПОБЕДА' : 'ПРОИГРЫШ';
-    title.className = 'result-title ' + (res.won ? 'win' : 'loss');
-
-    if (res.won) {
-        amt.textContent = '+' + (res.payout || 0).toFixed(2) + ' TON';
-    } else {
-        amt.textContent = '-' + (res.betAmount || 0).toFixed(2) + ' TON';
+    if (ov) ov.classList.remove('hidden');
+    if (title) {
+        title.textContent = res.won ? 'ПОБЕДА' : 'ПРОИГРЫШ';
+        title.className = 'result-title ' + (res.won ? 'win' : 'loss');
     }
-    amt.className = 'result-amount ' + (res.won ? 'win' : 'loss');
 
-    if (res.dice && res.dice.length) {
-        const sum = res.total || res.dice.reduce((a, b) => a + b, 0);
-        diceDisp.innerHTML = res.dice.map(v => `<div class="result-die-box">${v}</div>`).join('') +
-            `<div style="width: 100%; margin-top: 10px; font-weight: 900; color: #fff; font-size: 16px;">СУММА: ${sum}</div>`;
-    } else if (res.room) {
-        diceDisp.innerHTML = `<div class="result-die-box" style="width: 80px; border-radius: 12px; font-size: 14px;">ДОМ ${res.room}</div>`;
-    } else {
-        diceDisp.innerHTML = '';
+    if (amt) {
+        if (res.won) {
+            amt.textContent = '+' + (res.payout || 0).toFixed(2) + ' TON';
+        } else {
+            amt.textContent = '-' + (res.betAmount || 0).toFixed(2) + ' TON';
+        }
+        amt.className = 'result-amount ' + (res.won ? 'win' : 'loss');
+    }
+
+    if (diceDisp) {
+        if (res.dice && res.dice.length) {
+            var sum = res.total || res.dice.reduce(function (a, b) { return a + b; }, 0);
+            diceDisp.innerHTML = res.dice.map(function (v) { return '<div class="result-die-box">' + v + '</div>'; }).join('') +
+                '<div style="width: 100%; margin-top: 10px; font-weight: 900; color: #fff; font-size: 16px;">СУММА: ' + sum + '</div>';
+        } else if (res.room) {
+            diceDisp.innerHTML = '<div class="result-die-box" style="width: 80px; border-radius: 12px; font-size: 14px;">ДОМ ' + res.room + '</div>';
+        } else {
+            diceDisp.innerHTML = '';
+        }
     }
 
     if (window.haptic && hapticEnabled) {
-        if (res.won) haptic.notificationOccurred('success');
-        else haptic.notificationOccurred('error');
+        if (res.won) window.haptic.notificationOccurred('success');
+        else window.haptic.notificationOccurred('error');
     }
 
-    document.getElementById('result-close').onclick = () => ov.classList.add('hidden');
+    var closeBtn = document.getElementById('result-close');
+    if (closeBtn) {
+        closeBtn.onclick = function () {
+            if (ov) ov.classList.add('hidden');
+        };
+    }
 }
 
-async function loadGifts() {
-    try {
-        const res = await api('/api/gifts');
-        const list = document.getElementById('shop-list');
-        list.innerHTML = '';
+function loadGifts() {
+    api('/api/gifts')
+        .then(function (res) {
+            var list = document.getElementById('shop-list');
+            if (!list) return;
+            list.innerHTML = '';
 
-        if (!res.gifts || res.gifts.length === 0) {
-            list.innerHTML = '<div class="premium-empty"><p>Магазин пуст</p></div>';
-            return;
-        }
+            if (!res.gifts || res.gifts.length === 0) {
+                list.innerHTML = '<div class="premium-empty"><p>Магазин пуст</p></div>';
+                return;
+            }
 
-        res.gifts.forEach(g => {
-            const card = document.createElement('div');
-            card.className = 'gift-card';
-            card.innerHTML = `
-                <a href="${getGiftLink(g.gift_id, g.slug, g.link)}" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>
-                <div class="gift-img-wrap">
-                    <img src="${getGiftImg(g.model)}" class="gift-img">
-                </div>
-                <div class="gift-info">
-                    <div class="gift-name">${g.title}</div>
-                    <div class="gift-price">${g.price} TON</div>
-                    <button class="gift-buy-btn" data-id="${g.id}">Купить</button>
-                </div>
-            `;
-            card.querySelector('.gift-buy-btn').onclick = () => window.openBuyModal(g.id, g.title, g.price);
-            list.appendChild(card);
-        });
-    } catch (e) { }
+            res.gifts.forEach(function (g) {
+                var card = document.createElement('div');
+                card.className = 'gift-card';
+                card.innerHTML = '<a href="' + getGiftLink(g.gift_id, g.slug, g.link) + '" target="_blank" class="gift-info-link" onclick="event.stopPropagation()">?</a>' +
+                    '<div class="gift-img-wrap">' +
+                    '<img src="' + getGiftImg(g.model) + '" class="gift-img">' +
+                    '</div>' +
+                    '<div class="gift-info">' +
+                    '<div class="gift-name">' + g.title + '</div>' +
+                    '<div class="gift-price">' + g.price + ' TON</div>' +
+                    '<button class="gift-buy-btn" data-id="' + g.id + '">Купить</button>' +
+                    '</div>';
+                card.querySelector('.gift-buy-btn').onclick = function () {
+                    window.openBuyModal(g.id, g.title, g.price);
+                };
+                list.appendChild(card);
+            });
+        })
+        .catch(function (e) { });
 }
 window.loadGifts = loadGifts;
 
@@ -1051,16 +1200,20 @@ window.openBuyModal = function (id, name, price) {
     currentBuyPrice = parseFloat(price);
     document.getElementById('modal-gift-name').textContent = name;
     document.getElementById('modal-gift-price').textContent = price;
-    document.getElementById('purchase-modal').classList.remove('hidden');
 
-    const confirmBtn = document.getElementById('modal-confirm-buy');
-    confirmBtn.onclick = () => window.confirmPurchase(id);
+    const balanceBtn = document.getElementById('modal-confirm-buy');
+    balanceBtn.textContent = `Балансом (${user.balance.toFixed(2)} TON)`;
+    balanceBtn.onclick = () => window.confirmPurchase(id);
+
+    const tonBtn = document.getElementById('modal-confirm-buy-ton');
+    tonBtn.onclick = () => window.confirmPurchaseTON(id);
+
+    document.getElementById('purchase-modal').classList.remove('hidden');
 };
 
 async function confirmPurchase(id) {
-    if (user.balance < currentBuyPrice) return toast('Недостаточно TON', 'error');
+    if (user.balance < currentBuyPrice) return toast('Недостаточно баланса', 'error');
 
-    // Проверка первого вывода (предупреждение про дилера)
     if (!localStorage.getItem('dealer_warned')) {
         document.getElementById('dealer-warning-modal').classList.remove('hidden');
         closeModal('purchase-modal');
@@ -1083,10 +1236,59 @@ async function confirmPurchase(id) {
     } finally {
         const btn = document.getElementById('modal-confirm-buy');
         btn.disabled = false;
-        btn.textContent = 'Купить';
+        btn.textContent = `Балансом (${user.balance.toFixed(2)} TON)`;
     }
 }
 window.confirmPurchase = confirmPurchase;
+
+window.confirmPurchaseTON = function (id) {
+    var btn = document.getElementById('modal-confirm-buy-ton');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'ОЖИДАНИЕ...';
+    }
+
+    api('/api/gifts/init-buy', 'POST', { giftId: id })
+        .then(function (initRes) {
+            var TonWeb = window.getTonWeb();
+            if (!TonWeb) throw new Error('TonWeb not loaded');
+
+            var cell = new window.TonWeb.boc.Cell();
+            cell.bits.writeUint(0, 32);
+            cell.bits.writeString(initRes.payload);
+
+            var bocBytes = cell.toBoc(false);
+            var payload = window.TonWeb.utils.bytesToBase64(bocBytes);
+
+            var transaction = {
+                validUntil: Math.floor(Date.now() / 1000) + 600,
+                messages: [{
+                    address: initRes.adminWallet,
+                    amount: Math.round(initRes.price * 1e9).toString(),
+                    payload: payload
+                }]
+            };
+
+            return tonConnectUI.sendTransaction(transaction);
+        })
+        .then(function (result) {
+            if (result) {
+                toast('Платеж отправлен! Подарок придет после подтверждения.', 'success');
+                setTimeout(function () { location.reload(); }, 3000);
+            }
+        })
+        .catch(function (e) {
+            console.error('TON Error:', e);
+            toast(e.message || 'Ошибка транзакции', 'error');
+        })
+        .finally(function () {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'КУПИТЬ ЗА TON';
+            }
+        });
+};
+window.confirmPurchaseTON = confirmPurchaseTON;
 
 
 async function refreshBalance() {
@@ -1097,50 +1299,55 @@ async function refreshBalance() {
     } catch (e) { }
 }
 
-async function loadHistory() {
-    try {
-        const res = await api('/api/history');
-        const list = document.getElementById('history-modal-list');
-        if (!list) return;
-        list.innerHTML = res.games.length ? res.games.map(g => {
-            const date = new Date(g.created_at);
-            const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const amountStr = (g.payout > 0) ? `+${g.payout.toFixed(2)}` : `-${g.bet_amount.toFixed(2)}`;
-            const statusLabel = (g.payout > 0) ? 'ВЫИГРЫШ' : 'ПРОИГРЫШ';
-            const gameNames = { dice: 'Кубики', crash: 'Ракета', plinko: 'Плинко', hide: 'Прятки' };
-            const gameTitle = gameNames[g.game_type] || g.game_type.toUpperCase();
+function loadHistory() {
+    api('/api/history')
+        .then(function (res) {
+            var list = document.getElementById('history-modal-list');
+            if (!list) return;
+            if (!res.games || !res.games.length) {
+                list.innerHTML = '<div class="premium-empty"><p>История пуста</p></div>';
+                return;
+            }
+            list.innerHTML = res.games.map(function (g) {
+                var date = new Date(g.created_at);
+                var timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                var amountStr = (g.payout > 0) ? '+ ' + g.payout.toFixed(2) : ' - ' + g.bet_amount.toFixed(2);
+                var statusLabel = (g.payout > 0) ? 'ВЫИГРЫШ' : 'ПРОИГРЫШ';
+                var gameNames = { dice: 'Кубики', crash: 'Ракета', plinko: 'Плинко', hide: 'Прятки' };
+                var gameTitle = gameNames[g.game_type] || g.game_type.toUpperCase();
 
-            return `
-                <div class="history-item animated-history">
-                    <div class="hist-left">
-                        <div class="hist-badge ${(g.payout > 0) ? 'badge-win' : 'badge-loss'}">${statusLabel}</div>
-                        <div class="hist-meta">
-                            <span class="hist-type">${gameTitle}</span>
-                            <span class="hist-time">${timeStr}</span>
-                        </div>
-                    </div>
-                    <div class="hist-res ${(g.payout > 0) ? 'win' : 'loss'}">${amountStr} TON</div>
-                </div>
-            `;
-        }).join('') : '<div class="premium-empty"><p>История пуста</p></div>';
-    } catch (e) { }
+                return '<div class="history-item animated-history">' +
+                    '<div class="hist-left">' +
+                    '<div class="hist-badge ' + (g.payout > 0 ? 'badge-win' : 'badge-loss') + '">' + statusLabel + '</div>' +
+                    '<div class="hist-meta">' +
+                    '<span class="hist-type">' + gameTitle + '</span>' +
+                    '<span class="hist-time">' + timeStr + '</span>' +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="hist-res ' + (g.payout > 0 ? 'win' : 'loss') + '">' + amountStr + ' TON</div>' +
+                    '</div>';
+            }).join('');
+        })
+        .catch(function (e) { });
 }
 
-async function loadLeaderboard() {
-    try {
-        const res = await api('/api/leaderboard');
-        const list = document.getElementById('leaderboard-list');
-        list.innerHTML = res.players.map((p, i) => `
-            <div class="leaderboard-item ${i < 3 ? 'top-3' : ''}">
-                <div class="leaderboard-rank">${i + 1}</div>
-                <div class="leaderboard-info">
-                    <div class="leaderboard-name">${p.username}</div>
-                    <div class="leaderboard-stats">${p.gamesPlayed} игр • ${p.gamesWon} побед</div>
-                </div>
-                <div class="leaderboard-balance">${p.balance.toFixed(2)} TON</div>
-            </div>
-        `).join('');
-    } catch (e) { }
+function loadLeaderboard() {
+    api('/api/leaderboard')
+        .then(function (res) {
+            var list = document.getElementById('leaderboard-list');
+            if (!list) return;
+            list.innerHTML = res.players.map(function (p, i) {
+                return '<div class="leaderboard-item ' + (i < 3 ? 'top-3' : '') + '">' +
+                    '<div class="leaderboard-rank">' + (i + 1) + '</div>' +
+                    '<div class="leaderboard-info">' +
+                    '<div class="leaderboard-name">' + p.username + '</div>' +
+                    '<div class="leaderboard-stats">' + p.gamesPlayed + ' игр • ' + p.gamesWon + ' побед</div>' +
+                    '</div>' +
+                    '<div class="leaderboard-balance">' + p.balance.toFixed(2) + ' TON</div>' +
+                    '</div>';
+            }).join('');
+        })
+        .catch(function (e) { });
 }
 
 
@@ -1187,9 +1394,9 @@ window.copyText = function (id) {
 };
 
 window.copyMemo = function () {
-    const memo = document.getElementById('active-memo')?.textContent;
+    const memo = document.getElementById('active-memo');
     if (memo && navigator.clipboard) {
-        navigator.clipboard.writeText(memo).then(() => toast('Комментарий скопирован!', 'success'));
+        navigator.clipboard.writeText(memo.textContent).then(() => toast('Комментарий скопирован!', 'success'));
     }
 };
 
@@ -1214,32 +1421,38 @@ window.selectGame = function (game) {
     const bHide = document.getElementById('game-tab-hide');
 
     // Hide all views first
-    [diceView, crashView, plinkoView, hideView].forEach(v => v?.classList.add('hidden'));
-    [bDice, bCrash, bPlinko, bHide].forEach(b => b?.classList.remove('active'));
+    const views = [diceView, crashView, plinkoView, hideView];
+    for (var i = 0; i < views.length; i++) {
+        if (views[i]) views[i].classList.add('hidden');
+    }
+    const btns = [bDice, bCrash, bPlinko, bHide];
+    for (var j = 0; j < btns.length; j++) {
+        if (btns[j]) btns[j].classList.remove('active');
+    }
 
     currentGame = game;
 
     if (game === 'dice') {
-        diceView?.classList.remove('hidden');
-        bDice?.classList.add('active');
+        if (diceView) diceView.classList.remove('hidden');
+        if (bDice) bDice.classList.add('active');
         stopCrashPolling();
         stopHidePolling();
     } else if (game === 'crash') {
-        crashView?.classList.remove('hidden');
-        bCrash?.classList.add('active');
+        if (crashView) crashView.classList.remove('hidden');
+        if (bCrash) bCrash.classList.add('active');
         stopHidePolling();
         startCrashPolling();
         if (!window._crashInited) initCrashCanvas();
         else if (!crashAnimationId) renderCrash();
     } else if (game === 'plinko') {
-        plinkoView?.classList.remove('hidden');
-        bPlinko?.classList.add('active');
+        if (plinkoView) plinkoView.classList.remove('hidden');
+        if (bPlinko) bPlinko.classList.add('active');
         stopCrashPolling();
         stopHidePolling();
         setTimeout(() => initPlinko(), 10);
     } else if (game === 'hide') {
-        hideView?.classList.remove('hidden');
-        bHide?.classList.add('active');
+        if (hideView) hideView.classList.remove('hidden');
+        if (bHide) bHide.classList.add('active');
         stopCrashPolling();
         startHidePolling();
         setTimeout(() => initHide(), 10);
@@ -1301,11 +1514,11 @@ function updateCrashUI() {
 
             // Show real-time payout on button
             const currentPayout = (crashStatus.myBet.amount * crashStatus.multiplier).toFixed(2);
-            cashoutBtn.innerHTML = `ЗАБРАТЬ <span style="display:block; font-size: 11px; opacity: 0.8;">(+${currentPayout} TON)</span>`;
+            cashoutBtn.innerHTML = `ЗАБРАТЬ < span style = "display:block; font-size: 11px; opacity: 0.8;" > (+${currentPayout} TON)</span > `;
         } else {
             betBtn.classList.remove('hidden');
             betBtn.disabled = true;
-            betBtn.textContent = crashStatus.myBet?.cashedOut ? 'СТАВКА ЗАБРАНА' : 'РАУНД ИДЕТ';
+            betBtn.textContent = (crashStatus.myBet && crashStatus.myBet.cashedOut) ? 'СТАВКА ЗАБРАНА' : 'РАУНД ИДЕТ';
             cashoutBtn.classList.add('hidden');
         }
     } else if (crashStatus.phase === 'WAITING') {
@@ -1335,9 +1548,9 @@ function updateCrashUI() {
     }
 
     if (historyBar) {
-        historyBar.innerHTML = crashStatus.history.map(h => `
-                <div class="crash-history-item ${h >= 2 ? 'win' : 'loss'}">${h.toFixed(2)}x</div>
-            `).join('');
+        historyBar.innerHTML = crashStatus.history.map(function (h) {
+            return '<div class="crash-history-item ' + (h >= 2 ? 'win' : 'loss') + '">' + h.toFixed(2) + 'x</div>';
+        }).join('');
     }
 }
 
@@ -1397,7 +1610,7 @@ function renderCrash() {
     crashCtx.clearRect(0, 0, w, h);
 
     const now = Date.now() - timeOffset;
-    let t = (now - (crashStatus?.startTime || 0)) / 1000;
+    let t = (now - (crashStatus && crashStatus.startTime || 0)) / 1000;
     const isPlaying = crashStatus && crashStatus.phase === 'FLYING';
     const isCrashed = crashStatus && crashStatus.phase === 'CRASHED';
 
@@ -1556,7 +1769,7 @@ function renderCrash() {
         crashCtx.restore();
 
         if (isPlaying && window.haptic && hapticEnabled && Math.random() > 0.98) {
-            haptic.impactOccurred('light');
+            window.haptic.impactOccurred('light');
         }
     }
 
@@ -1590,10 +1803,55 @@ window.crashPlaceBet = async function () {
     closeModal('bet-modal');
 
     try {
+        const dropX = window.plinkoDropX || 0.5;
+
+        // DEMO MODE: simulate locally
+        if (window.demoMode) {
+            const path = [];
+            let currentSlot = Math.floor(dropX * PLINKO_ROWS);
+            // Better slot calculation: bits are directions.
+            // 0 = left, 1 = right.
+            for (let i = 0; i < PLINKO_ROWS; i++) {
+                const bit = Math.random() > 0.5 ? 1 : 0;
+                path.push(bit);
+            }
+
+            // Calculate final slot based on path
+            let slot = Math.floor(dropX * (PLINKO_ROWS + 1));
+            path.forEach(dir => { if (dir === 1) slot++; else slot--; });
+            // Clamp slot
+            slot = Math.max(0, Math.min(PLINKO_ROWS, Math.floor(slot / 2) + Math.floor(PLINKO_ROWS / 2)));
+            // Wait, standard plinko slot logic is simple: count of 'rights' (1s)
+            let rights = 0;
+            path.forEach(b => { if (b === 1) rights++; });
+            slot = rights;
+
+            const multiplier = PLINKO_MULTIS[slot] || 0;
+            const amt = payload.betAmount || 0;
+            const payout = amt * multiplier;
+
+            plinkoBalls = plinkoBalls.filter(b => !b.landed);
+            const ball = {
+                x: plinkoCanvas.width * dropX,
+                y: 20,
+                path: path,
+                targetSlot: slot,
+                payout: payout,
+                betAmount: amt,
+                multiplier: multiplier,
+                dieValue: Math.floor(Math.random() * 6) + 1,
+                landed: false,
+                isDemo: true
+            };
+            plinkoBalls.push(ball);
+            toast('🎮 ДЕМО — баланс не изменён', 'info');
+            return;
+        }
+
         const res = await api('/api/crash/bet', 'POST', payload);
         if (res.newBalance !== undefined) setBalance(res.newBalance);
         toast('Ставка принята!', 'success');
-        if (window.haptic && hapticEnabled) haptic.impactOccurred('medium');
+        if (window.haptic && hapticEnabled) window.haptic.impactOccurred('medium');
         pollCrash();
         if (betMode === 'gift') selectedGift = null;
     } catch (e) { toast(e.message, 'error'); }
@@ -1604,8 +1862,8 @@ window.crashCashout = async function () {
         const res = await api('/api/crash/cashout', 'POST');
         setBalance(res.newBalance);
         triggerConfetti();
-        toast(`Вы забрали ${res.payout.toFixed(2)} TON! (${res.multiplier}x)`, 'success');
-        if (window.haptic && hapticEnabled) haptic.notificationOccurred('success');
+        toast(`Вы забрали ${res.payout.toFixed(2)} TON!(${res.multiplier}x)`, 'success');
+        if (window.haptic && hapticEnabled) window.haptic.notificationOccurred('success');
         pollCrash();
     } catch (e) { toast(e.message, 'error'); }
 };
@@ -1657,14 +1915,13 @@ function initPlinko() {
             slot.style.color = color;
 
             slot.innerHTML = `
-                <div class="mult-val">${label}</div>
-                <div class="mult-payout-preview" style="font-size: 8px; opacity: 0.6; font-weight: 500;">0.00</div>
-            `;
+        <div class="mult-val">${label}</div>
+    `;
             multsDiv.appendChild(slot);
         });
         updatePlinkoPreviews();
         // Sync with bet amount input
-        document.getElementById('bet-amount')?.addEventListener('input', updatePlinkoPreviews);
+        document.getElementById('bet-amount') && document.getElementById('bet-amount').addEventListener('input', updatePlinkoPreviews);
     }
 
     initPlinkoDropZone();
@@ -1721,8 +1978,8 @@ async function plinkoDrop() {
         if (window.demoMode) {
             const path = [];
             let currentSlot = Math.floor(dropX * PLINKO_ROWS);
-            // Better slot calculation: bits are directions. 
-            // 0 = left, 1 = right. 
+            // Better slot calculation: bits are directions.
+            // 0 = left, 1 = right.
             for (let i = 0; i < PLINKO_ROWS; i++) {
                 const bit = Math.random() > 0.5 ? 1 : 0;
                 path.push(bit);
@@ -1788,13 +2045,13 @@ async function plinkoDrop() {
 }
 
 function initPlinkoDropZone() {
-    const zone = document.getElementById('plinko-drop-zone');
+    var zone = document.getElementById('plinko-drop-zone');
     if (!zone) return;
 
-    const handleMove = (e) => {
-        const rect = zone.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        let x = (clientX - rect.left) / rect.width;
+    var handleMove = function (e) {
+        var rect = zone.getBoundingClientRect();
+        var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        var x = (clientX - rect.left) / rect.width;
         x = Math.max(0.1, Math.min(0.9, x));
         window.plinkoDropX = x;
     };
@@ -1815,26 +2072,26 @@ function renderPlinko() {
         return requestAnimationFrame(renderPlinko);
     }
 
-    const curW = plinkoCanvas.offsetWidth;
-    const curH = plinkoCanvas.offsetHeight;
+    var curW = plinkoCanvas.offsetWidth;
+    var curH = plinkoCanvas.offsetHeight;
 
     if (curW > 10 && curH > 10) {
         if (plinkoCanvas.width !== curW) plinkoCanvas.width = curW;
         if (plinkoCanvas.height !== curH) plinkoCanvas.height = curH;
 
-        const w = plinkoCanvas.width;
-        const h = plinkoCanvas.height;
+        var w = plinkoCanvas.width;
+        var h = plinkoCanvas.height;
         plinkoCtx.clearRect(0, 0, w, h);
 
-        const topPad = 55;
-        const rowGap = (h - 80) / (PLINKO_ROWS + 1);
-        const colGap = w / (PLINKO_ROWS + 2);
-        const slotWidth = w / PLINKO_MULTIS.length;
+        var topPad = 55;
+        var rowGap = (h - 80) / (PLINKO_ROWS + 1);
+        var colGap = w / (PLINKO_ROWS + 2);
+        var slotWidth = w / PLINKO_MULTIS.length;
 
         // Helper: peg position for waypoint calc
         function pegPos(row, col) {
-            const rowCols = row + 1;
-            const startX = (w - (rowCols - 1) * colGap) / 2;
+            var rowCols = row + 1;
+            var startX = (w - (rowCols - 1) * colGap) / 2;
             return { x: startX + col * colGap, y: topPad + row * rowGap };
         }
 
@@ -1848,11 +2105,11 @@ function renderPlinko() {
 
         // Draw Pegs
         plinkoCtx.fillStyle = 'rgba(255,255,255,0.2)';
-        for (let r = 1; r <= PLINKO_ROWS; r++) {
-            const rowY = topPad + r * rowGap;
-            const rowCols = r + 1;
-            const startX = (w - (rowCols - 1) * colGap) / 2;
-            for (let c = 0; c < rowCols; c++) {
+        for (var r = 1; r <= PLINKO_ROWS; r++) {
+            var rowY = topPad + r * rowGap;
+            var rowCols = r + 1;
+            var startX = (w - (rowCols - 1) * colGap) / 2;
+            for (var c = 0; c < rowCols; c++) {
                 plinkoCtx.beginPath();
                 plinkoCtx.arc(startX + c * colGap, rowY, 3, 0, Math.PI * 2);
                 plinkoCtx.fill();
@@ -1862,7 +2119,7 @@ function renderPlinko() {
         // Draw Slots Dividers
         plinkoCtx.strokeStyle = 'rgba(255,255,255,0.1)';
         plinkoCtx.lineWidth = 2;
-        for (let i = 1; i < PLINKO_MULTIS.length; i++) {
+        for (var i = 1; i < PLINKO_MULTIS.length; i++) {
             plinkoCtx.beginPath();
             plinkoCtx.moveTo(i * slotWidth, h - 30);
             plinkoCtx.lineTo(i * slotWidth, h);
@@ -1870,31 +2127,31 @@ function renderPlinko() {
         }
 
         // --- Ball animation (deterministic path interpolation) ---
-        const now = performance.now();
-        const STEP_MS = 250;
-        const LAND_MS = 180;
+        var now = performance.now();
+        var STEP_MS = 250;
+        var LAND_MS = 180;
 
-        plinkoBalls = plinkoBalls.filter(ball => {
+        plinkoBalls = plinkoBalls.filter(function (ball) {
             // Build waypoints once on first frame
             if (!ball._startTime) {
                 ball._startTime = now;
                 ball._waypoints = [{ x: ball.x, y: topPad - 20 }];
 
                 // Find nearest col in row 1
-                let col = 0;
-                const r1Cols = 2;
-                const r1StartX = (w - (r1Cols - 1) * colGap) / 2;
-                let best = Infinity;
-                for (let c = 0; c < r1Cols; c++) {
-                    const d = Math.abs(ball.x - (r1StartX + c * colGap));
+                var col = 0;
+                var r1Cols = 2;
+                var r1StartX = (w - (r1Cols - 1) * colGap) / 2;
+                var best = Infinity;
+                for (var c = 0; c < r1Cols; c++) {
+                    var d = Math.abs(ball.x - (r1StartX + c * colGap));
                     if (d < best) { best = d; col = c; }
                 }
 
-                for (let i = 0; i < PLINKO_ROWS; i++) {
-                    const pos = pegPos(i + 1, col);
+                for (var i = 0; i < PLINKO_ROWS; i++) {
+                    var pos = pegPos(i + 1, col);
                     // Ball deflects to the side of the peg, not through it
-                    const dir = ball.path[i] === 1 ? 1 : -1;
-                    const offsetX = dir * colGap * 0.35;
+                    var dir = ball.path[i] === 1 ? 1 : -1;
+                    var offsetX = dir * colGap * 0.35;
                     ball._waypoints.push({
                         x: pos.x + offsetX + (Math.random() - 0.5) * 2,
                         y: pos.y + rowGap * 0.25
@@ -1906,13 +2163,13 @@ function renderPlinko() {
                 ball._totalSteps = ball._waypoints.length - 1;
             }
 
-            const elapsed = now - ball._startTime;
-            const totalMs = ball._totalSteps * STEP_MS + LAND_MS;
+            var elapsed = now - ball._startTime;
+            var totalMs = ball._totalSteps * STEP_MS + LAND_MS;
 
             // Landing
             if (elapsed >= totalMs && !ball.landed) {
                 ball.landed = true;
-                const lp = ball._waypoints[ball._waypoints.length - 1];
+                var lp = ball._waypoints[ball._waypoints.length - 1];
                 ball.x = lp.x; ball.y = lp.y;
 
                 highlightSlot(ball.targetSlot);
@@ -1923,28 +2180,28 @@ function renderPlinko() {
                     showResult({ won: false, payout: 0, betAmount: ball.betAmount, dice: [ball.dieValue] });
                 }
                 if (ball.newBalance !== undefined) setBalance(ball.newBalance, true);
-                if (window.haptic && hapticEnabled) haptic.notificationOccurred('success');
+                if (window.haptic && hapticEnabled) window.haptic.notificationOccurred('success');
             }
 
             // Smooth Catmull-Rom spline interpolation (no per-segment stops)
             if (!ball.landed) {
-                const totalDur = ball._totalSteps * STEP_MS;
+                var totalDur = ball._totalSteps * STEP_MS;
                 // Slight gravity easing: starts slow, accelerates
-                const rawP = Math.min(elapsed / totalDur, 1);
-                const progress = rawP * (2 - rawP); // ease-out quadratic for gravity feel
+                var rawP = Math.min(elapsed / totalDur, 1);
+                var progress = rawP * (2 - rawP); // ease-out quadratic for gravity feel
 
-                const segFloat = progress * ball._totalSteps;
-                const si = Math.min(Math.floor(segFloat), ball._totalSteps - 1);
-                const t = segFloat - si;
+                var segFloat = progress * ball._totalSteps;
+                var si = Math.min(Math.floor(segFloat), ball._totalSteps - 1);
+                var t = segFloat - si;
 
                 // Catmull-Rom: use 4 surrounding waypoints for smooth curve
-                const wp = ball._waypoints;
-                const p0 = wp[Math.max(0, si - 1)];
-                const p1 = wp[si];
-                const p2 = wp[Math.min(si + 1, wp.length - 1)];
-                const p3 = wp[Math.min(si + 2, wp.length - 1)];
+                var wp = ball._waypoints;
+                var p0 = wp[Math.max(0, si - 1)];
+                var p1 = wp[si];
+                var p2 = wp[Math.min(si + 1, wp.length - 1)];
+                var p3 = wp[Math.min(si + 2, wp.length - 1)];
 
-                const t2 = t * t, t3 = t2 * t;
+                var t2 = t * t, t3 = t2 * t;
                 ball.x = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
                 ball.y = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
             }
@@ -1953,19 +2210,32 @@ function renderPlinko() {
             plinkoCtx.save();
             plinkoCtx.translate(ball.x, ball.y);
             plinkoCtx.rotate(ball.y / 15);
-            const size = 16, r = 4;
+            var size = 16, r = 4;
             plinkoCtx.fillStyle = '#fff';
             plinkoCtx.shadowBlur = ball.landed ? 20 : 15;
             plinkoCtx.shadowColor = ball.landed ? 'rgba(255, 215, 0, 0.6)' : 'rgba(255,255,255,0.5)';
-            plinkoCtx.beginPath();
-            plinkoCtx.roundRect(-size / 2, -size / 2, size, size, r);
-            plinkoCtx.fill();
+            // Compatibility: Draw round rect using basic paths
+            var drawRoundRect = function (ctx, x, y, width, height, radius) {
+                ctx.beginPath();
+                ctx.moveTo(x + radius, y);
+                ctx.lineTo(x + width - radius, y);
+                ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+                ctx.lineTo(x + width, y + height - radius);
+                ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                ctx.lineTo(x + radius, y + height);
+                ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+                ctx.lineTo(x, y + radius);
+                ctx.quadraticCurveTo(x, y, x + radius, y);
+                ctx.closePath();
+                ctx.fill();
+            };
+            drawRoundRect(plinkoCtx, -size / 2, -size / 2, size, size, r);
 
             plinkoCtx.shadowBlur = 0;
             plinkoCtx.fillStyle = '#000';
-            const p = size / 4, dotSize = 2;
-            const drawDot = (dx, dy) => { plinkoCtx.beginPath(); plinkoCtx.arc(dx, dy, dotSize, 0, Math.PI * 2); plinkoCtx.fill(); };
-            const dots = {
+            var p = size / 4, dotSize = 2;
+            var drawDot = function (dx, dy) { plinkoCtx.beginPath(); plinkoCtx.arc(dx, dy, dotSize, 0, Math.PI * 2); plinkoCtx.fill(); };
+            var dots = {
                 1: [[0, 0]],
                 2: [[-p, -p], [p, p]],
                 3: [[-p, -p], [0, 0], [p, p]],
@@ -1973,7 +2243,7 @@ function renderPlinko() {
                 5: [[-p, -p], [p, -p], [0, 0], [-p, p], [p, p]],
                 6: [[-p, -p], [p, -p], [-p, 0], [p, 0], [-p, p], [p, p]]
             };
-            (dots[ball.dieValue] || []).forEach(d => drawDot(d[0], d[1]));
+            (dots[ball.dieValue] || []).forEach(function (d) { drawDot(d[0], d[1]); });
             plinkoCtx.restore();
 
             if (ball.landed) {
@@ -1987,107 +2257,112 @@ function renderPlinko() {
 }
 
 function highlightSlot(idx) {
-    const slots = document.querySelectorAll('.plinko-multiplier-slot');
+    var slots = document.querySelectorAll('.plinko-multiplier-slot');
     if (slots[idx]) {
         slots[idx].classList.add('win');
-        setTimeout(() => slots[idx].classList.remove('win'), 1500);
+        setTimeout(function () { slots[idx].classList.remove('win'); }, 1500);
     }
 }
 // --- DAILY SPIN LOGIC ---
-let isSpinning = false;
+var isSpinning = false;
 function openDailySpin() {
     document.getElementById('daily-spin-modal').classList.remove('hidden');
 }
 
-async function startDailySpin() {
+function startDailySpin() {
     if (isSpinning) return;
 
-    try {
-        const res = await api('/api/daily-spin', 'POST');
-        isSpinning = true;
-        const btn = document.getElementById('spin-start-btn');
-        btn.disabled = true;
-        btn.textContent = 'КРУТИМ...';
+    api('/api/daily-spin', 'POST')
+        .then(function (res) {
+            isSpinning = true;
+            var btn = document.getElementById('spin-start-btn');
+            btn.disabled = true;
+            btn.textContent = 'КРУТИМ...';
 
-        const wheel = document.getElementById('wheel');
-        // Calculate precise landing index
-        // Each segment is 30 degrees. res.index is 0..11.
-        // Rotation is clockwise. Arrow is at top (0 deg).
-        // To land on index I, we need to rotate -(I * 30 + 15) degrees.
-        const baseRotation = (res.index * 30 + 15);
-        const fullSpins = 360 * 5;
-        const finalRotation = fullSpins - baseRotation;
+            var wheel = document.getElementById('wheel');
+            // Calculate precise landing index
+            // Each segment is 30 degrees. res.index is 0..11.
+            // Rotation is clockwise. Arrow is at top (0 deg).
+            // To land on index I, we need to rotate -(I * 30 + 15) degrees.
+            var baseRotation = (res.index * 30 + 15);
+            var fullSpins = 360 * 5;
+            var finalRotation = fullSpins - baseRotation;
 
-        wheel.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
-        wheel.style.transform = `rotate(${finalRotation}deg)`;
+            wheel.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
+            wheel.style.transform = 'rotate(' + finalRotation + 'deg)';
 
-        setTimeout(() => {
-            isSpinning = false;
-            btn.disabled = false;
-            btn.textContent = 'КРУТИТЬ';
+            setTimeout(function () {
+                isSpinning = false;
+                btn.disabled = false;
+                btn.textContent = 'КРУТИТЬ';
 
-            if (res.win) {
-                toast(`ПОЗДРАВЛЯЕМ! Вы выиграли ${res.prize} TON!`, 'success');
-                setBalance(res.newBalance, true);
-                triggerConfetti();
-            } else {
-                toast('В этот раз не повезло. Попробуйте завтра!', 'info');
-            }
+                if (res.win) {
+                    toast('ПОЗДРАВЛЯЕМ! Вы выиграли ' + res.prize + ' TON!', 'success');
+                    setBalance(res.newBalance, true);
+                    triggerConfetti();
+                } else {
+                    toast('В этот раз не повезло. Попробуйте завтра!', 'info');
+                }
 
-            // Reset wheel after delay to be ready for next time (visually clean)
-            setTimeout(() => {
-                wheel.style.transition = 'none';
-                wheel.style.transform = `rotate(${-baseRotation}deg)`; // Stay on the prize
-            }, 1000);
-        }, 4100);
-
-    } catch (e) {
-        toast(e.message, 'error');
-    }
+                // Reset wheel after delay to be ready for next time (visually clean)
+                setTimeout(function () {
+                    wheel.style.transition = 'none';
+                    wheel.style.transform = 'rotate(' + (-baseRotation) + 'deg)'; // Stay on the prize
+                }, 1000);
+            }, 4100);
+        })
+        .catch(function (e) {
+            toast(e.message, 'error');
+        });
 }
 
-async function redeemPromo() {
-    const input = document.getElementById('promo-code-input');
-    const code = input.value.trim();
+function redeemPromo() {
+    var input = document.getElementById('promo-code-input');
+    var code = input.value.trim();
     if (!code) return toast('Введите промокод', 'error');
 
-    try {
-        const res = await api('/api/promocodes/redeem', 'POST', { code });
-        toast(res.message, 'success');
-        setBalance(res.newBalance, true);
-        input.value = '';
-    } catch (e) {
-        toast(e.message, 'error');
-    }
+    api('/api/promocodes/redeem', 'POST', { code: code })
+        .then(function (res) {
+            toast(res.message, 'success');
+            setBalance(res.newBalance, true);
+            input.value = '';
+        })
+        .catch(function (e) {
+            toast(e.message, 'error');
+        });
 }
 
 function initWheelLabels() {
-    const wrap = document.getElementById('wheel-labels');
+    var wrap = document.getElementById('wheel-labels');
     if (!wrap) return;
     wrap.innerHTML = '';
-    const prizes = ['0.01', '💀', '0.05', '💀', '0.1', '💀', '0.5', '💀', '1.0', '💀', '10.0', '💀'];
-    prizes.forEach((p, i) => {
-        const lbl = document.createElement('div');
+    var prizes = ['0.01', '💀', '0.05', '💀', '0.1', '💀', '0.5', '💀', '1.0', '💀', '10.0', '💀'];
+    prizes.forEach(function (p, i) {
+        var lbl = document.createElement('div');
         lbl.className = 'wheel-segment-label';
         // Precise center of each 30-degree segment
-        lbl.style.transform = `rotate(${i * 30 + 15}deg)`;
+        lbl.style.transform = 'rotate(' + (i * 30 + 15) + 'deg)';
         // Simple span without fighting double-rotations
-        lbl.innerHTML = `<span>${p}</span>`;
+        lbl.innerHTML = '<span>' + p + '</span>';
         wrap.appendChild(lbl);
     });
 }
 
 function bytesToBase64(u8) {
-    let binary = '';
-    for (let i = 0; i < u8.length; i++) binary += String.fromCharCode(u8[i]);
+    var binary = '';
+    for (var i = 0; i < u8.length; i++) binary += String.fromCharCode(u8[i]);
     return typeof btoa !== 'undefined' ? btoa(binary) : '';
 }
 
 /** Build TON BOC (Bag of Cells) for one cell: 32-bit 0 (comment opcode) + comment text. Fixes "payload 0 index" error. */
 function buildCommentBoc(comment) {
-    const commentBytes = new TextEncoder().encode(comment);
-    const dataLen = 4 + commentBytes.length;
-    const cellBytes = new Uint8Array(2 + dataLen);
+    if (typeof TextEncoder === 'undefined') {
+        console.error('TextEncoder not supported');
+        return '';
+    }
+    var commentBytes = new TextEncoder().encode(comment);
+    var dataLen = 4 + commentBytes.length;
+    var cellBytes = new Uint8Array(2 + dataLen);
     cellBytes[0] = 1;
     cellBytes[1] = (dataLen - 1) & 0xff;
     cellBytes[2] = 0;
@@ -2095,8 +2370,8 @@ function buildCommentBoc(comment) {
     cellBytes[4] = 0;
     cellBytes[5] = 0;
     cellBytes.set(commentBytes, 6);
-    const cellLen = cellBytes.length;
-    const boc = new Uint8Array(4 + 8 + 1 + cellLen);
+    var cellLen = cellBytes.length;
+    var boc = new Uint8Array(4 + 8 + 1 + cellLen);
     boc[0] = 0xb5;
     boc[1] = 0xee;
     boc[2] = 0x9c;
@@ -2117,88 +2392,96 @@ function buildCommentBoc(comment) {
 // Final helper for gift icons
 function getGiftEmoji(model) {
     if (!model) return '🎁';
-    const m = model.toLowerCase();
-    if (m.includes('star')) return '⭐';
-    if (m.includes('heart')) return '❤️';
-    if (m.includes('fire')) return '🔥';
-    if (m.includes('crystal') || m.includes('diamond')) return '💎';
-    if (m.includes('crown')) return '👑';
-    if (m.includes('bag') || m.includes('money')) return '💰';
-    if (m.includes('dice')) return '🎲';
-    if (m.includes('rocket')) return '🚀';
+    var m = model.toLowerCase();
+    if (m.indexOf('star') !== -1) return '⭐';
+    if (m.indexOf('heart') !== -1) return '❤️';
+    if (m.indexOf('fire') !== -1) return '🔥';
+    if (m.indexOf('crystal') !== -1 || m.indexOf('diamond') !== -1) return '💎';
+    if (m.indexOf('crown') !== -1) return '👑';
+    if (m.indexOf('bag') !== -1 || m.indexOf('money') !== -1) return '💰';
+    if (m.indexOf('dice') !== -1) return '🎲';
+    if (m.indexOf('rocket') !== -1) return '🚀';
+    if (m.indexOf('perfume') !== -1) return '🧪';
+    if (m.indexOf('ring') !== -1) return '💍';
+    if (m.indexOf('cake') !== -1) return '🎂';
     return '🎁';
 }
 
-// Stats listener to user Avatar
-document.querySelector('.header-left').onclick = openStats;
-
 // Consolidated Gift Betting Logic
-let betMode = 'ton';
-let selectedGift = null;
-let activeBetGame = null;
+var betMode = 'ton';
+var selectedGift = null;
+var activeBetGame = null;
 
 window.setBetMode = function (mode) {
     betMode = mode;
-    const btnTon = document.getElementById('bet-tab-ton');
-    const btnGift = document.getElementById('bet-tab-gift');
-    const areaTon = document.getElementById('bet-ton-area');
-    const areaGift = document.getElementById('bet-gift-area');
+    var btnTon = document.getElementById('bet-tab-ton');
+    var btnGift = document.getElementById('bet-tab-gift');
+    var areaTon = document.getElementById('bet-ton-area');
+    var areaGift = document.getElementById('bet-gift-area');
 
     if (mode === 'ton') {
-        btnTon?.classList.add('active');
-        btnGift?.classList.remove('active');
-        areaTon?.classList.remove('hidden');
-        areaGift?.classList.add('hidden');
+        if (btnTon) btnTon.classList.add('active');
+        if (btnGift) btnGift.classList.remove('active');
+        if (areaTon) areaTon.classList.remove('hidden');
+        if (areaGift) areaGift.classList.add('hidden');
     } else {
-        btnTon?.classList.remove('active');
-        btnGift?.classList.add('active');
-        areaTon?.classList.add('hidden');
-        areaGift?.classList.remove('hidden');
+        if (btnTon) btnTon.classList.remove('active');
+        if (btnGift) btnGift.classList.add('active');
+        if (areaTon) areaTon.classList.add('hidden');
+        if (areaGift) areaGift.classList.remove('hidden');
         loadGiftsForBet();
     }
 };
 
-async function loadGiftsForBet() {
-    const list = document.getElementById('gift-selection-list');
+function loadGiftsForBet() {
+    var list = document.getElementById('gift-selection-list');
     if (!list) return;
     list.innerHTML = '<div class="premium-empty"><p>Загрузка...</p></div>';
-    try {
-        const { inventory } = await api('/api/inventory/combined');
-        if (inventory.length === 0) {
-            list.innerHTML = '<div class="premium-empty"><p>Нет подарков</p></div>';
-            return;
-        }
-        list.innerHTML = inventory.map(item => `
-            <div class="gift-select-card ${selectedGift?.instance_id === item.instance_id ? 'active' : ''}" onclick="selectGiftForBet(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                <div class="gift-avatar"><img src="${getGiftImg(item.model)}" alt=""></div>
-                <div class="gift-title">${item.title}</div>
-                <div class="gift-cost">${item.price} TON</div>
-            </div>`).join('');
-    } catch (e) { list.innerHTML = '<p>Ошибка</p>'; }
+
+    api('/api/inventory/combined')
+        .then(function (res) {
+            var inventory = res.inventory;
+            if (inventory.length === 0) {
+                list.innerHTML = '<div class="premium-empty"><p>Нет подарков</p></div>';
+                return;
+            }
+            list.innerHTML = inventory.map(function (item) {
+                var isActive = selectedGift && selectedGift.instance_id === item.instance_id;
+                var safeItem = JSON.stringify(item).replace(/"/g, '&quot;');
+                return '<div class="gift-select-card ' + (isActive ? 'active' : '') + '" onclick="selectGiftForBet(' + safeItem + ')">' +
+                    '<div class="gift-avatar"><img src="' + getGiftImg(item.model) + '" alt=""></div>' +
+                    '<div class="gift-title">' + item.title + '</div>' +
+                    '<div class="gift-cost">' + item.price + ' TON</div>' +
+                    '</div>';
+            }).join('');
+        })
+        .catch(function (e) {
+            list.innerHTML = '<p>Ошибка</p>';
+        });
 }
 
 window.selectGiftForBet = function (item) {
     selectedGift = item;
-    if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
+    if (window.haptic && hapticEnabled) window.haptic.impactOccurred('light');
     loadGiftsForBet();
 };
 
 window.openBetModal = function (game) {
     activeBetGame = game;
-    const modal = document.getElementById('bet-modal');
+    var modal = document.getElementById('bet-modal');
     if (!modal) return;
 
     modal.classList.remove('hidden');
 
     // Show/Hide demo toggle exclusively for Dice/Plinko
-    const demoToggle = document.getElementById('demo-toggle-wrap');
+    var demoToggle = document.getElementById('demo-toggle-wrap');
     if (demoToggle) {
         if (game === 'dice' || game === 'plinko') demoToggle.style.display = 'flex';
         else demoToggle.style.display = 'none';
     }
 
     // Config modal for game
-    const diceArea = document.getElementById('dice-options-area');
+    var diceArea = document.getElementById('dice-options-area');
     if (diceArea) {
         if (game === 'dice') {
             diceArea.classList.remove('hidden');
@@ -2208,18 +2491,20 @@ window.openBetModal = function (game) {
     }
 
     // Hide/Show crash options
-    const crashArea = document.getElementById('crash-auto-cashout-area');
+    var crashArea = document.getElementById('crash-auto-cashout-area');
     if (crashArea) {
         if (game === 'crash') crashArea.classList.remove('hidden');
         else crashArea.classList.add('hidden');
     }
 
     if (game === 'dice') {
-        const bType = window.betType || 'high';
-        document.querySelectorAll('.bet-type-btn').forEach(b => {
+        var bType = window.betType || 'high';
+        var btns = document.querySelectorAll('.bet-type-btn');
+        for (var i = 0; i < btns.length; i++) {
+            var b = btns[i];
             b.classList.toggle('active', b.getAttribute('data-bet') === bType);
-        });
-        const exactPicker = document.getElementById('exact-picker');
+        }
+        var exactPicker = document.getElementById('exact-picker');
         if (exactPicker) {
             exactPicker.style.display = (bType === 'exact' ? 'block' : 'none');
             exactPicker.classList.remove('hidden');
@@ -2227,8 +2512,8 @@ window.openBetModal = function (game) {
         if (typeof buildExactPicker === 'function') buildExactPicker();
         if (typeof updatePayoutUI === 'function') updatePayoutUI();
     } else {
-        const exactPicker = document.getElementById('exact-picker');
-        if (exactPicker) exactPicker.style.display = 'none';
+        var exactPicker2 = document.getElementById('exact-picker');
+        if (exactPicker2) exactPicker2.style.display = 'none';
     }
 
     window.confirmBetAction = function () {
@@ -2251,7 +2536,7 @@ window.openBetModal = function (game) {
     };
 
     // Assign to button
-    const confirmBtn = document.getElementById('bet-confirm-btn');
+    var confirmBtn = document.getElementById('bet-confirm-btn');
     if (confirmBtn) confirmBtn.onclick = window.confirmBetAction;
 };
 
@@ -2259,13 +2544,13 @@ window.openBetModal = function (game) {
 
 
 // --- HIDE AND SEEK (ПРЯТКИ) ---
-let hideStatus = null;
-let hidePolling = null;
-let hideCanvas = null;
-let hideCtx = null;
-let hideAnimId = null;
-let lastHidePhase = null;
-let lastHideStatusUpdate = 0;
+var hideStatus = null;
+var hidePolling = null;
+var hideCanvas = null;
+var hideCtx = null;
+var hideAnimId = null;
+var lastHidePhase = null;
+var lastHideStatusUpdate = 0;
 
 function startHidePolling() {
     if (hidePolling) return;
@@ -2279,57 +2564,58 @@ function stopHidePolling() {
     cancelAnimationFrame(hideAnimId);
 }
 
-async function pollHide() {
-    try {
-        const data = await api('/api/hide/status');
-        hideStatus = data;
-        lastHideStatusUpdate = Date.now();
-        updateHideUI();
-    } catch (e) { }
+function pollHide() {
+    api('/api/hide/status')
+        .then(function (data) {
+            hideStatus = data;
+            lastHideStatusUpdate = Date.now();
+            updateHideUI();
+        })
+        .catch(function (e) { });
 }
 
 function updateHideUI() {
     if (!hideStatus) return;
-    const timer = document.getElementById('hide-timer-display');
-    const phaseText = document.getElementById('hide-phase-text');
-    const voteControls = document.getElementById('hide-voting-controls');
-    const selectControls = document.getElementById('hide-selection-controls');
+    var timer = document.getElementById('hide-timer-display');
+    var phaseText = document.getElementById('hide-phase-text');
+    var voteControls = document.getElementById('hide-voting-controls');
+    var selectControls = document.getElementById('hide-selection-controls');
 
-    const btn = document.getElementById('hide-place-bet-btn');
+    var btn = document.getElementById('hide-place-bet-btn');
     if (btn) {
-        const canBet = hideStatus.phase === 'VOTING' && !hideStatus.myBet;
+        var canBet = hideStatus.phase === 'VOTING' && !hideStatus.myBet;
         btn.disabled = !canBet;
         btn.style.opacity = canBet ? '1' : '0.5';
     }
 
     if (timer) timer.textContent = Math.ceil(hideStatus.timeLeft || 0);
     if (phaseText) {
-        const texts = { 'VOTING': 'ГОЛОСОВАНИЕ', 'SELECTION': 'ВЫБОР ДОМА', 'SEARCHING': 'УБИЙЦА В ПУТИ...', 'RESULT': 'ФИНАЛ' };
+        var texts = { 'VOTING': 'ГОЛОСОВАНИЕ', 'SELECTION': 'ВЫБОР ДОМА', 'SEARCHING': 'УБИЙЦА В ПУТИ...', 'RESULT': 'ФИНАЛ' };
         phaseText.textContent = texts[hideStatus.phase] || hideStatus.phase;
     }
 
     if (hideStatus.phase === 'VOTING') {
-        voteControls?.classList.remove('hidden');
-        selectControls?.classList.add('hidden');
+        if (voteControls) voteControls.classList.remove('hidden');
+        if (selectControls) selectControls.classList.add('hidden');
     } else if (hideStatus.phase === 'SELECTION' || hideStatus.phase === 'SEARCHING' || hideStatus.phase === 'RESULT') {
-        voteControls?.classList.add('hidden');
-        selectControls?.classList.remove('hidden');
+        if (voteControls) voteControls.classList.add('hidden');
+        if (selectControls) selectControls.classList.remove('hidden');
 
-        const multLabel = document.getElementById('hide-mult-label');
-        const multMap = { 4: 2.5, 8: 2.0, 12: 1.2 };
-        if (multLabel) multLabel.textContent = `ВЫБЕРИТЕ ДОМ (${multMap[hideStatus.finalRoomCount] || 2.5}x Win)`;
+        var multLabel = document.getElementById('hide-mult-label');
+        var multMap = { 4: 2.5, 8: 2.0, 12: 1.2 };
+        if (multLabel) multLabel.textContent = 'ВЫБЕРИТЕ ДОМ(' + (multMap[hideStatus.finalRoomCount] || 2.5) + 'x Win)';
 
         renderRoomsList();
     }
 
     // Feedback on result
     if (hideStatus.phase === 'RESULT' && lastHidePhase === 'SEARCHING') {
-        const isHit = hideStatus.myRoom && (hideStatus.killerTargets || []).some(t => t == hideStatus.myRoom);
+        var isHit = hideStatus.myRoom && (hideStatus.killerTargets || []).some(function (t) { return t == hideStatus.myRoom; });
         if (hideStatus.myRoom) {
-            const hideRes = {
+            var hideRes = {
                 won: !isHit,
-                betAmount: hideStatus.myBet?.amount || 0,
-                payout: isHit ? 0 : (hideStatus.myBet?.amount || 0) * (hideStatus.myBet?.mult || 2),
+                betAmount: (hideStatus.myBet && hideStatus.myBet.amount) || 0,
+                payout: isHit ? 0 : ((hideStatus.myBet && hideStatus.myBet.amount) || 0) * ((hideStatus.myBet && hideStatus.myBet.mult) || 2),
                 room: hideStatus.myRoom
             };
             showResult(hideRes);
@@ -2339,65 +2625,68 @@ function updateHideUI() {
 }
 
 function renderRoomsList() {
-    const cont = document.getElementById('hide-rooms-container');
+    var cont = document.getElementById('hide-rooms-container');
     if (!cont) return;
-    let h = '';
-    const roomCount = hideStatus.finalRoomCount || 4;
-    const targets = hideStatus.killerTargets || [];
-    const visited = hideStatus._visitedHouses || new Set();
+    var h = '';
+    var roomCount = hideStatus.finalRoomCount || 4;
+    var targets = hideStatus.killerTargets || [];
+    var visited = hideStatus._visitedHouses || new Set();
 
-    for (let i = 1; i <= roomCount; i++) {
-        const r = hideStatus.rooms[i] || [];
-        const isMy = hideStatus.myRoom == i;
+    for (var i = 1; i <= roomCount; i++) {
+        var r = hideStatus.rooms[i] || [];
+        var isMy = hideStatus.myRoom == i;
         // House is hit if killer has visited it (real-time) or in RESULT phase
-        const wereHit = (hideStatus.phase === 'RESULT' && targets.includes(i)) ||
+        var wereHit = (hideStatus.phase === 'RESULT' && targets.indexOf(i) !== -1) ||
             (hideStatus.phase === 'SEARCHING' && visited.has(i));
 
-        h += `<div class="room-node ${isMy ? 'active' : ''} ${r.length >= 3 ? 'full' : ''} ${wereHit ? 'hit' : ''}" onclick="selectHideRoom(${i})">
-                <span class="room-num">${i}</span>
-                <span class="room-p-count">${wereHit ? '💀' : r.length + '/3'}</span>
-              </div>`;
+        h += '<div class="room-node ' + (isMy ? 'active' : '') + ' ' + (r.length >= 3 ? 'full' : '') + ' ' + (wereHit ? 'hit' : '') + '" onclick="selectHideRoom(' + i + ')">' +
+            '<span class="room-num">' + i + '</span>' +
+            '<span class="room-p-count">' + (wereHit ? '💀' : r.length + '/3') + '</span>' +
+            '</div>';
     }
     cont.innerHTML = h;
 }
 
-window.voteHide = async (count) => {
-    try {
-        await api('/api/hide/vote', 'POST', { count });
-        toast('Голос за ' + count + ' комнат!');
-        if (window.haptic) haptic.impactOccurred('medium');
-    } catch (e) { toast(e.message, 'error'); }
+window.voteHide = function (count) {
+    api('/api/hide/vote', 'POST', { count: count })
+        .then(function (res) {
+            toast('Голос за ' + count + ' комнат!');
+            if (window.haptic) window.haptic.impactOccurred('medium');
+        })
+        .catch(function (e) { toast(e.message, 'error'); });
 };
 
-window.selectHideRoom = async (roomId) => {
-    if (hideStatus?.phase !== 'SELECTION') return;
-    try {
-        await api('/api/hide/select', 'POST', { roomId });
-        if (window.haptic && hapticEnabled) haptic.impactOccurred('light');
-    } catch (e) { toast(e.message, 'error'); }
+window.selectHideRoom = function (roomId) {
+    if (hideStatus && hideStatus.phase !== 'SELECTION') return;
+    api('/api/hide/select', 'POST', { roomId: roomId })
+        .then(function (res) {
+            if (window.haptic && hapticEnabled) window.haptic.impactOccurred('light');
+        })
+        .catch(function (e) { toast(e.message, 'error'); });
 };
 
-window.placeHideBet = async () => {
-    const amt = parseFloat(document.getElementById('bet-amount').value);
-    const body = { betAmount: amt };
+window.placeHideBet = function () {
+    var amt = parseFloat(document.getElementById('bet-amount').value);
+    var body = { betAmount: amt };
     if (betMode === 'gift') {
         if (!selectedGift) return toast('Выберите подарок', 'error');
         body.giftInstanceId = selectedGift.instance_id;
     }
-    try {
-        await api('/api/hide/bet', 'POST', body);
-        toast('Вы в игре!', 'success');
-        selectedGift = null;
-        pollHide();
-    } catch (e) { toast(e.message, 'error'); }
+    api('/api/hide/bet', 'POST', body)
+        .then(function (res) {
+            toast('Вы в игре!', 'success');
+            selectedGift = null;
+            pollHide();
+        })
+        .catch(function (e) { toast(e.message, 'error'); });
 };
 
 function initHide() {
     hideCanvas = document.getElementById('hide-canvas');
     if (!hideCanvas) return;
     hideCtx = hideCanvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    const rect = hideCanvas.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    var rect = hideCanvas.getBoundingClientRect();
     hideCanvas.width = rect.width * dpr;
     hideCanvas.height = rect.height * dpr;
     hideCtx.scale(dpr, dpr);
@@ -2411,26 +2700,26 @@ function renderHide() {
     }
     hideAnimId = requestAnimationFrame(renderHide);
 
-    const dpr = window.devicePixelRatio || 1;
-    const w = hideCanvas.width / dpr;
-    const h = hideCanvas.height / dpr;
+    var dpr = window.devicePixelRatio || 1;
+    var w = hideCanvas.width / dpr;
+    var h = hideCanvas.height / dpr;
     hideCtx.clearRect(0, 0, w, h);
 
     if (!hideStatus) return;
 
     // Draw grid environment
     hideCtx.strokeStyle = 'rgba(255,255,255,0.02)';
-    for (let x = 0; x < w; x += 40) { hideCtx.beginPath(); hideCtx.moveTo(x, 0); hideCtx.lineTo(x, h); hideCtx.stroke(); }
-    for (let y = 0; y < h; y += 40) { hideCtx.beginPath(); hideCtx.moveTo(0, y); hideCtx.lineTo(w, y); hideCtx.stroke(); }
+    for (var x = 0; x < w; x += 40) { hideCtx.beginPath(); hideCtx.moveTo(x, 0); hideCtx.lineTo(x, h); hideCtx.stroke(); }
+    for (var y = 0; y < h; y += 40) { hideCtx.beginPath(); hideCtx.moveTo(0, y); hideCtx.lineTo(w, y); hideCtx.stroke(); }
 
     if (hideStatus.phase === 'SEARCHING' || hideStatus.phase === 'RESULT' || hideStatus.phase === 'SELECTION') {
-        const roomCount = hideStatus.finalRoomCount || 4;
+        var roomCount = hideStatus.finalRoomCount || 4;
         // Helper to get house position with MAX SEPARATION
-        const getHousePos = (idx, total) => {
+        var getHousePos = function (idx, total) {
             // FORCE EXTREME CORNERS for 4 players (using percentages for responsiveness)
             if (total <= 4) {
-                const xPad = w * 0.15; // 15% padding from sides
-                const yPad = h * 0.15; // 15% padding from top/bottom
+                var xPad = w * 0.15; // 15% padding from sides
+                var yPad = h * 0.15; // 15% padding from top/bottom
 
                 // 1: Top-Left, 2: Top-Right, 3: Bottom-Left, 4: Bottom-Right
                 if (idx === 1) return { x: xPad, y: yPad };
@@ -2439,61 +2728,61 @@ function renderHide() {
                 if (idx === 4) return { x: w - xPad - 40, y: h - yPad - 40 };
             }
             // Fallback grid
-            const cols = 4;
-            const rows = Math.ceil(total / cols);
-            const canvasPad = 80;
-            const gridW = w - canvasPad * 2;
-            const gridH = h - canvasPad * 2;
-            const cellW = gridW / cols;
-            const cellH = gridH / rows;
-            const ix = (idx - 1) % cols;
-            const iy = Math.floor((idx - 1) / cols);
+            var cols = 4;
+            var rows = Math.ceil(total / cols);
+            var canvasPad = 80;
+            var gridW = w - canvasPad * 2;
+            var gridH = h - canvasPad * 2;
+            var cellW = gridW / cols;
+            var cellH = gridH / rows;
+            var ix = (idx - 1) % cols;
+            var iy = Math.floor((idx - 1) / cols);
             return {
                 x: canvasPad + ix * cellW + cellW / 2 - 30,
                 y: canvasPad + iy * cellH + cellH / 2 - 40
             };
         };
 
-        for (let i = 1; i <= roomCount; i++) {
-            const pos = getHousePos(i, roomCount);
-            const visited = hideStatus._visitedHouses || new Set();
-            const wasHit = (hideStatus.phase === 'RESULT' && (hideStatus.killerTargets || []).includes(i)) ||
+        for (var i = 1; i <= roomCount; i++) {
+            var pos = getHousePos(i, roomCount);
+            var visited = hideStatus._visitedHouses || new Set();
+            var wasHit = (hideStatus.phase === 'RESULT' && (hideStatus.killerTargets || []).indexOf(i) !== -1) ||
                 (hideStatus.phase === 'SEARCHING' && visited.has(i));
-            const isUserRoom = hideStatus.myRoom === i;
+            var isUserRoom = hideStatus.myRoom === i;
             drawHouse(pos.x, pos.y, i, isUserRoom, wasHit);
         }
 
         if (hideStatus.phase === 'SEARCHING') {
-            const totalDuration = 9;
+            var totalDuration = 9;
             // Use client-side interpolation for smooth movement
-            const timeSinceUpdate = (Date.now() - lastHideStatusUpdate) / 1000;
-            const smoothRemainingTime = Math.max(0, hideStatus.timeLeft - timeSinceUpdate);
-            const elapsed = totalDuration - smoothRemainingTime;
-            const targets = hideStatus.killerTargets || [];
+            var timeSinceUpdate = (Date.now() - lastHideStatusUpdate) / 1000;
+            var smoothRemainingTime = Math.max(0, hideStatus.timeLeft - timeSinceUpdate);
+            var elapsed = totalDuration - smoothRemainingTime;
+            var targets = hideStatus.killerTargets || [];
             if (targets.length === 0) { hideAnimId = requestAnimationFrame(renderHide); return; }
 
             // Build waypoints from killer targets
-            const waypoints = targets.map(t => {
-                const p = getHousePos(t, roomCount);
+            var waypoints = targets.map(function (t) {
+                var p = getHousePos(t, roomCount);
                 return { x: p.x + 30, y: p.y + 50 };
             });
 
             // Mark visited houses immediately as killer passes them
             if (!hideStatus._visitedHouses) hideStatus._visitedHouses = new Set();
-            const oldVisitedCount = hideStatus._visitedHouses.size;
+            var oldVisitedCount = hideStatus._visitedHouses.size;
 
-            const rawProgress = Math.min(elapsed / totalDuration, 1);
+            var rawProgress = Math.min(elapsed / totalDuration, 1);
             // Ease-out for gravity feel
-            const progress = rawProgress * (2 - rawProgress);
-            const segFloat = progress * (waypoints.length - 1);
-            const si = Math.min(Math.floor(segFloat), waypoints.length - 2);
+            var progress = rawProgress * (2 - rawProgress);
+            var segFloat = progress * (waypoints.length - 1);
+            var si = Math.min(Math.floor(segFloat), waypoints.length - 2);
 
             // Mark all houses up to current index as visited
-            for (let vi = 0; vi <= si; vi++) {
+            for (var vi = 0; vi <= si; vi++) {
                 hideStatus._visitedHouses.add(targets[vi]);
             }
             // Also mark current if we're past 70% into the segment
-            const localT = segFloat - si;
+            var localT = segFloat - si;
             if (localT > 0.7 && si + 1 < targets.length) {
                 hideStatus._visitedHouses.add(targets[si + 1]);
             }
@@ -2504,28 +2793,28 @@ function renderHide() {
             }
 
             // Catmull-Rom spline for smooth path
-            const wp = waypoints;
-            const t = localT;
-            const p0 = wp[Math.max(0, si - 1)];
-            const p1 = wp[si];
-            const p2 = wp[Math.min(si + 1, wp.length - 1)];
-            const p3 = wp[Math.min(si + 2, wp.length - 1)];
+            var wp = waypoints;
+            var t = localT;
+            var p0 = wp[Math.max(0, si - 1)];
+            var p1 = wp[si];
+            var p2 = wp[Math.min(si + 1, wp.length - 1)];
+            var p3 = wp[Math.min(si + 2, wp.length - 1)];
 
-            const t2 = t * t, t3 = t2 * t;
-            const kX = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
-            const kY = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
+            var t2 = t * t, t3 = t2 * t;
+            var kX = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
+            var kY = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
 
             // Trail particles
             hideCtx.globalAlpha = 0.15;
-            for (let tp = 0; tp < 5; tp++) {
-                const trailT = Math.max(0, segFloat - tp * 0.08);
-                const tsi = Math.min(Math.floor(trailT), wp.length - 2);
-                const tt = trailT - tsi;
-                const tp0 = wp[Math.max(0, tsi - 1)], tp1 = wp[tsi];
-                const tp2 = wp[Math.min(tsi + 1, wp.length - 1)], tp3 = wp[Math.min(tsi + 2, wp.length - 1)];
-                const tt2 = tt * tt, tt3 = tt2 * tt;
-                const tx = 0.5 * ((2 * tp1.x) + (-tp0.x + tp2.x) * tt + (2 * tp0.x - 5 * tp1.x + 4 * tp2.x - tp3.x) * tt2 + (-tp0.x + 3 * tp1.x - 3 * tp2.x + tp3.x) * tt3);
-                const ty = 0.5 * ((2 * tp1.y) + (-tp0.y + tp2.y) * tt + (2 * tp0.y - 5 * tp1.y + 4 * tp2.y - tp3.y) * tt2 + (-tp0.y + 3 * tp1.y - 3 * tp2.y + tp3.y) * tt3);
+            for (var tp = 0; tp < 5; tp++) {
+                var trailT = Math.max(0, segFloat - tp * 0.08);
+                var tsi = Math.min(Math.floor(trailT), wp.length - 2);
+                var tt = trailT - tsi;
+                var tp0 = wp[Math.max(0, tsi - 1)], tp1 = wp[tsi];
+                var tp2 = wp[Math.min(tsi + 1, wp.length - 1)], tp3 = wp[Math.min(tsi + 2, wp.length - 1)];
+                var tt2 = tt * tt, tt3 = tt2 * tt;
+                var tx = 0.5 * ((2 * tp1.x) + (-tp0.x + tp2.x) * tt + (2 * tp0.x - 5 * tp1.x + 4 * tp2.x - tp3.x) * tt2 + (-tp0.x + 3 * tp1.x - 3 * tp2.x + tp3.x) * tt3);
+                var ty = 0.5 * ((2 * tp1.y) + (-tp0.y + tp2.y) * tt + (2 * tp0.y - 5 * tp1.y + 4 * tp2.y - tp3.y) * tt2 + (-tp0.y + 3 * tp1.y - 3 * tp2.y + tp3.y) * tt3);
                 hideCtx.beginPath();
                 hideCtx.arc(tx, ty, 3 - tp * 0.4, 0, Math.PI * 2);
                 hideCtx.fillStyle = '#e74c3c';
@@ -2538,13 +2827,13 @@ function renderHide() {
             hideCtx.translate(kX, kY);
 
             // Floating animation
-            const hover = Math.sin(Date.now() / 250) * 5;
+            var hover = Math.sin(Date.now() / 250) * 5;
             hideCtx.translate(0, hover - 15);
 
             // Rotation based on movement
             hideCtx.rotate(segFloat * 0.3);
 
-            const dSize = 20, dr = 5;
+            var dSize = 20, dr = 5;
 
             // Glow
             hideCtx.shadowBlur = 30;
@@ -2552,15 +2841,29 @@ function renderHide() {
 
             // White dice body
             hideCtx.fillStyle = '#fff';
-            hideCtx.beginPath();
-            hideCtx.roundRect(-dSize / 2, -dSize / 2, dSize, dSize, dr);
-            hideCtx.fill();
+
+            // Compatibility: Draw round rect using basic paths
+            var drawRoundRect = function (ctx, x, y, width, height, radius) {
+                ctx.beginPath();
+                ctx.moveTo(x + radius, y);
+                ctx.lineTo(x + width - radius, y);
+                ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+                ctx.lineTo(x + width, y + height - radius);
+                ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                ctx.lineTo(x + radius, y + height);
+                ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+                ctx.lineTo(x, y + radius);
+                ctx.quadraticCurveTo(x, y, x + radius, y);
+                ctx.closePath();
+                ctx.fill();
+            };
+            drawRoundRect(hideCtx, -dSize / 2, -dSize / 2, dSize, dSize, dr);
 
             // Dots (random face)
             hideCtx.shadowBlur = 0;
             hideCtx.fillStyle = '#e74c3c';
-            const dp = dSize / 4, dotR = 2.2;
-            const drawDot = (dx, dy) => { hideCtx.beginPath(); hideCtx.arc(dx, dy, dotR, 0, Math.PI * 2); hideCtx.fill(); };
+            var dp = dSize / 4, dotR = 2.2;
+            var drawDot = function (dx, dy) { hideCtx.beginPath(); hideCtx.arc(dx, dy, dotR, 0, Math.PI * 2); hideCtx.fill(); };
             // Show 6 (death dice)
             drawDot(-dp, -dp); drawDot(dp, -dp);
             drawDot(-dp, 0); drawDot(dp, 0);
@@ -2582,8 +2885,8 @@ function drawHouse(hx, hy, id, active, hit) {
     hideCtx.translate(hx, hy);
 
     // Geometry
-    const size = 32;
-    const h = 42;
+    var size = 32;
+    var h = 42;
 
     // 1. CHIMNEY
     hideCtx.fillStyle = hit ? '#441111' : '#34495e';
@@ -2598,7 +2901,7 @@ function drawHouse(hx, hy, id, active, hit) {
     // Shingles lines
     hideCtx.strokeStyle = 'rgba(255,255,255,0.05)';
     hideCtx.lineWidth = 1;
-    for (let sy = 0; sy < size; sy += 4) {
+    for (var sy = 0; sy < size; sy += 4) {
         hideCtx.beginPath();
         hideCtx.moveTo(size - sy, sy * 0.5); hideCtx.lineTo(size * 2 - sy, (sy + size) * 0.5 - 15);
         hideCtx.stroke();
@@ -2665,56 +2968,73 @@ function drawHouse(hx, hy, id, active, hit) {
 
 
 // --- RAFFLE SYSTEM (Dynamic) ---
-let _openRaffleId = null;
-let _raffleCountdownInterval = null;
+var _openRaffleId = null;
+var _raffleCountdownInterval = null;
 
-function formatCountdown(targetDateStr) {
-    const target = new Date(targetDateStr);
-    const now = new Date();
-    const diff = target - now;
-    if (diff <= 0) return { text: '🔥 РОЗЫГРЫШ НАЧАЛСЯ!', ended: true };
-    const d = Math.floor(diff / 86400000);
-    const h = Math.floor((diff % 86400000) / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
-    return { text: `${d}д ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`, ended: false };
+function formatCountdown(r) {
+    var now = new Date();
+    var start = new Date(r.start_date);
+    var end = r.end_date ? new Date(r.end_date) : null;
+
+    var target, label, ended = false;
+
+    if (now < start) {
+        target = start;
+        label = 'До старта:';
+    } else if (end && now < end) {
+        target = end;
+        label = 'До конца:';
+    } else if (end && now >= end) {
+        return { text: 'ЗАВЕРШЕН', label: 'Итоги:', ended: true };
+    } else {
+        return { text: 'АКТИВЕН', label: 'Статус:', ended: true };
+    }
+
+    var diff = target - now;
+    var d = Math.floor(diff / 86400000);
+    var h = Math.floor((diff % 86400000) / 3600000);
+    var m = Math.floor((diff % 3600000) / 60000);
+    var s = Math.floor((diff % 60000) / 1000);
+
+    var text = d + 'д ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + ' ';
+    return { text: text, label: label, ended: ended };
 }
 
 function renderRaffleCards(raffles) {
-    const container = document.getElementById('raffles-container');
+    var container = document.getElementById('raffles-container');
     if (!container) return;
     if (!raffles || raffles.length === 0) {
         container.innerHTML = '<div style="padding: 40px 20px; text-align: center; color: var(--t4); opacity: 0.6;"><div style="font-size: 32px; margin-bottom: 10px;">🎰</div><div style="font-size: 13px;">Активных розыгрышей нет</div></div>';
         return;
     }
-    container.innerHTML = raffles.map(r => {
-        const cd = formatCountdown(r.end_date || r.start_date);
-        return `<div class="glass-card" style="margin-bottom: 12px; padding: 16px; border-radius: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02);" onclick="openRaffleView(${r.id})">
-            <div style="width: 44px; height: 44px; background: rgba(243,186,47,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">🎰</div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="font-weight: 800; font-size: 15px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(r.title)}</div>
-                <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
-                    <span style="font-size: 9px; color: var(--t4); text-transform: uppercase;">До конца:</span>
-                    <span style="font-size: 13px; font-weight: 900; color: #f3ba2f; font-family: 'JetBrains Mono', monospace;">${cd.text}</span>
-                </div>
-            </div>
-            <button style="background: rgba(243,186,47,0.1); color: #f3ba2f; border: none; border-radius: 10px; padding: 8px 14px; font-size: 11px; font-weight: 900; letter-spacing: 0.5px;">ОТКРЫТЬ</button>
-        </div>`;
+    container.innerHTML = raffles.map(function (r) {
+        var cd = formatCountdown(r);
+        return '<div class="glass-card" style="margin-bottom: 12px; padding: 16px; border-radius: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.02);" onclick="openRaffleView(' + r.id + ')">' +
+            '<div style="width: 44px; height: 44px; background: rgba(243,186,47,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;">🎰</div>' +
+            '<div style="flex: 1; min-width: 0;">' +
+            '<div style="font-weight: 800; font-size: 15px; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + escapeHtml(r.title) + '</div>' +
+            '<div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">' +
+            '<span style="font-size: 9px; color: var(--t4); text-transform: uppercase;">' + cd.label + '</span>' +
+            '<span style="font-size: 13px; font-weight: 900; color: #f3ba2f; font-family: \'JetBrains Mono\', monospace;">' + cd.text + '</span>' +
+            '</div>' +
+            '</div>' +
+            '<button style="background: rgba(243,186,47,0.1); color: #f3ba2f; border: none; border-radius: 10px; padding: 8px 14px; font-size: 11px; font-weight: 900; letter-spacing: 0.5px;">ОТКРЫТЬ</button>' +
+            '</div>';
     }).join('');
 }
 
 window.shareRaffle = function () {
     if (!_openRaffleId) return;
-    const botUser = settings.botUsername || 'CubeRollBot';
-    const link = `https://t.me/${botUser}?start=raffle_${_openRaffleId}`;
+    var botUser = settings.botUsername || 'CubeRollBot';
+    var link = 'https://t.me/' + botUser + '?start=raffle_' + _openRaffleId;
 
     if (navigator.clipboard) {
-        navigator.clipboard.writeText(link).then(() => {
+        navigator.clipboard.writeText(link).then(function () {
             if (window.showToast) showToast('Ссылка скопирована!');
             else alert('Ссылка скопирована!');
         });
     } else {
-        const textArea = document.createElement("textarea");
+        var textArea = document.createElement("textarea");
         textArea.value = link;
         document.body.appendChild(textArea);
         textArea.select();
@@ -2732,7 +3052,7 @@ function escapeHtml(str) {
 
 async function loadRaffleData() {
     try {
-        const data = await api('/api/raffles');
+        var data = await api('/api/raffles');
         if (data && data.raffles) {
             renderRaffleCards(data.raffles);
         }
@@ -2743,7 +3063,7 @@ async function loadRaffleData() {
 
 async function openRaffleView(raffleId) {
     _openRaffleId = raffleId;
-    const el = document.getElementById('raffle-fullscreen');
+    var el = document.getElementById('raffle-fullscreen');
     if (!el) return;
     el.classList.remove('hidden');
     el.style.display = 'flex';
@@ -2754,15 +3074,15 @@ async function openRaffleView(raffleId) {
     document.getElementById('rf-leaderboard').innerHTML = '<div style="text-align:center; color:var(--t4); padding:30px; font-size:12px;">Загрузка...</div>';
 
     try {
-        const data = await api('/api/raffle/' + raffleId);
+        var data = await api('/api/raffle/' + raffleId);
         if (!data) return;
-        const r = data.raffle;
+        var r = data.raffle;
 
         document.getElementById('rf-title').textContent = r.title;
         document.getElementById('rf-prize').textContent = 'Приз: ' + r.prize;
 
         // NFT link
-        const nftWrap = document.getElementById('rf-nft-wrap');
+        var nftWrap = document.getElementById('rf-nft-wrap');
         if (r.nft_link) {
             nftWrap.style.display = 'block';
             document.getElementById('rf-nft-link').href = r.nft_link;
@@ -2772,19 +3092,21 @@ async function openRaffleView(raffleId) {
         }
 
         // Countdown
-        const dateEl = document.getElementById('rf-date');
-        const startD = new Date(r.start_date);
+        var dateEl = document.getElementById('rf-date');
+        var startD = new Date(r.start_date);
         dateEl.textContent = startD.toLocaleString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
         // Start countdown ticker
         if (_raffleCountdownInterval) clearInterval(_raffleCountdownInterval);
-        const updateCD = () => {
-            const cd = formatCountdown(r.end_date || r.start_date);
-            const cdEl = document.getElementById('rf-countdown');
+        var updateCD = function () {
+            var cd = formatCountdown(r);
+            var cdEl = document.getElementById('rf-countdown');
+            var labelEl = document.getElementById('rf-countdown-label');
             if (cdEl) {
                 cdEl.textContent = cd.text;
                 cdEl.style.color = cd.ended ? '#00ff88' : '#f3ba2f';
             }
+            if (labelEl) labelEl.textContent = cd.label;
         };
         updateCD();
         _raffleCountdownInterval = setInterval(updateCD, 1000);
@@ -2796,7 +3118,7 @@ async function openRaffleView(raffleId) {
         document.getElementById('rf-participants').textContent = data.participants || 0;
 
         // Description
-        const descWrap = document.getElementById('rf-description-wrap');
+        var descWrap = document.getElementById('rf-description-wrap');
         if (r.description) {
             descWrap.style.display = 'block';
             document.getElementById('rf-description').innerHTML = escapeHtml(r.description).replace(/\n/g, '<br>');
@@ -2805,23 +3127,33 @@ async function openRaffleView(raffleId) {
         }
 
         // Dynamic rules
-        const rulesEl = document.getElementById('rf-rules');
-        let rulesHtml = '';
-        const dpt = r.deposit_per_ticket || 0.1;
-        rulesHtml += `<div>💎 Каждые <b style="color: #f3ba2f;">${dpt} TON</b> пополнения = <b style="color: #fff;">1 билет</b></div>`;
+        var prizeVal = r.prize;
+        if (prizeVal && typeof prizeVal === 'object') prizeVal = prizeVal.value;
+        if (!prizeVal) prizeVal = '';
+
+        var prizeName = r.prize;
+        if (prizeName && typeof prizeName === 'object') prizeName = prizeName.name;
+        if (!prizeName) prizeName = 'Приз';
+
+        var tData = user.raffleTickets;
+        var myTickets = tData && tData[raffleId] || 0;
+        var rulesHtml = '';
+        var dpt = r.deposit_per_ticket || 0.1;
+        rulesHtml += '<div>💎 Каждые <b style="color: #f3ba2f;">' + dpt + ' TON</b> пополнения = <b style="color: #fff;">1 билет</b></div>';
         if (r.ref_first_dep_tickets > 0) {
-            rulesHtml += `<div>👥 Первый деп реферала = <b style="color: #fff;">+${r.ref_first_dep_tickets} билет(ов)</b> вам</div>`;
+            rulesHtml += '<div>👥 Первый деп реферала = <b style="color: #fff;">+' + r.ref_first_dep_tickets + ' билет(ов)</b> вам</div>';
         }
         if (r.ref_cumul_amount > 0 && r.ref_cumul_tickets > 0) {
-            rulesHtml += `<div>🔥 Каждые <b style="color: #f3ba2f;">${r.ref_cumul_amount} TON</b> депов реферала = <b style="color: #fff;">+${r.ref_cumul_tickets} билет(ов)</b> вам</div>`;
+            rulesHtml += '<div>🔥 Каждые <b style="color: #f3ba2f;">' + r.ref_cumul_amount + ' TON</b> депов реферала = <b style="color: #fff;">+' + r.ref_cumul_tickets + ' билет(ов)</b> вам</div>';
         }
-        // Example
-        const exTickets = Math.floor(1 / dpt);
-        rulesHtml += `<div style="margin-top: 8px; color: var(--t4); font-size: 10px;">Пример: вы закинули 1 TON = ${exTickets} билет(ов)</div>`;
-        rulesEl.innerHTML = rulesHtml;
+        var exTickets = Math.floor(1 / dpt);
+        rulesHtml += '<div style="margin-top: 8px; color: var(--t4); font-size: 10px;">Пример: вы закинули 1 TON = ' + exTickets + ' билет(ов)</div>';
+
+        var rulesEl = document.getElementById('rf-rules');
+        if (rulesEl) rulesEl.innerHTML = rulesHtml;
 
         // Channel
-        const chWrap = document.getElementById('rf-channel-wrap');
+        var chWrap = document.getElementById('rf-channel-wrap');
         if (r.channel_link) {
             chWrap.style.display = 'block';
             document.getElementById('rf-channel-link').href = r.channel_link;
@@ -2830,19 +3162,19 @@ async function openRaffleView(raffleId) {
         }
 
         // Leaderboard
-        const lbEl = document.getElementById('rf-leaderboard');
+        var lbEl = document.getElementById('rf-leaderboard');
         if (data.leaderboard && data.leaderboard.length > 0) {
-            lbEl.innerHTML = data.leaderboard.map((p, i) => {
-                const medals = ['🥇', '🥈', '🥉'];
-                const medal = i < 3 ? medals[i] : `${i + 1}.`;
-                const name = p.username ? `@${p.username}` : (p.first_name || 'Аноним');
-                const pct = data.totalTickets > 0 ? ((p.total_tickets / data.totalTickets) * 100).toFixed(1) : '0';
-                return `<div style="display: flex; align-items: center; padding: 8px 12px; border-radius: 10px; margin-bottom: 4px; background: ${i < 3 ? 'rgba(243,186,47,0.06)' : 'rgba(255,255,255,0.02)'}; font-size: 13px;">
-                    <span style="width: 30px; text-align: center; flex-shrink: 0;">${medal}</span>
-                    <span style="flex: 1; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(name)}</span>
-                    <span style="font-weight: 800; color: #f3ba2f; margin-left: 8px;">${p.total_tickets} 🎫</span>
-                    <span style="font-size: 10px; color: var(--t4); width: 44px; text-align: right;">${pct}%</span>
-                </div>`;
+            lbEl.innerHTML = data.leaderboard.map(function (p, i) {
+                var medals = ['🥇', '🥈', '🥉'];
+                var medal = i < 3 ? medals[i] : (i + 1) + '.';
+                var name = p.username ? '@' + p.username : (p.first_name || 'Аноним');
+                var pct = data.totalTickets > 0 ? ((p.total_tickets / data.totalTickets) * 100).toFixed(1) : '0';
+                return '<div style="display: flex; align-items: center; padding: 8px 12px; border-radius: 10px; margin-bottom: 4px; background: ' + (i < 3 ? 'rgba(243,186,47,0.06)' : 'rgba(255,255,255,0.02)') + '; font-size: 13px;">' +
+                    '<span style="width: 30px; text-align: center; flex-shrink: 0;">' + medal + '</span>' +
+                    '<span style="flex: 1; color: var(--t2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + escapeHtml(name) + '</span>' +
+                    '<span style="font-weight: 800; color: #f3ba2f; margin-left: 8px;">' + p.total_tickets + ' 🎫</span>' +
+                    '<span style="font-size: 10px; color: var(--t4); width: 44px; text-align: right;">' + pct + '%</span>' +
+                    '</div>';
             }).join('');
         } else {
             lbEl.innerHTML = '<div style="text-align: center; color: var(--t4); padding: 30px; font-size: 12px;">Пока нет участников. Будь первым!</div>';

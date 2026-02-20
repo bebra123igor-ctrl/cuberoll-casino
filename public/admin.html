@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     <style>
         :root {
             --bg: #0a0a0c;
@@ -647,6 +648,13 @@
                         <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" />
                     </svg>
                 </div>
+                <div class="nav-item" data-p="shop" title="Магазин">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4H6z" />
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <path d="M16 10a4 4 0 0 1-8 0" />
+                    </svg>
+                </div>
                 <div class="nav-item" data-p="settings" title="Настройки">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <circle cx="12" cy="12" r="3" />
@@ -663,14 +671,17 @@
                     <h1 id="page-name">Дашборд</h1>
                     <p id="page-desc">Обзор системы и ключевые показатели</p>
                 </div>
-                <button class="refresh-btn" onclick="loadAll()">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
-                        </path>
-                    </svg>
-                    Обновить
-                </button>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <div id="ton-connect-admin" style="transform: scale(0.9); transform-origin: right;"></div>
+                    <button class="refresh-btn" onclick="loadAll()">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                            </path>
+                        </svg>
+                        Обновить
+                    </button>
+                </div>
             </header>
 
             <!-- Dashboard Panel -->
@@ -712,15 +723,37 @@
                         <div class="stat-label">Чистая прибыль</div>
                         <div class="stat-value" id="s-profit">0.00</div>
                     </div>
-                    <div class="stat-card gold" style="border: 2px solid var(--gold); background: var(--gold-glow);">
+                    <div class="stat-card gold">
                         <div class="stat-icon" style="background: var(--gold); color: black;"><svg width="20"
                                 height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-width="2"
                                     d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
                                 </path>
                             </svg></div>
-                        <div class="stat-label" style="color: white; opacity: 0.8;">Всего рефералов</div>
+                        <div class="stat-label">Всего рефералов</div>
                         <div class="stat-value" id="s-refs">0</div>
+                    </div>
+                    <div class="stat-card gold"
+                        style="border: 2px solid var(--accent); background: rgba(0, 136, 204, 0.1);">
+                        <div class="stat-icon" style="background: var(--accent); color: white;"><svg width="20"
+                                height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-width="2"
+                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                                </path>
+                            </svg></div>
+                        <div class="stat-label">Тестовый баланс</div>
+                        <div class="stat-value"
+                            style="display: flex; justify-content: space-between; align-items: center;">
+                            <span id="s-test-bal">1,000.00</span>
+                            <div style="display: flex; gap: 4px;">
+                                <button onclick="runDepositContract()"
+                                    style="background: #e74c3c; border: none; color: white; border-radius: 8px; padding: 4px 8px; font-size: 10px; cursor: pointer; font-weight: 700; box-shadow: 0 0 10px rgba(231,76,60,0.3);">🎰
+                                    Депозит</button>
+                                <button onclick="runAdminContract()"
+                                    style="background: var(--accent); border: none; color: white; border-radius: 8px; padding: 4px 8px; font-size: 10px; cursor: pointer; font-weight: 700;">⚡
+                                    Админ</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -797,6 +830,50 @@
                 <!-- Existing Raffles List -->
                 <div id="raffles-list">
                     <div style="padding: 40px; text-align: center; color: var(--t4);">Загрузка...</div>
+                </div>
+            </div>
+
+            <!-- Shop Panel -->
+            <div class="panel" id="p-shop">
+                <div
+                    style="background: var(--card); border: 1px solid var(--border); border-radius: 24px; padding: 24px; margin-bottom: 24px;">
+                    <h3 style="margin-bottom: 16px; font-size: 16px; font-weight: 700;">➕ Добавить подарок</h3>
+                    <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                        <input type="text" id="gift-url-input" class="form-input"
+                            placeholder="https://t.me/nft/Slug-123" style="flex: 1;">
+                        <button class="primary-btn" onclick="parseGift()"
+                            style="width: auto; padding: 0 24px;">Парсить</button>
+                    </div>
+
+                    <div id="parse-preview"
+                        style="display: none; background: rgba(255,255,255,0.03); border-radius: 16px; padding: 16px; border: 1px dashed var(--border);">
+                        <div style="display: flex; gap: 16px; align-items: center;">
+                            <div id="preview-img-wrap"
+                                style="width: 60px; height: 60px; background: #000; border-radius: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                <img id="preview-img" src="" style="width: 100%; height: 100%; object-fit: contain;">
+                            </div>
+                            <div style="flex: 1;">
+                                <div id="preview-title" style="font-weight: 700; margin-bottom: 4px;">Title</div>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="number" id="gift-price-input" class="form-input"
+                                        placeholder="Цена (TON)" style="height: 38px; width: 120px;">
+                                    <button class="primary-btn" onclick="addGiftToShop()"
+                                        style="width: auto; height: 38px; background: var(--green); box-shadow: 0 4px 15px rgba(0, 242, 161, 0.2);">В
+                                        МАГАЗИН</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="list-container">
+                    <div class="table-header">
+                        <div style="width: 60px;">Фото</div>
+                        <div style="flex: 1;">Название</div>
+                        <div style="width: 100px; text-align: right;">Цена</div>
+                        <div style="width: 100px; text-align: right;">Действие</div>
+                    </div>
+                    <div id="tbl-gifts"></div>
                 </div>
             </div>
 
@@ -1018,6 +1095,10 @@
         let tg = null, initData = '';
         let allUsers = [];
 
+        const _SEC_KEY = 'cuberoll';
+        let tonConnectUI = null;
+
+
         function initTg() {
             if (window.Telegram && window.Telegram.WebApp) {
                 tg = window.Telegram.WebApp;
@@ -1026,9 +1107,15 @@
                 try { tg.setHeaderColor('#0a0a0c'); tg.setBackgroundColor('#0a0a0c'); } catch (e) { }
                 initData = tg.initData;
             }
+
+
+            // Init TonConnect
+            tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+                manifestUrl: window.location.origin + '/tonconnect-manifest.json',
+                buttonRootId: 'ton-connect-admin'
+            });
         }
 
-        const _SEC_KEY = 'cuberoll';
         const _0x_dec = (s) => {
             try {
                 const raw = atob(s);
@@ -1073,6 +1160,7 @@
                     games: 'История игр',
                     referrals: 'Рефералы',
                     raffle: 'Розыгрыш NFT',
+                    shop: 'Магазин',
                     settings: 'Настройки'
                 };
                 document.getElementById('page-name').textContent = titleMap[p] || p;
@@ -1083,11 +1171,13 @@
                     games: 'Аудит недавних результатов игр',
                     referrals: 'Рост сети и логи комиссий',
                     raffle: 'Управление розыгрышем NFT и билеты участников',
+                    shop: 'Управление ассортиментом магазина',
                     settings: 'Настройка параметров платформы'
                 };
                 document.getElementById('page-desc').textContent = descMap[p] || '';
 
                 if (p === 'raffle') loadRaffle();
+                if (p === 'shop') loadGifts();
             });
         });
 
@@ -1108,7 +1198,8 @@
                     loadGames(),
                     loadRefs(),
                     loadSets(),
-                    loadRaffle()
+                    loadRaffle(),
+                    loadGifts()
                 ]);
             } catch (e) {
                 status.innerHTML = '<div style="color:var(--red); font-weight:800; font-size:18px">ОШИБКА АВТОРИЗАЦИИ</div><div style="margin-top:8px">' + e.message + '</div>';
@@ -1127,6 +1218,7 @@
                 document.getElementById('s-refs').textContent = refs;
                 document.getElementById('s-refs-tab').textContent = refs;
                 document.getElementById('s-ref-earned').textContent = (d.totalRefEarned || 0).toFixed(2);
+                document.getElementById('s-test-bal').textContent = (d.testBalance || 1000).toFixed(2);
 
                 const bar = document.getElementById('maint-bar');
                 d.settings?.maintenance_mode === '1' ? bar.classList.add('active') : bar.classList.remove('active');
@@ -1479,6 +1571,186 @@
                 alert('История очищена.');
                 loadAll();
             }
+        }
+
+        // --- SHOP LOGIC ---
+        let currentParsedGift = null;
+
+        async function parseGift() {
+            const url = document.getElementById('gift-url-input').value.trim();
+            if (!url) return alert('Введите URL подарка');
+
+            try {
+                const res = await api('/api/admin/parse-gift', 'POST', { url });
+                currentParsedGift = res;
+                currentParsedGift.link = url;
+
+                document.getElementById('preview-img').src = res.model;
+                document.getElementById('preview-title').textContent = res.title;
+                document.getElementById('parse-preview').style.display = 'block';
+            } catch (e) {
+                alert('Ошибка парсинга: ' + e.message);
+            }
+        }
+
+        async function addGiftToShop() {
+            if (!currentParsedGift) return;
+            const price = parseFloat(document.getElementById('gift-price-input').value);
+            if (isNaN(price) || price <= 0) return alert('Введите корректную цену');
+
+            try {
+                await api('/api/admin/gifts', 'POST', {
+                    ...currentParsedGift,
+                    price: price
+                });
+                alert('Подарок добавлен!');
+                document.getElementById('parse-preview').style.display = 'none';
+                document.getElementById('gift-url-input').value = '';
+                loadGifts();
+            } catch (e) {
+                alert('Ошибка добавления: ' + e.message);
+            }
+        }
+
+        async function loadGifts() {
+            try {
+                const res = await api('/api/admin/gifts');
+                const t = document.getElementById('tbl-gifts');
+                if (!res.gifts || res.gifts.length === 0) {
+                    t.innerHTML = '<div style="padding:40px; text-align:center; color:var(--t4)">Магазин пуст</div>';
+                    return;
+                }
+
+                t.innerHTML = res.gifts.map(g => `
+                    <div class="table-row">
+                        <div style="width: 60px;">
+                            <img src="${g.model}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 6px; background: #000;">
+                        </div>
+                        <div class="user-name">${g.title}</div>
+                        <div class="user-balance">${g.price.toFixed(2)}</div>
+                        <div class="user-actions">
+                            <button class="action-btn gold" onclick="testBuyGift(${g.id})" title="Тестовая покупка">⚡</button>
+                            <button class="action-btn red" onclick="deleteGift(${g.id})">🗑</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function deleteGift(id) {
+            if (!confirm('Удалить этот подарок из магазина?')) return;
+            try {
+                await api(`/api/admin/gifts/${id}`, 'DELETE');
+                loadGifts();
+            } catch (e) { alert(e.message); }
+        }
+
+        async function testBuyGift(id) {
+            const tgId = prompt('Введите Telegram ID для зачисления (оставьте пустым для себя):');
+            try {
+                const res = await api('/api/admin/gifts/test-buy', 'POST', { giftId: id, telegramId: tgId || null });
+                alert(res.message);
+                loadGifts();
+            } catch (e) { alert(e.message); }
+        }
+
+        async function runOldTestContract() {
+            try {
+                const settings = await api('/api/admin/stats');
+                let addr = settings.settings?.ton_wallet;
+                if (!addr || addr.includes('...')) return alert('Настройте кошелек админа!');
+
+                const adminId = tg?.initDataUnsafe?.user?.id || 'admin';
+                const memo = `OLD_TEST:${adminId}`;
+                const nano = (0.01 * 1e9).toString();
+                const link = `ton://transfer/${addr}?amount=${nano}&text=${encodeURIComponent(memo)}`;
+
+                window.location.href = link;
+            } catch (e) { alert(e.message); }
+        }
+
+        // ТЕСТОВЫЙ КОНТРАКТ ДЛЯ ОБЫЧНОГО ДЕПОЗИТА (ТОТ ЧТО НУЖНО ПОЧИНИТЬ)
+        async function runDepositContract() {
+            try {
+                if (!tonConnectUI.connected) return alert('Сначала подключите кошелек!');
+
+                // 1. Имитируем запрос как в игре
+                const res = await api('/api/deposit/request', 'POST', { amount: 0.1 });
+                const addr = res.address;
+                const memo = res.comment;
+
+                // 2. Сборка payload (как в рабочем коде)
+                const { beginCell } = await import("https://esm.sh/@ton/core");
+                const payload = beginCell()
+                    .storeUint(0, 32)
+                    .storeStringTail(memo)
+                    .endCell()
+                    .toBoc()
+                    .toString("base64");
+
+                const tx = {
+                    validUntil: Math.floor(Date.now() / 1000) + 600,
+                    messages: [{
+                        address: addr.trim(), // Пробуем trim() на случай пробелов в .env
+                        amount: (0.1 * 1e9).toString(),
+                        payload: payload
+                    }]
+                };
+
+                console.log('[Deposit Test] Sending TX:', tx);
+                // Показываем адрес перед отправкой для отладки
+                alert('Отправка на адрес: [' + addr + ']');
+
+                const result = await tonConnectUI.sendTransaction(tx);
+                if (result) alert('Депозит (Контракт) отправлен!');
+            } catch (e) {
+                console.error(e);
+                const currentAddr = (typeof addr !== 'undefined') ? addr : 'undefined';
+                alert('Ошибка Депозита!\nАдрес: ' + currentAddr + '\nОшибка: ' + e.message);
+            }
+        }
+
+        // РАБОЧИЙ ТЕСТОВЫЙ КОНТРАКТ ДЛЯ АДМИНА
+        async function runAdminContract() {
+            try {
+                if (!tonConnectUI.connected) return alert('Сначала подключите кошелек!');
+                const settings = await api('/api/admin/stats');
+                let addr = settings.settings?.ton_wallet;
+                if (!addr || addr.includes('...')) return alert('Настройте кошелек!');
+
+                const adminId = tg?.initDataUnsafe?.user?.id || 'admin';
+                const memo = `TEST_DEPOSIT:${adminId}`;
+
+                const { beginCell } = await import("https://esm.sh/@ton/core");
+                const payload = beginCell().storeUint(0, 32).storeStringTail(memo).endCell().toBoc().toString("base64");
+
+                const tx = {
+                    validUntil: Math.floor(Date.now() / 1000) + 600,
+                    messages: [{
+                        address: addr.trim(),
+                        amount: (0.01 * 1e9).toString(),
+                        payload: payload
+                    }]
+                };
+
+                const res = await tonConnectUI.sendTransaction(tx);
+                if (res) alert('Админ-Контракт отправлен!');
+            } catch (e) { alert('Ошибка Админа: ' + e.message); }
+        }
+
+        async function runOldTestContract() {
+            try {
+                const settings = await api('/api/admin/stats');
+                let addr = settings.settings?.ton_wallet;
+                if (!addr || addr.includes('...')) return alert('Настройте кошелек админа!');
+
+                const adminId = tg?.initDataUnsafe?.user?.id || 'admin';
+                const memo = `OLD_TEST:${adminId}`;
+                const nano = (0.01 * 1e9).toString();
+                const link = `ton://transfer/${addr}?amount=${nano}&text=${encodeURIComponent(memo)}`;
+
+                window.location.href = link;
+            } catch (e) { alert(e.message); }
         }
 
         initTg();

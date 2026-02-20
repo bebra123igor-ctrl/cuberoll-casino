@@ -63,8 +63,12 @@ DB_PATH = "cuberoll.db"
 def get_db_connection():
     for p in DB_PATHS:
         if os.path.exists(p):
-            return sqlite3.connect(p)
-    return sqlite3.connect("cuberoll.db") # fallback
+            conn = sqlite3.connect(p)
+            conn.row_factory = sqlite3.Row
+            return conn
+    conn = sqlite3.connect("cuberoll.db") # fallback
+    conn.row_factory = sqlite3.Row
+    return conn
 
 async def sync_inventory(client):
     """Парсит подарки с аккаунта дилера и обновляет магазин (v1.0.4)"""
@@ -103,10 +107,25 @@ async def sync_inventory(client):
                      try:
                          logger.info(f"Пробую метод {m_name}...")
                          req = getattr(payments, m_name)
+                         
                          if m_name == "GetStarGiftsRequest":
                              result = await client(req(hash=0))
+                         elif m_name == "GetSavedStarGiftsRequest":
+                             # В Telethon 1.42.0+ этот метод часто требует peer, offset, limit
+                             # Если он не срабатывает - просто идем к следующему методу без шума в логах
+                             try:
+                                result = await client(req(peer=me_input, offset='', limit=100))
+                             except Exception:
+                                try:
+                                    result = await client(req(me_input, '', 100))
+                                except:
+                                    continue # Просто пробуем следующий метод
                          else:
-                             result = await client(req(user_id=me_input, limit=100))
+                             try:
+                                result = await client(req(user_id=me_input, limit=100))
+                             except:
+                                continue
+                         
                          if result: break
                      except Exception as e:
                          logger.warning(f"Метод {m_name} не сработал: {e}")
@@ -115,9 +134,20 @@ async def sync_inventory(client):
              logger.error(f"Не удалось получить инвентарь: {e}")
              return
 
-        if not result or not hasattr(result, 'gifts'):
-            logger.warning("Список подарков от Телеграма пуст.")
+        if not result:
+            logger.warning("Результат запроса инвентаря пуст (None). Проверьте версию Telethon.")
             return
+
+        if not hasattr(result, 'gifts') or not result.gifts:
+            logger.warning(f"Список подарков пуст. (Raw result type: {type(result)})")
+            # Если это StarGifts - там другое поле может быть
+            if hasattr(result, 'star_gifts'):
+                logger.info("Найдено поле 'star_gifts', использую его.")
+                result.gifts = result.star_gifts
+            else:
+                return
+        
+        logger.info(f"Найдено подарков в Телеграме: {len(result.gifts)}")
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -144,14 +174,17 @@ async def sync_inventory(client):
                     async with session.get(url, timeout=5) as resp:
                         if resp.status != 200: return {}
                         text = await resp.text()
-                        m = re.search(r'og:description["\s]+content="([^"]*)"', text)
-                        if not m: return {}
-                        desc = m.group(1).replace("&#10;", "\n")
+                        m_desc = re.search(r'og:description["\s]+content="([^"]*)"', text)
+                        m_img = re.search(r'og:image["\s]+content="([^"]*)"', text)
                         meta = {}
-                        for line in desc.split("\n"):
-                            if "Model:" in line: meta["model"] = line.split("Model:")[1].strip()
-                            if "Backdrop:" in line: meta["backdrop"] = line.split("Backdrop:")[1].strip()
-                            if "Symbol:" in line: meta["symbol"] = line.split("Symbol:")[1].strip()
+                        if m_img:
+                            meta["model"] = m_img.group(1)
+                        if m_desc:
+                            desc = m_desc.group(1).replace("&#10;", "\n")
+                            for line in desc.split("\n"):
+                                if "Model:" in line and "model" not in meta: meta["model"] = line.split("Model:")[1].strip()
+                                if "Backdrop:" in line: meta["backdrop"] = line.split("Backdrop:")[1].strip()
+                                if "Symbol:" in line: meta["symbol"] = line.split("Symbol:")[1].strip()
                         return meta
             except: return {}
 
@@ -175,8 +208,24 @@ async def sync_inventory(client):
             if hasattr(item, 'message') and item.message:
                 api_title = item.message
 
-            cursor.execute("SELECT id FROM gifts WHERE gift_id = ?", (tg_gift_id,))
-            if cursor.fetchone():
+            cursor.execute("SELECT id, model FROM gifts WHERE gift_id = ?", (tg_gift_id,))
+            existing = cursor.fetchone()
+            
+            meta = await parse_nft_meta(slug, tg_gift_id)
+            m_url = meta.get("model", "https://i.imgur.com/8YvYyZp.png")
+            b_style = meta.get("backdrop", "radial-gradient(circle, #333, #000)")
+            sym = meta.get("symbol", "🎁")
+            full_link = f"https://t.me/nft/{slug}-{tg_gift_id}"
+
+            if existing:
+                # Если подарок есть, ОБЯЗАТЕЛЬНО активируем его (если он был удален)
+                # И обновляем данные, если они изменились
+                logger.info(f"Gift '{api_title}' already exists. Ensuring it is active...")
+                cursor.execute("""
+                    UPDATE gifts 
+                    SET is_active = 1, model = ?, background = ?, symbol = ?, link = ?, slug = ?, title = ?
+                    WHERE gift_id = ?
+                """, (m_url, b_style, sym, full_link, slug, api_title, tg_gift_id))
                 continue
             
             cursor.execute("SELECT id, title FROM gifts WHERE gift_id IS NULL AND is_active = 1")
@@ -190,12 +239,6 @@ async def sync_inventory(client):
                     matched_id = m_id
                     break
             
-            meta = await parse_nft_meta(slug, tg_gift_id)
-            m_url = meta.get("model", "https://i.imgur.com/8YvYyZp.png")
-            b_style = meta.get("backdrop", "radial-gradient(circle, #333, #000)")
-            sym = meta.get("symbol", "🎁")
-            full_link = f"https://t.me/nft/{slug}-{tg_gift_id}"
-
             if matched_id:
                 logger.info(f"Linking '{api_title}' to existing item #{matched_id}")
                 cursor.execute("""
@@ -206,7 +249,7 @@ async def sync_inventory(client):
                 logger.info(f"Adding new gift: {api_title}")
                 price = await fetch_floor_price(api_title)
                 cursor.execute("""
-                    INSERT INTO gifts (title, price, gift_id, is_active, model, background, symbol, slug, link)
+                    INSERT OR REPLACE INTO gifts (title, price, gift_id, is_active, model, background, symbol, slug, link)
                     VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
                 """, (api_title, price, tg_gift_id, m_url, b_style, sym, slug, full_link))
             
@@ -233,11 +276,12 @@ async def process_transfer_queue(client):
                 await asyncio.sleep(10)
                 continue
 
-            # Берем незавершенные переводы
+            # Берем незавершенные переводы + информацию о юзере (username)
             cursor.execute("""
-                SELECT t.id, t.receiver_id, g.gift_id, g.title, g.id as db_gift_id
+                SELECT t.id, t.receiver_id, u.username, g.gift_id, g.title, g.id as db_gift_id
                 FROM gift_transfers t
                 JOIN gifts g ON t.gift_id = g.id
+                JOIN users u ON t.receiver_id = u.telegram_id
                 WHERE t.status = 'pending'
             """)
             
@@ -258,42 +302,120 @@ async def process_transfer_queue(client):
 
                 try:
                     # 1. Разрешаем сущность получателя
+                    receiver = None
                     try:
+                        # Сначала пробуем по ID
                         receiver = await client.get_input_entity(int(receiver_id))
-                    except Exception as entity_err:
-                        logger.error(f"Не могу найти юзера {receiver_id}: {entity_err}")
+                    except Exception:
+                        # Если по ID не вышло (PeerUser error), пробуем по username если он есть
+                        username = row['username']
+                        if username:
+                            try:
+                                logger.info(f"ID {receiver_id} не найден в кэше, пробую по username @{username}...")
+                                receiver = await client.get_input_entity(username)
+                            except Exception as ent_err:
+                                logger.error(f"Не удалось найти @{username}: {ent_err}")
+                        
+                    if not receiver:
+                        logger.error(f"Не могу найти сущность для юзера {receiver_id}. Пропуск.")
                         continue
 
-                    # 2. Ищем slug подарка (он нужен для TransferStarGiftRequest)
-                    cursor.execute("SELECT slug FROM gifts WHERE gift_id = ?", (tg_gift_id,))
-                    row = cursor.fetchone()
-                    slug = row[0] if row and row[0] else None
+                    # 2. Ищем данные подарка (slug и gift_id)
+                    cursor.execute("SELECT slug, gift_id FROM gifts WHERE gift_id = ? OR id = ?", (tg_gift_id, row['db_gift_id']))
+                    gift_row = cursor.fetchone()
+                    slug = gift_row['slug'] if gift_row and gift_row['slug'] else None
+                    raw_id = gift_row['gift_id'] if gift_row and gift_row['gift_id'] else None
                     
-                    if not slug:
-                        logger.error(f"Slug not found for gift {tg_gift_id}. Cannot transfer.")
+                    if not slug and not raw_id:
+                        logger.error(f"Data not found for gift {tg_gift_id or row['db_gift_id']}. Cannot transfer.")
                         continue
 
-                    from telethon.tl.functions.payments import TransferStarGiftRequest, GetPaymentFormRequest, SendStarsFormRequest
-                    from telethon.tl.types import InputSavedStarGiftSlug, InputInvoiceStarGiftTransfer
+                    # Чистим slug от лишних символов (иногда туда попадают пробелы или ковычки)
+                    if slug:
+                        slug = slug.strip().replace(" ", "_")
+
+                    from telethon.tl import functions, types
                     
-                    try:
-                        # Попытка прямой передачи
-                        logger.info(f"Передаю подарок {slug} пользователю {receiver_id}...")
-                        await client(TransferStarGiftRequest(
-                            stargift=InputSavedStarGiftSlug(slug=slug),
+                    # ГИБКИЙ ПОИСК ТИПОВ (Защита от разных версий Telethon)
+                    TransferReq = getattr(functions.payments, 'TransferStarGiftRequest', None)
+                    GetFormReq = getattr(functions.payments, 'GetPaymentFormRequest', None)
+                    SendFormReq = getattr(functions.payments, 'SendStarsFormRequest', None)
+                    
+                    # Ищем типы через перебор (в разных версиях они могут быть в разных местах)
+                    def find_type(name):
+                        res = getattr(types, name, None)
+                        if not res:
+                            # Пробуем поискать в payments
+                            res = getattr(functions.payments, name, None)
+                        return res
+
+                    InputSlug = find_type('InputSavedStarGiftSlug')
+                    InputId = find_type('InputSavedStarGiftId')
+                    InputInvoice = find_type('InputInvoiceStarGiftTransfer')
+                    
+                    if not TransferReq or not InputSlug:
+                        logger.error("❌ КРИТИЧЕСКАЯ ОШИБКА: Версия Telethon слишком старая.")
+                        logger.error("Выполните команду для обновления: /root/CubeRoll/venv/bin/pip install --upgrade telethon")
+                        # Прерываем цикл, так как без этих типов передача невозможна
+                        break
+
+                    async def try_transfer(stargift_obj):
+                        return await client(TransferReq(
+                            stargift=stargift_obj,
                             to_id=receiver
                         ))
+
+                    try:
+                        # 1. Пробуем по Slug (как есть)
+                        logger.info(f"Отправка {slug or raw_id} юзеру {receiver_id}...")
+                        
+                        target_input = None
+                        if slug and InputSlug:
+                            target_input = InputSlug(slug=slug)
+                        elif raw_id and InputId:
+                            target_input = InputId(gift_id=int(raw_id))
+                        
+                        if not target_input: 
+                            raise Exception("Нет данных для идентификации подарка")
+                            
+                        await try_transfer(target_input)
+                        
                     except Exception as gift_err:
-                        if "PAYMENT_REQUIRED" in str(gift_err):
-                            # Если нужна комиссия в звездах - оплачиваем!
-                            logger.info(f"💰 Для передачи {slug} нужна комиссия. Оплачиваю...")
-                            invoice = InputInvoiceStarGiftTransfer(
-                                stargift=InputSavedStarGiftSlug(slug=slug),
-                                to_id=receiver
-                            )
-                            form = await client(GetPaymentFormRequest(invoice=invoice))
-                            await client(SendStarsFormRequest(form_id=form.form_id, invoice=invoice))
-                            logger.info(f"✅ Комиссия оплачена, подарок {slug} отправлен!")
+                        err_str = str(gift_err).upper()
+                        
+                        # 2. Если ошибка SLUG_INVALID - пробуем Lowercase или ID
+                        if "STARGIFT_SLUG_INVALID" in err_str:
+                            if slug and slug != slug.lower() and InputSlug:
+                                logger.warning(f"Slug {slug} не подошел, пробую {slug.lower()}...")
+                                try:
+                                    await try_transfer(InputSlug(slug=slug.lower()))
+                                    logger.info("✅ Успешно отправлено (lowercase)!")
+                                except Exception as e2:
+                                    gift_err = e2
+                                    err_str = str(e2).upper()
+
+                            # 3. Финальный Fallback на ID
+                            if "STARGIFT_SLUG_INVALID" in err_str and raw_id and InputId:
+                                logger.warning(f"Slug не работает совсем, пробую ID {raw_id}...")
+                                await try_transfer(InputId(gift_id=int(raw_id)))
+                                logger.info("✅ Успешно отправлено по ID!")
+                            else:
+                                raise gift_err
+                                
+                        elif "PAYMENT_REQUIRED" in err_str and GetFormReq and SendFormReq and InputInvoice:
+                            # Оплата комиссии (Stars)
+                            logger.info(f"💰 Оплачиваю комиссию для {slug or raw_id}...")
+                            
+                            current_input = None
+                            if slug and InputSlug: current_input = InputSlug(slug=slug)
+                            elif raw_id and InputId: current_input = InputId(gift_id=int(raw_id))
+                            
+                            if not current_input: raise gift_err
+
+                            invoice = InputInvoice(stargift=current_input, to_id=receiver)
+                            form = await client(GetFormReq(invoice=invoice))
+                            await client(SendFormReq(form_id=form.form_id, invoice=invoice))
+                            logger.info(f"✅ Комиссия оплачена, подарок отправлен!")
                         else:
                             raise gift_err
 

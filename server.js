@@ -23,9 +23,20 @@ const app = express();
 function startGiftManager() {
     console.log('🐍 [System] Запуск Gift Manager (Python)...');
 
-    // Пытаемся запустить через python3 (стандарт для Linux/Railway) 
-    // Если упадет с ENOENT, попробуем просто python (стандарт для Windows)
+    // 1. Порядок проверки путей к Python:
+    // - Локальное виртуальное окружение (venv/bin/python3 или venv/Scripts/python.exe)
+    // - Системный python3
+    // - Системный python
     let command = 'python3';
+
+    const isWin = process.platform === 'win32';
+    const venvPath = isWin ? './venv/Scripts/python.exe' : './venv/bin/python3';
+
+    if (require('fs').existsSync(path.resolve(venvPath))) {
+        command = path.resolve(venvPath);
+        console.log(`✅ [System] Используем виртуальное окружение: ${command}`);
+    }
+
     let py = spawn(command, ['gift_manager.py']);
 
     function setupHandlers(process) {
@@ -171,69 +182,78 @@ bot.getMe().then(me => {
 
 // авторизация + получение профиля
 app.post('/api/auth', auth, (req, res) => {
-    const u = req.tgUser;
-    const { start_param } = req.body; // Telegram referral parameter
+    try {
+        const u = req.tgUser;
+        const { start_param } = req.body;
 
-    // Resolve referrer: support both "ref_CODE" and raw user ID
-    let referrerId = null;
-    if (start_param) {
-        if (start_param.startsWith('ref_')) {
-            const code = start_param.slice(4);
-            const referrer = userOps.getByReferralCode(code);
-            if (referrer && referrer.telegram_id !== u.id) {
-                referrerId = referrer.telegram_id;
+        let referrerId = null;
+        if (start_param) {
+            if (start_param.startsWith('ref_')) {
+                const code = start_param.slice(4);
+                const referrer = userOps.getByReferralCode(code);
+                if (referrer && referrer.telegram_id !== u.id) {
+                    referrerId = referrer.telegram_id;
+                }
+            } else if (start_param.startsWith('raffle_')) {
+                // Ignore raffle params for referral logic
+            } else {
+                const parsed = parseInt(start_param);
+                if (!isNaN(parsed) && parsed !== u.id) referrerId = parsed;
             }
-        } else {
-            const parsed = parseInt(start_param);
-            if (!isNaN(parsed) && parsed !== u.id) referrerId = parsed;
         }
+
+        const user = userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '', referrerId);
+        if (!user) {
+            console.error(`[Auth] User registration failed for ID: ${u.id}`);
+            return res.status(500).secure({ error: 'Database error. Please try again.' });
+        }
+
+        if (user.is_banned) return res.status(403).secure({ error: 'Account is banned' });
+
+        const s = getSeed(u.id);
+        const promoDeadline = new Date('2026-02-22T23:59:59+03:00');
+        const promoActive = new Date() <= promoDeadline;
+
+        res.secure({
+            user: {
+                telegramId: user.telegram_id, username: user.username, firstName: user.first_name,
+                balance: user.balance, gamesPlayed: user.games_played, gamesWon: user.games_won,
+                totalWagered: user.total_wagered, totalWon: user.total_won, totalLost: user.total_lost,
+                lastDailyClaim: user.last_daily_claim, lastDailySpin: user.last_daily_spin,
+                walletAddress: user.wallet_address, biggestWinMult: user.biggest_win_mult,
+                referralEarned: user.referral_earned, autoCashout: user.auto_cashout,
+                referralCode: user.referral_code,
+                referralCount: user.referral_count || 0,
+                referralBonusClaimed: !!user.referral_bonus_claimed
+            },
+            botUsername,
+            seeds: s,
+            settings: {
+                minBet: parseFloat(settingsOps.get('min_bet') || '0.1'),
+                maxBet: parseFloat(settingsOps.get('max_bet') || '100'),
+                tonWallet: settingsOps.get('ton_wallet'),
+                minDeposit: parseFloat(settingsOps.get('min_deposit') || '0.001')
+            },
+            referralPromo: {
+                active: promoActive,
+                deadline: '22.02.2026',
+                bonus: 3,
+                requiredReferrals: 10
+            },
+            activeRaffles: raffleOps.getActive().map(r => ({
+                id: r.id, title: r.title, prize: r.prize, nft_link: r.nft_link,
+                channel_link: r.channel_link, description: r.description,
+                start_date: r.start_date, end_date: r.end_date,
+                myTickets: raffleOps.getTickets(r.id, u.id),
+                totalTickets: raffleOps.getTotalTickets(r.id),
+                participants: raffleOps.getParticipantCount(r.id)
+            })),
+            isAdmin: ADMIN_IDS.includes(u.id)
+        });
+    } catch (err) {
+        console.error('[Auth Critical Error]:', err);
+        res.status(500).secure({ error: 'Internal Server Error. Try later.' });
     }
-
-    const user = userOps.getOrCreate(u.id, u.username || '', u.first_name || '', u.last_name || '', referrerId);
-    if (user.is_banned) return res.status(403).secure({ error: 'Account is banned' });
-
-    const s = getSeed(u.id);
-
-    // Referral promo active until 2026-02-22
-    const promoDeadline = new Date('2026-02-22T23:59:59+03:00');
-    const promoActive = new Date() <= promoDeadline;
-
-    res.secure({
-        user: {
-            telegramId: user.telegram_id, username: user.username, firstName: user.first_name,
-            balance: user.balance, gamesPlayed: user.games_played, gamesWon: user.games_won,
-            totalWagered: user.total_wagered, totalWon: user.total_won, totalLost: user.total_lost,
-            lastDailyClaim: user.last_daily_claim, lastDailySpin: user.last_daily_spin,
-            walletAddress: user.wallet_address, biggestWinMult: user.biggest_win_mult,
-            referralEarned: user.referral_earned, autoCashout: user.auto_cashout,
-            referralCode: user.referral_code,
-            referralCount: user.referral_count || 0,
-            referralBonusClaimed: !!user.referral_bonus_claimed
-        },
-        botUsername,
-        seeds: s,
-        settings: {
-            minBet: parseFloat(settingsOps.get('min_bet') || '0.1'),
-            maxBet: parseFloat(settingsOps.get('max_bet') || '100'),
-            tonWallet: settingsOps.get('ton_wallet'),
-            minDeposit: parseFloat(settingsOps.get('min_deposit') || '0.001')
-        },
-        referralPromo: {
-            active: promoActive,
-            deadline: '22.02.2026',
-            bonus: 3,
-            requiredReferrals: 10
-        },
-        activeRaffles: raffleOps.getActive().map(r => ({
-            id: r.id, title: r.title, prize: r.prize, nft_link: r.nft_link,
-            channel_link: r.channel_link, description: r.description,
-            start_date: r.start_date, end_date: r.end_date,
-            myTickets: raffleOps.getTickets(r.id, u.id),
-            totalTickets: raffleOps.getTotalTickets(r.id),
-            participants: raffleOps.getParticipantCount(r.id)
-        })),
-        isAdmin: ADMIN_IDS.includes(u.id)
-    });
 });
 
 app.post('/api/user/wallet', auth, (req, res) => {
@@ -773,25 +793,100 @@ app.get('/api/gifts/:id', auth, (req, res) => {
     res.secure(g);
 });
 
+// Вспомогательная функция для общей логики покупки (внутренней или через блокчейн)
+function finalizeGiftPurchase(tgId, giftId, paymentType, comment) {
+    try {
+        const gift = giftOps.get(giftId);
+        if (!gift) return false;
+
+        // 1. Добавляем в инвентарь
+        inventoryOps.add(tgId, giftId);
+
+        // 2. Ставим в очередь на отправку юзерботом
+        giftOps.createTransfer(giftId, tgId);
+
+        // 3. Удаляем из магазина (так как это уникальный NFT)
+        giftOps.delete(giftId);
+
+        console.log(`[Gift-Purchase] Gift #${giftId} purchased by ${tgId} via ${paymentType}`);
+        return true;
+    } catch (e) {
+        console.error('[Finalize Purchase Error]:', e);
+        return false;
+    }
+}
+
 app.post('/api/gifts/buy', auth, (req, res) => {
     const { giftId } = req.body;
     const user = userOps.get(req.tgUser.id);
     const gift = giftOps.get(giftId);
+
     if (!gift) return res.status(404).secure({ error: 'Gift not found' });
-    if (user.balance < gift.price) return res.status(400).secure({ error: 'Insufficient balance' });
+    if (user.balance < gift.price) return res.status(400).secure({ error: 'Недостаточно баланса для покупки' });
 
     userOps.updateBalance(req.tgUser.id, -gift.price, 'gift_buy', `Bought ${gift.title}`);
 
-    // Inventory addition
-    inventoryOps.add(req.tgUser.id, giftId);
+    const success = finalizeGiftPurchase(req.tgUser.id, giftId, 'BALANCE');
 
-    // Очередь на передачу юзерботом
-    giftOps.createTransfer(giftId, req.tgUser.id);
-    giftOps.delete(giftId);
-
-    const updated = userOps.get(req.tgUser.id);
-    res.secure({ success: true, newBalance: updated.balance });
+    if (success) {
+        const updated = userOps.get(req.tgUser.id);
+        res.secure({ success: true, newBalance: updated.balance });
+    } else {
+        res.status(500).secure({ error: 'Ошибка при оформлении подарка' });
+    }
 });
+
+app.post('/api/gifts/init-buy', auth, (req, res) => {
+    const { giftId } = req.body;
+    const gift = giftOps.get(giftId);
+    if (!gift) return res.status(404).secure({ error: 'Gift not found' });
+
+    const settings = settingsOps.getAll();
+    let addr = settings.ton_wallet;
+    if (!addr || addr.includes('...') || addr.includes('your-')) addr = process.env.TON_WALLET;
+
+    // Генерируем уникальный "Контракт" (комментарий для транзакции)
+    const payload = `GIFT:${giftId}:${req.tgUser.id}:${Date.now().toString().slice(-4)}`;
+
+    res.secure({
+        success: true,
+        price: gift.price,
+        adminWallet: addr,
+        payload: payload // В реальном приложении это будет BOC-строка комментария
+    });
+});
+
+app.post('/api/admin/gifts/test-buy', auth, adminOnly, (req, res) => {
+    const { giftId, telegramId } = req.body;
+    const gift = giftOps.get(giftId);
+    if (!gift) return res.status(404).secure({ error: 'Gift not found' });
+
+    const success = finalizeGiftPurchase(telegramId || req.tgUser.id, giftId, 'ADMIN_TEST');
+
+    if (success) {
+        res.secure({ success: true, message: 'Тестовая покупка прошла успешно! Подарок поставлен в очередь.' });
+    } else {
+        res.status(500).secure({ error: 'Ошибка тестовой покупки' });
+    }
+});
+
+// Служебная функция для обработки успешной оплаты подарка через блокчейн
+function processSuccessGiftPurchase(tgId, giftId, txHash) {
+    if (depositOps.isHashUsed(txHash)) return;
+
+    const success = finalizeGiftPurchase(tgId, giftId, 'TON_BLOCKCHAIN');
+
+    if (success) {
+        // Записываем хеш, чтобы не обработать дважды
+        depositOps.markCompleted(`GIFT_PURCHASE:${txHash}`, txHash);
+
+        console.log(`[TON-Purchase] Gift #${giftId} paid by ${tgId}. Tx: ${txHash}`);
+
+        if (bot) {
+            bot.sendMessage(tgId, `✅ *Оплата подтверждена!*\n\nПодарок добавлен в ваш инвентарь и будет отправлен вам в ближайшее время.`, { parse_mode: 'Markdown' });
+        }
+    }
+}
 
 // --- MARKETPLACE & INVENTORY ---
 
@@ -916,42 +1011,33 @@ app.post('/api/deposit/request', auth, (req, res) => {
     const { amount } = req.body;
     const amt = parseFloat(amount);
     let minDep = parseFloat(settingsOps.get('min_deposit') || 0.001);
+    if (isNaN(amt) || amt < minDep) return res.status(400).json({ error: `Минимум: ${minDep} TON` });
 
-    if (isNaN(amt) || amt < minDep) return res.status(400).secure({ error: `Минимум: ${minDep} TON` });
+    // безопасный комментарий для TonConnect
+    const raw = crypto.randomBytes(6).toString('base64url'); // 6 байт → ~8 символов
+    const safe = raw.replace(/[^a-zA-Z0-9_-]/g, ''); // только валидные символы
+    const comment = 'CUBER_' + safe;
 
-    const comment = 'deposit_' + Math.floor(100000 + Math.random() * 900000);
     try {
         depositOps.createPending(req.tgUser.id, amt, comment);
     } catch (e) {
-        return res.status(500).secure({ error: 'Could not create request' });
+        return res.status(500).json({ error: 'Could not create request' });
     }
 
-    let wallet = process.env.TON_WALLET || settingsOps.get('ton_wallet');
-    // Если в .env или базе заглушка, возвращаем ошибку
-    if (!wallet || wallet.includes('...') || wallet === 'UQ...') {
-        return res.status(500).secure({ error: 'Admin wallet address is not configured yet.' });
+    let wallet = (settingsOps.get('ton_wallet') || process.env.TON_WALLET || '').trim();
+    if (!wallet || wallet.includes('...') || wallet.length < 30) {
+        return res.status(500).json({ error: 'Кошелек администратора не настроен (проверьте настройки в админке или .env)' });
     }
 
     const nano = Math.round(amt * 1e9).toString();
     const link = `ton://transfer/${wallet}?amount=${nano}&text=${encodeURIComponent(comment)}`;
 
-    // Send BOT message for direct payment
-    if (bot) {
-        bot.sendMessage(req.tgUser.id,
-            `💰 *Заявка на пополнение*\n\n` +
-            `💵 Сумма: *${amt.toFixed(2)} TON*\n` +
-            `📝 Комментарий: \`${comment}\`\n\n` +
-            `Нажмите на кнопку ниже, чтобы перейти к оплате в TON кошельке.`,
-            {
-                parse_mode: 'Markdown',
-                reply_markup: {
-                    inline_keyboard: [
-                        [{ text: '💎 ОПЛАТИТЬ (Direct Link)', url: link }]
-                    ]
-                }
-            }
-        ).catch(e => console.error('[Bot] Send payment error:', e.message));
-    }
+    // Боту писать не нужно, так как оплата теперь идет через внутренний интерфейс TonConnect
+    /*
+    try {
+        bot.sendMessage(req.tgUser.id, ...);
+    } catch (e) { ... }
+    */
 
     res.secure({ success: true, comment, address: wallet, link });
 });
@@ -976,11 +1062,35 @@ function parseTonComment(msg) {
         if (msg.msg_data['@type'] === 'msg.dataRaw' && typeof msg.msg_data.body === 'string') {
             try {
                 const body = Buffer.from(msg.msg_data.body, 'base64');
-                if (body.length < 5) return null;
-                const opcode = body.readUInt32BE(0);
-                if (opcode === 0) return body.subarray(4).toString('utf8').replace(/\0+$/, '').trim();
-                const plainText = body.toString('utf8').replace(/\0+$/, '').trim();
-                if (/^[a-zA-Z0-9_-]+$/.test(plainText)) return plainText;
+
+                // BOC header check (0xb5ee9c72)
+                if (body.length > 10 && body.readUInt32BE(0) === 0xb5ee9c72) {
+                    // Search for opcode 0 (text comment) inside the BOC structure
+                    for (let i = 4; i < Math.min(body.length - 4, 30); i++) {
+                        if (body[i] === 0 && body[i + 1] === 0 && body[i + 2] === 0 && body[i + 3] === 0) {
+                            const comment = body.subarray(i + 4).toString('utf8').replace(/[^\x20-\x7Eа-яА-ЯёЁ:]/g, '').trim();
+                            if (comment) return comment;
+                        }
+                    }
+                }
+
+                if (body.length >= 4 && body.readUInt32BE(0) === 0) {
+                    return body.subarray(4).toString('utf8').replace(/\0+$/, '').trim();
+                }
+
+                // Fallback: dynamic pattern match for important memos
+                const raw = body.toString('utf8');
+                if (raw.includes('TEST_DEPOSIT:')) return 'TEST_DEPOSIT:' + raw.split('TEST_DEPOSIT:')[1].split(/[^0-9]/)[0];
+                if (raw.includes('GIFT:')) {
+                    const parts = raw.split('GIFT:')[1].split(':');
+                    if (parts.length >= 2) return `GIFT:${parts[0]}:${parts[1].split(/[^0-9]/)[0]}`;
+                }
+                if (raw.includes('deposit_') || raw.includes('CUBER_')) {
+                    const prefix = raw.includes('CUBER_') ? 'CUBER_' : 'deposit_';
+                    const rest = (raw.split(prefix)[1] || '');
+                    const suffix = prefix === 'CUBER_' ? (rest.match(/^[A-Za-z0-9_-]+/) || [''])[0] : rest.split(/[^0-9]/)[0];
+                    return prefix + suffix;
+                }
             } catch (e) { }
         }
     }
@@ -1015,16 +1125,49 @@ async function checkTonTransactions() {
 
                         const comment = parseTonComment(msg);
                         const fromAddr = msg.source || msg.from;
+                        const destAddr = msg.destination;
                         const amountTON = Number(msg.value) / 1e9;
+
+                        // СТРОГАЯ ПРОВЕРКА: Транзакция должна идти НА наш кошелек
+                        if (destAddr !== addr.trim()) return;
+
+                        console.log(`[TON] New INCOMING TX: ${txHash.substring(0, 8)}... | Amount: ${amountTON} | From: ${fromAddr}`);
 
                         let matchFound = false;
 
                         // 1. Поиск по комментарию (Приоритет)
                         if (comment) {
-                            const pending = depositOps.getByComment(comment);
-                            if (pending && pending.status === 'pending' && amountTON >= pending.amount * 0.98) {
-                                processSuccessDeposit(pending.telegram_id, amountTON, comment, txHash);
+                            if (comment.startsWith('GIFT:')) {
+                                const parts = comment.split(':');
+                                if (parts.length >= 3) {
+                                    const giftId = parseInt(parts[1]);
+                                    const tgId = parseInt(parts[2]);
+                                    processSuccessGiftPurchase(tgId, giftId, txHash);
+                                    matchFound = true;
+                                }
+                            } else if (comment.startsWith('TEST_DEPOSIT:')) {
+                                const tgId = parseInt(comment.split(':')[1]);
+                                const currentSettings = settingsOps.getAll();
+                                const currentTestBal = parseFloat(currentSettings.test_balance || 1000.00);
+                                settingsOps.set('test_balance', currentTestBal + amountTON);
+
+                                console.log(`[TEST-DEPOSIT] Admin test balance increased by ${amountTON} TON via user ${tgId}`);
+
+                                // ALSO update the user's balance so they see it worked!
+                                if (!isNaN(tgId)) {
+                                    userOps.updateBalance(tgId, amountTON, 'deposit', `Test deposit: ${comment} | hash:${txHash}`);
+                                    console.log(`[TEST-DEPOSIT] User ${tgId} balance credited with ${amountTON} TON`);
+                                }
+
                                 matchFound = true;
+                                depositOps.markCompleted(comment, txHash);
+                            } else {
+                                // Обычное пополнение баланса
+                                const pending = depositOps.getByComment(comment);
+                                if (pending && pending.status === 'pending' && amountTON >= pending.amount * 0.98) {
+                                    processSuccessDeposit(pending.telegram_id, amountTON, comment, txHash);
+                                    matchFound = true;
+                                }
                             }
                         }
 
@@ -1045,7 +1188,10 @@ async function checkTonTransactions() {
 function processSuccessDeposit(tgId, amount, memo, txHash) {
     if (depositOps.isHashUsed(txHash)) return; // Защита от дублей
     userOps.updateBalance(tgId, amount, 'deposit', `TON Deposit (${memo})`);
-    depositOps.markCompleted(memo, txHash);
+    const dep = depositOps.markCompleted(memo, txHash);
+    if (!dep) {
+        depositOps.createCompleted(tgId, amount, memo, txHash);
+    }
 
     // --- RAFFLE TICKET LOGIC (Dynamic per active raffle) ---
     try {
@@ -1280,6 +1426,20 @@ app.post('/api/admin/parse-gift', auth, adminOnly, async (req, res) => {
     const { url } = req.body;
     if (!url) return res.status(400).secure({ error: 'URL required' });
 
+    // Extract slug and id from URL if possible
+    // Example: https://t.me/nft/Pomegranate-1533
+    let slug = '';
+    let giftId = '';
+    try {
+        const parts = url.split('/');
+        const lastPart = parts[parts.length - 1]; // Pomegranate-1533
+        if (lastPart.includes('-')) {
+            const sub = lastPart.split('-');
+            giftId = sub.pop();
+            slug = sub.join('-');
+        }
+    } catch (e) { }
+
     https.get(url, (resp) => {
         let html = '';
         resp.on('data', (c) => html += c);
@@ -1287,11 +1447,15 @@ app.post('/api/admin/parse-gift', auth, adminOnly, async (req, res) => {
             try {
                 const titleMatch = html.match(/<meta property="og:title" content="([^"]+)">/);
                 const imageMatch = html.match(/<meta property="og:image" content="([^"]+)">/);
+
                 res.secure({
-                    title: titleMatch ? titleMatch[1].replace('Collectibles — ', '') : 'Gift',
-                    model: imageMatch ? imageMatch[1] : '',
-                    background: 'radial-gradient(circle, #333, #000)',
-                    symbol: '🎁'
+                    title: titleMatch ? titleMatch[1].replace('Collectibles — ', '') : (slug || 'Gift'),
+                    model: imageMatch ? imageMatch[1] : 'https://i.imgur.com/8YvYyZp.png',
+                    background: 'radial-gradient(circle, #222, #000)',
+                    symbol: '🎁',
+                    slug: slug,
+                    gift_id: giftId || (titleMatch ? (titleMatch[1].match(/#(\d+)/) || [])[1] : null),
+                    link: url
                 });
             } catch (e) { res.status(500).secure({ error: e.message }); }
         });
@@ -1393,10 +1557,12 @@ app.get('/api/admin/raffles/:id', auth, adminOnly, (req, res) => {
 app.get('/api/admin/stats', auth, adminOnly, (req, res) => {
     const totalReferrals = db.prepare('SELECT COALESCE(SUM(referral_count), 0) as c FROM users').get().c;
     const totalRefEarned = db.prepare('SELECT COALESCE(SUM(referral_earned), 0) as s FROM users').get().s;
+    const settings = settingsOps.getAll();
     res.secure({
         overall: gameOps.getStats(), today: gameOps.getTodayStats(),
-        userCount: userOps.getCount(), settings: settingsOps.getAll(),
-        totalReferrals, totalRefEarned
+        userCount: userOps.getCount(), settings,
+        totalReferrals, totalRefEarned,
+        testBalance: settings.test_balance || 1000.00
     });
 });
 

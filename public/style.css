@@ -47,9 +47,11 @@
 
 body {
   font-family: var(--font);
-  font-weight: 500;
+  font-weight: 700;
+  /* Increased from 600 */
   background: var(--bg);
   color: var(--t1);
+  -webkit-font-smoothing: antialiased;
 }
 
 .hidden {
@@ -100,11 +102,21 @@ body {
 
 .tab-scrollable {
   flex: 1;
+  display: flex;
+  /* Flex layout to center content */
+  flex-direction: column;
   overflow-y: auto;
-  padding: 15px;
-  padding-bottom: 120px;
-  /* space for nav */
+  padding: 12px 15px;
+  /* Reduced bottom padding specifically for games to fit better */
+  padding-bottom: 90px;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Specific override for Wallet Tab to ensure scrolling and enough space */
+#content-wallet .tab-scrollable {
+  display: block;
+  /* Standard block layout for wallet inputs */
+  padding-bottom: 120px;
 }
 
 /* Hide scrollbars but keep functionality */
@@ -112,12 +124,10 @@ body {
   display: none;
 }
 
-/* Specific game view constraints to prevent double scrolling */
+/* Specific game view constraints */
 [id^="game-view-"] {
-  height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .shop-list {
@@ -759,7 +769,31 @@ body {
   z-index: 50;
 }
 
-/* Removed duplicate nav-tabs definition to use the main one below */
+/* Ensure #app is strictly hidden when class is present */
+#app.hidden {
+  display: none !important;
+}
+
+/* Navigation Bar Container - Forced Bottom Positioning */
+.nav-tabs {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  /* Safe area respecting padding */
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 15px));
+  background: rgba(18, 18, 18, 0.98);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border-top: 1px solid var(--border);
+  /* Absolute positioning to guarantee bottom placement */
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 90;
+}
 
 .nav-tab {
   flex: 1;
@@ -793,12 +827,43 @@ body {
   font-weight: 800;
 }
 
+/* Чуть более жирные шрифты по всему казино */
+h1,
+h2,
+h3,
+h4,
+.section-title,
+.method-title-wrap h4,
+.deposit-hero h2,
+.ref-hero h2 {
+  font-weight: 700;
+}
+
+.bet-name,
+.roll-text,
+.modal-header h3,
+label,
+.stat-label,
+.stat-value,
+.bonus-title {
+  font-weight: 600;
+}
+
+button,
+.roll-button,
+.claim-btn-premium,
+.dealer-btn-gold,
+.bet-type-btn {
+  font-weight: 700;
+}
+
 .tab-content {
-  flex: 1;
+  flex: 1 1 0px;
+  height: 100%;
   display: none;
   flex-direction: column;
-  min-height: 0;
   overflow: hidden;
+  position: relative;
   animation: tabFade .4s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
@@ -844,26 +909,29 @@ button:active,
   }
 }
 
-/* Standard Scrollable wrapper */
+/* Standard Scrollable wrapper — компактно, чтобы кнопки были под рукой без прокрутки */
 .tab-scrollable {
   flex: 1;
   overflow-y: auto !important;
   overflow-x: hidden;
-  padding: 16px 16px 40px;
-  /* Normal bottom padding, no hacks needed */
+  padding: 10px 14px 80px;
   -webkit-overflow-scrolling: touch;
   min-height: 0;
+}
+
+#content-wallet .tab-scrollable {
+  padding-bottom: 120px;
 }
 
 #content-game {
   padding-bottom: env(safe-area-inset-bottom, 12px);
 }
 
-/* Dice arena should be flexible but not scrollable unless on tiny screens */
+/* Dice arena — компактнее, чтобы кнопка ставки была видна без прокрутки */
 .dice-arena {
   flex-shrink: 0;
-  margin: 10px 0;
-  min-height: 140px;
+  margin: 6px 0;
+  min-height: 120px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -1218,9 +1286,9 @@ button:active,
 
 .section-title {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--t3);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 2px;
 }
@@ -1305,8 +1373,9 @@ button:active,
   background: var(--card);
   border: 1px solid var(--border2);
   border-radius: var(--r);
-  padding: 28px 20px 16px;
-  margin-bottom: 12px;
+  padding: 16px 12px;
+  /* Reduced */
+  margin-bottom: 8px;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -1315,13 +1384,15 @@ button:active,
 /* поверхность стола */
 .dice-table {
   position: relative;
-  min-height: 110px;
+  min-height: 80px;
+  /* Reduced to bring buttons up */
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 44px;
   perspective: 1000px;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
+  /* Reduced */
 }
 
 /* тень на столе */
@@ -1334,6 +1405,19 @@ button:active,
   border-radius: 50%;
   transition: all .4s;
   pointer-events: none;
+}
+
+/* Game Container Adjustment */
+.game-container {
+  padding-bottom: 40px;
+  /* Further reduced */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fix for dice button being too low */
+.dice-controls {
+  margin-bottom: 20px;
 }
 
 .dice-shadow.shadow-1 {
@@ -2743,7 +2827,7 @@ button:active,
 }
 
 .roll-section {
-  padding: 10px 0;
+  padding: 8px 0;
   text-align: center;
 }
 

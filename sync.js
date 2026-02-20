@@ -5,7 +5,7 @@ const FIREBASE_URL = 'https://shout-messenger-default-rtdb.europe-west1.firebase
 
 const TABLES = [
     'users', 'games', 'settings', 'promocodes', 'promocode_activations',
-    'deposits', 'gifts', 'transfers', 'transactions', 'raffles', 'raffle_tickets'
+    'deposits', 'gifts', 'transactions', 'raffles', 'raffle_tickets'
 ];
 
 async function firebaseRequest(path, method, data = null) {
@@ -66,6 +66,9 @@ const syncOps = {
             }
 
             console.log('[CloudSync] Backup found! Restoring tables...');
+            // Отключаем внешние ключи на время восстановления
+            db.pragma('foreign_keys = OFF');
+
             for (const table of TABLES) {
                 if (data[table] && Array.isArray(data[table])) {
                     // Очищаем таблицу перед восстановлением
@@ -88,6 +91,8 @@ const syncOps = {
                     console.log(`[CloudSync] Restored ${data[table].length} rows into ${table}`);
                 }
             }
+            // Включаем обратно
+            db.pragma('foreign_keys = ON');
             return true;
         } catch (e) {
             console.error('[CloudSync] Error pulling from Firebase:', e.message);
